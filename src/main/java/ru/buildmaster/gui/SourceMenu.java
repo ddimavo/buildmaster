@@ -9,6 +9,7 @@ import org.bukkit.inventory.ItemStack;
 import ru.buildmaster.BuildMasterPlugin;
 import ru.buildmaster.model.Box;
 import ru.buildmaster.model.Plot;
+import ru.buildmaster.service.PlotFilter;
 import ru.buildmaster.util.Text;
 
 /** Выбор материала, который нужно заменить (показываются блоки, реально присутствующие в зоне). */
@@ -19,10 +20,10 @@ public final class SourceMenu extends Menu {
     private final Plot plot;
     private final String zoneName;
     private final Box box;
-    private final PlotListMenu.Mode back;
+    private final PlotFilter back;
 
     public SourceMenu(BuildMasterPlugin plugin, Player player, Plot plot, String zoneName, Box box,
-                      PlotListMenu.Mode back, int page) {
+                      PlotFilter back, int page) {
         super(plugin, player, "<dark_gray>Заменить блок: " + Text.esc(zoneName), 6);
         this.plot = plot;
         this.zoneName = zoneName;

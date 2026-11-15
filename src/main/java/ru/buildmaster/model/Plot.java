@@ -11,6 +11,9 @@ public final class Plot {
 
     public enum Status { FREE, OWNED, RENTED }
 
+    /** FULL - здание полностью возвращается к исходному виду; ITEMS_ONLY - только забираются вещи игроков. */
+    public enum RestoreMode { FULL, ITEMS_ONLY }
+
     /** Именованная часть здания (фасад, крыша, интерьер...), внутри участка. */
     public record Zone(String name, Box box, String icon) { }
 
@@ -22,6 +25,21 @@ public final class Plot {
     public double price = -1;
     /** Аренда за сутки; отрицательная - участок не сдаётся. */
     public double rentPerDay = -1;
+
+    /** Тип участка (дом, магазин...). */
+    public Category category = Category.SHOP;
+    /** Администратор, создавший участок: он остаётся высшим владельцем. */
+    public UUID createdBy;
+    /** Одобренные администратором название и описание (публикуются на голограмме). */
+    public String name;
+    public String description;
+    /** Точка голограммы (центр). */
+    public boolean hasHolo;
+    public double holoX, holoY, holoZ;
+    /** Сбрасывать здание при освобождении (решает владелец). */
+    public boolean resetOnRelease = true;
+    /** До какого момента длится отсрочка платежа; 0 - отсрочки нет. В это время участок заморожен. */
+    public long graceUntil;
 
     public Status status = Status.FREE;
     public UUID owner;
@@ -38,8 +56,13 @@ public final class Plot {
 
     /** Здание нужно привести к исходному виду (сохраняется, чтобы пережить перезапуск). */
     public boolean restorePending;
-    /** Кому вернуть предметы при сбросе здания. */
+    /** Кому вернуть предметы, не принадлежащие никому конкретно (из исходных контейнеров и т.п.). */
     public UUID restoreFor;
+    public RestoreMode restoreMode = RestoreMode.FULL;
+    /** Вещи арестовываются (изъятие участка) - до решения администратора. */
+    public boolean restoreArrest;
+    public String restoreReason;
+    public String restoreBatch;
 
     /** Идёт операция над блоками (сброс, замена, снимок) - участок временно заблокирован. */
     public transient boolean busy;
@@ -51,6 +74,14 @@ public final class Plot {
         this.id = id;
         this.world = world;
         this.box = box;
+    }
+
+    public boolean isFrozen() {
+        return graceUntil > System.currentTimeMillis();
+    }
+
+    public String displayName() {
+        return name != null && !name.isBlank() ? name : category.title() + " " + id;
     }
 
     public boolean isFree() {

@@ -4,12 +4,13 @@ import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import ru.buildmaster.BuildMasterPlugin;
 import ru.buildmaster.model.Plot;
+import ru.buildmaster.service.PlotFilter;
 import ru.buildmaster.util.Text;
 
 /** Выбор части здания, в которой будет идти замена. */
 public final class ZoneMenu extends Menu {
 
-    public ZoneMenu(BuildMasterPlugin plugin, Player player, Plot plot, PlotListMenu.Mode back) {
+    public ZoneMenu(BuildMasterPlugin plugin, Player player, Plot plot, PlotFilter back) {
         super(plugin, player, "<dark_gray>Что изменить? Участок " + Text.esc(plot.id), 4);
         set(4, Text.icon(Material.NETHER_BRICKS, "<gold>Всё здание", "<gray>Замена во всём участке",
                 "<yellow>Нажмите для выбора"),

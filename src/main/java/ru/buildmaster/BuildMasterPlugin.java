@@ -11,18 +11,30 @@ import ru.buildmaster.listener.SelectionListener;
 import ru.buildmaster.service.BlockRules;
 import ru.buildmaster.service.BuildService;
 import ru.buildmaster.service.EconomyHook;
-import ru.buildmaster.service.PendingItems;
 import ru.buildmaster.service.PlotManager;
+import ru.buildmaster.service.HologramService;
+import ru.buildmaster.service.Journal;
+import ru.buildmaster.service.LedgerStore;
+import ru.buildmaster.service.ModerationService;
 import ru.buildmaster.service.PlotService;
+import ru.buildmaster.service.SnapshotStore;
+import ru.buildmaster.service.StorageService;
+import ru.buildmaster.service.Treasury;
 
-public final class BuildMasterPlugin extends JavaPlugin {
+public class BuildMasterPlugin extends JavaPlugin {
 
     private PlotManager plots;
     private PlotService service;
     private BuildService build;
     private BlockRules rules;
     private EconomyHook economy;
-    private PendingItems pending;
+    private StorageService storage;
+    private SnapshotStore snapshots;
+    private LedgerStore ledgers;
+    private Journal journal;
+    private Treasury treasury;
+    private ModerationService moderation;
+    private HologramService holograms;
     private ChatPrompt chatPrompt;
     private SelectionListener selection;
 
@@ -32,7 +44,19 @@ public final class BuildMasterPlugin extends JavaPlugin {
         rules = new BlockRules();
         rules.reload(getConfig());
         economy = new EconomyHook();
-        pending = new PendingItems(this);
+        storage = new StorageService(this);
+        snapshots = new SnapshotStore();
+        ledgers = new LedgerStore(this);
+        journal = new Journal(new java.io.File(getDataFolder(), "journal.log"));
+        try {
+            journal.load();
+        } catch (java.io.IOException e) {
+            getLogger().log(java.util.logging.Level.SEVERE, "Не удалось прочитать журнал", e);
+        }
+        treasury = Treasury.load(new java.io.File(getDataFolder(), "treasury.yml"));
+        moderation = new ModerationService(this);
+        moderation.load();
+        holograms = new HologramService(this);
         plots = new PlotManager(this);
         plots.load();
         service = new PlotService(this);
@@ -46,6 +70,7 @@ public final class BuildMasterPlugin extends JavaPlugin {
         pm.registerEvents(chatPrompt, this);
         pm.registerEvents(selection, this);
         pm.registerEvents(new JoinListener(this), this);
+        pm.registerEvents(new ru.buildmaster.listener.HologramListener(this), this);
 
         DistrictCommand command = new DistrictCommand(this);
         var district = Objects.requireNonNull(getCommand("district"));
@@ -54,6 +79,7 @@ public final class BuildMasterPlugin extends JavaPlugin {
 
         // проверка сроков аренды, автопродление и продолжение незавершённых сбросов зданий
         getServer().getScheduler().runTaskTimer(this, service::tick, 100L, 400L);
+        getServer().getScheduler().runTaskLater(this, holograms::updateAll, 40L);
         getLogger().info("Загружено участков: " + plots.all().size());
     }
 
@@ -62,6 +88,18 @@ public final class BuildMasterPlugin extends JavaPlugin {
         if (plots != null) {
             plots.save();
         }
+        if (ledgers != null) {
+            ledgers.flush();
+        }
+        if (holograms != null) {
+            holograms.removeAll();
+        }
+        saveTreasury();
+    }
+
+    /** Только для тестов: подмена хранилища снимков (StructureManager нет в MockBukkit). */
+    public void setSnapshots(SnapshotStore store) {
+        this.snapshots = store;
     }
 
     public void reload() {
@@ -89,8 +127,43 @@ public final class BuildMasterPlugin extends JavaPlugin {
         return economy;
     }
 
-    public PendingItems pending() {
-        return pending;
+    public StorageService storage() {
+        return storage;
+    }
+
+    public SnapshotStore snapshots() {
+        return snapshots;
+    }
+
+    public LedgerStore ledgers() {
+        return ledgers;
+    }
+
+    public Journal journal() {
+        return journal;
+    }
+
+    public Treasury treasury() {
+        return treasury;
+    }
+
+    public ModerationService moderation() {
+        return moderation;
+    }
+
+    public HologramService holograms() {
+        return holograms;
+    }
+
+    public void saveTreasury() {
+        if (treasury == null) {
+            return;
+        }
+        try {
+            treasury.save(new java.io.File(getDataFolder(), "treasury.yml"));
+        } catch (java.io.IOException e) {
+            getLogger().log(java.util.logging.Level.SEVERE, "Не удалось сохранить казну", e);
+        }
     }
 
     public ChatPrompt chatPrompt() {

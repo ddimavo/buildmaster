@@ -1,0 +1,96 @@
+package ru.buildmaster.service;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.ComponentIteratorType;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
+import ru.buildmaster.util.Text;
+import java.util.UUID;
+import org.junit.jupiter.api.Test;
+import ru.buildmaster.model.Box;
+import ru.buildmaster.model.Category;
+import ru.buildmaster.model.Plot;
+
+class HologramTextTest {
+
+    private static String money(double v) {
+        return v + "$";
+    }
+
+    private static Plot plot() {
+        Plot p = new Plot("shop-1", "w", new Box(0, 0, 0, 9, 4, 9));
+        p.category = Category.SHOP;
+        return p;
+    }
+
+    private static String joined(Plot p) {
+        return String.join("\n", HologramText.lines(p, HologramTextTest::money));
+    }
+
+    @Test
+    void freePlotShowsPricesAndTypeButNoOwner() {
+        Plot p = plot();
+        p.price = 5000;
+        p.rentPerDay = 120;
+        String text = joined(p);
+        assertTrue(text.contains("Магазин shop-1"));
+        assertTrue(text.contains("Свободен"));
+        assertTrue(text.contains("Продажа: <white>5000.0$"));
+        assertTrue(text.contains("Аренда: <white>120.0$ / сутки"));
+        assertFalse(text.contains("Управляющий"));
+    }
+
+    @Test
+    void freePlotOmitsUnavailableOffers() {
+        Plot p = plot();
+        p.rentPerDay = 10;
+        String text = joined(p);
+        assertFalse(text.contains("Продажа"));
+        assertTrue(text.contains("Аренда"));
+    }
+
+    @Test
+    void occupiedPlotShowsNameOwnerAndDescription() {
+        Plot p = plot();
+        p.status = Plot.Status.RENTED;
+        p.owner = UUID.randomUUID();
+        p.ownerName = "Steve";
+        p.name = "Лавка Стива";
+        p.description = "Лучшие мечи и броня на всём сервере, скидки по пятницам";
+        String text = joined(p);
+        assertTrue(text.contains("Лавка Стива"));
+        assertTrue(text.contains("Управляющий: <white>Steve"));
+        assertTrue(text.contains("Лучшие мечи"));
+        assertFalse(text.contains("Свободен"));
+        assertFalse(text.contains("Продажа"));
+    }
+
+    @Test
+    void frozenPlotIsMarked() {
+        Plot p = plot();
+        p.status = Plot.Status.RENTED;
+        p.ownerName = "Steve";
+        p.graceUntil = System.currentTimeMillis() + 100_000;
+        assertTrue(joined(p).contains("Платёж просрочен"));
+    }
+
+    @Test
+    void userTextIsEscapedAgainstMiniMessageInjection() {
+        Plot p = plot();
+        p.status = Plot.Status.OWNED;
+        p.ownerName = "<red>Hacker";
+        p.name = "<click:run_command:/op me>Нажми";
+        p.description = "<hover:show_text:'x'>текст";
+        Component component = Text.mm(String.join("\n", HologramText.lines(p, HologramTextTest::money)));
+
+        // теги из пользовательского текста не должны превращаться в события и цвета
+        component.iterable(ComponentIteratorType.DEPTH_FIRST).forEach(c -> {
+            assertNull(c.clickEvent(), "найдено click-событие");
+            assertNull(c.hoverEvent(), "найдено hover-событие");
+        });
+        String plain = PlainTextComponentSerializer.plainText().serialize(component);
+        assertTrue(plain.contains("<click:run_command:/op me>Нажми"), plain);
+        assertTrue(plain.contains("<red>Hacker"), plain);
+    }
+}

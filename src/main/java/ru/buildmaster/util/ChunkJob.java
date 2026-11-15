@@ -21,6 +21,22 @@ public final class ChunkJob {
         void run(Chunk chunk, Box clip);
     }
 
+    /** Способ загрузки чанка. По умолчанию - асинхронный (Paper); в тестах подменяется синхронным. */
+    @FunctionalInterface
+    public interface Loader {
+        void load(World world, int cx, int cz, java.util.function.BiConsumer<Chunk, Throwable> callback);
+    }
+
+    public static final Loader PAPER_ASYNC = (world, cx, cz, callback) ->
+            world.getChunkAtAsync(cx, cz).whenComplete(callback);
+
+    private static volatile Loader loader = PAPER_ASYNC;
+
+    /** Только для тестов. */
+    public static void setLoader(Loader newLoader) {
+        loader = newLoader == null ? PAPER_ASYNC : newLoader;
+    }
+
     private final Plugin plugin;
     private final World world;
     private final Box box;
@@ -55,14 +71,18 @@ public final class ChunkJob {
             return;
         }
         int[] c = chunks.get(next++);
-        world.getChunkAtAsync(c[0], c[1]).whenComplete((chunk, error) -> {
-            Runnable work = () -> process(c, chunk, error);
-            if (Bukkit.isPrimaryThread()) {
-                work.run();
-            } else {
-                Bukkit.getScheduler().runTask(plugin, work);
-            }
-        });
+        try {
+            loader.load(world, c[0], c[1], (chunk, error) -> {
+                Runnable work = () -> process(c, chunk, error);
+                if (Bukkit.isPrimaryThread()) {
+                    work.run();
+                } else {
+                    Bukkit.getScheduler().runTask(plugin, work);
+                }
+            });
+        } catch (Throwable t) {
+            failed.accept(t);
+        }
     }
 
     private void process(int[] c, Chunk chunk, Throwable error) {

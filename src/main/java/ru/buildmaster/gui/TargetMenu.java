@@ -9,6 +9,7 @@ import org.bukkit.inventory.ItemStack;
 import ru.buildmaster.BuildMasterPlugin;
 import ru.buildmaster.model.Box;
 import ru.buildmaster.model.Plot;
+import ru.buildmaster.service.PlotFilter;
 import ru.buildmaster.util.Text;
 
 /** Выбор материала, на который заменяем. Есть поиск по названию (английский ключ блока). */
@@ -17,7 +18,7 @@ public final class TargetMenu extends Menu {
     private static final int PAGE_SIZE = 45;
 
     public TargetMenu(BuildMasterPlugin plugin, Player player, Plot plot, String zoneName, Box box,
-                      Material from, String filter, int page, PlotListMenu.Mode back) {
+                      Material from, String filter, int page, PlotFilter back) {
         super(plugin, player, "<dark_gray>Заменить на...", 6);
         List<Material> all = new ArrayList<>();
         String needle = filter.toLowerCase(Locale.ROOT).replace(' ', '_');

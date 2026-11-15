@@ -1,30 +1,23 @@
 package ru.buildmaster.gui;
 
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import ru.buildmaster.BuildMasterPlugin;
+import ru.buildmaster.model.Category;
 import ru.buildmaster.model.Plot;
+import ru.buildmaster.service.PlotFilter;
 import ru.buildmaster.util.Text;
 
+/** Список участков с фильтром по типу, сортировкой и поиском. */
 public final class PlotListMenu extends Menu {
-
-    public enum Mode { FREE, MINE }
 
     private static final int PAGE_SIZE = 45;
 
-    public PlotListMenu(BuildMasterPlugin plugin, Player player, Mode mode, int page) {
-        super(plugin, player, mode == Mode.FREE ? "<dark_gray>Свободные участки" : "<dark_gray>Мои участки", 6);
-        List<Plot> plots = new ArrayList<>();
-        for (Plot p : plugin.plots().all()) {
-            boolean match = mode == Mode.FREE ? p.isFree() : p.isMember(player.getUniqueId());
-            if (match) {
-                plots.add(p);
-            }
-        }
-        plots.sort(Comparator.comparing(p -> p.id.toLowerCase()));
+    public PlotListMenu(BuildMasterPlugin plugin, Player player, PlotFilter filter, int page) {
+        super(plugin, player, filter.mode == PlotFilter.Mode.FREE ? "<dark_gray>Свободные участки" : "<dark_gray>Мои участки", 6);
+        List<Plot> plots = filter.apply(plugin.plots().all(), player.getUniqueId());
         int pages = Math.max(1, (plots.size() + PAGE_SIZE - 1) / PAGE_SIZE);
         int current = Math.min(Math.max(page, 0), pages - 1);
 
@@ -38,18 +31,52 @@ public final class PlotListMenu extends Menu {
             lore.add("");
             lore.add("<yellow>Нажмите, чтобы открыть");
             set(i, Text.icon(Icons.statusMaterial(plot, plot.isMember(player.getUniqueId())),
-                    "<gold>Участок <white>" + Text.esc(plot.id), lore.toArray(new String[0])),
-                    e -> new PlotMenu(plugin, player, plot, mode).open());
+                    "<gold>" + Text.esc(plot.displayName()) + " <gray>№ " + Text.esc(plot.id),
+                    lore.toArray(new String[0])),
+                    e -> new PlotMenu(plugin, player, plot, filter).open());
         }
         if (plots.isEmpty()) {
-            set(22, Text.icon(Material.BARRIER, "<red>Здесь пока пусто"));
+            set(22, Text.icon(Material.BARRIER, "<red>Ничего не найдено", "<gray>Измените фильтры или поиск"));
         }
         if (current > 0) {
-            set(45, Text.icon(Material.ARROW, "<yellow>Назад"), e -> new PlotListMenu(plugin, player, mode, current - 1).open());
+            set(45, Text.icon(Material.ARROW, "<yellow>Назад"), e -> new PlotListMenu(plugin, player, filter, current - 1).open());
         }
+        Category cat = filter.category;
+        set(46, Text.icon(Material.HOPPER, "<aqua>Тип: <white>" + (cat == null ? "все" : cat.title()),
+                "<yellow>Нажмите, чтобы переключить"), e -> {
+                    PlotFilter f = filter.copy();
+                    f.category = filter.nextCategory();
+                    new PlotListMenu(plugin, player, f, 0).open();
+                });
+        set(47, Text.icon(Material.COMPARATOR, "<aqua>Сортировка: <white>" + filter.sort.title()
+                + (filter.descending ? " ↓" : " ↑"),
+                "<yellow>ЛКМ - сменить поле", "<yellow>ПКМ - сменить направление"), e -> {
+                    PlotFilter f = filter.copy();
+                    if (e.isRightClick()) {
+                        f.descending = !f.descending;
+                    } else {
+                        f.sort = f.sort.next();
+                    }
+                    new PlotListMenu(plugin, player, f, 0).open();
+                });
+        set(48, Text.icon(Material.COMPASS, "<aqua>Поиск",
+                filter.search.isEmpty() ? "<gray>По номеру или названию" : "<gray>Сейчас: <white>" + Text.esc(filter.search),
+                "<yellow>ЛКМ - ввести, ПКМ - сбросить"), e -> {
+                    if (e.isRightClick()) {
+                        PlotFilter f = filter.copy();
+                        f.search = "";
+                        new PlotListMenu(plugin, player, f, 0).open();
+                    } else {
+                        plugin.chatPrompt().ask(player, "Введите номер или часть названия участка:", text -> {
+                            PlotFilter f = filter.copy();
+                            f.search = text.equalsIgnoreCase("отмена") ? filter.search : text;
+                            new PlotListMenu(plugin, player, f, 0).open();
+                        });
+                    }
+                });
         set(49, Text.icon(Material.OAK_DOOR, "<gray>В главное меню"), e -> new MainMenu(plugin, player).open());
         if (current < pages - 1) {
-            set(53, Text.icon(Material.ARROW, "<yellow>Вперёд"), e -> new PlotListMenu(plugin, player, mode, current + 1).open());
+            set(53, Text.icon(Material.ARROW, "<yellow>Вперёд"), e -> new PlotListMenu(plugin, player, filter, current + 1).open());
         }
         fill(Material.GRAY_STAINED_GLASS_PANE);
     }

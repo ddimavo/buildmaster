@@ -31,8 +31,9 @@ public final class PlotManager {
         this.file = new File(plugin.getDataFolder(), "plots.yml");
     }
 
-    public File snapshotFile(String id) {
-        return new File(new File(plugin.getDataFolder(), "snapshots"), id.toLowerCase(Locale.ROOT) + ".snap");
+    /** Папка со снимком здания (структуры по чанкам). */
+    public File snapshotDir(String id) {
+        return new File(new File(plugin.getDataFolder(), "snapshots"), id.toLowerCase(Locale.ROOT));
     }
 
     public Collection<Plot> all() {
@@ -130,6 +131,24 @@ public final class PlotManager {
 
     private Plot readPlot(String id, ConfigurationSection s) {
         Plot p = new Plot(id, s.getString("world"), Box.parse(s.getString("box")));
+        p.category = ru.buildmaster.model.Category.parse(s.getString("category", "shop"));
+        if (p.category == null) {
+            p.category = ru.buildmaster.model.Category.SHOP;
+        }
+        String creator = s.getString("created-by");
+        if (creator != null) {
+            p.createdBy = UUID.fromString(creator);
+        }
+        p.name = s.getString("name");
+        p.description = s.getString("description");
+        if (s.contains("holo")) {
+            p.hasHolo = true;
+            p.holoX = s.getDouble("holo.x");
+            p.holoY = s.getDouble("holo.y");
+            p.holoZ = s.getDouble("holo.z");
+        }
+        p.resetOnRelease = s.getBoolean("reset-on-release", true);
+        p.graceUntil = s.getLong("grace-until");
         p.price = s.getDouble("price", -1);
         p.rentPerDay = s.getDouble("rent-per-day", -1);
         p.status = Plot.Status.valueOf(s.getString("status", "FREE"));
@@ -159,6 +178,14 @@ public final class PlotManager {
             p.spawnPitch = (float) s.getDouble("spawn.pitch");
         }
         p.restorePending = s.getBoolean("restore-pending");
+        try {
+            p.restoreMode = Plot.RestoreMode.valueOf(s.getString("restore-mode", "FULL"));
+        } catch (IllegalArgumentException e) {
+            p.restoreMode = Plot.RestoreMode.FULL;
+        }
+        p.restoreArrest = s.getBoolean("restore-arrest");
+        p.restoreReason = s.getString("restore-reason");
+        p.restoreBatch = s.getString("restore-batch");
         String rf = s.getString("restore-for");
         if (rf != null) {
             p.restoreFor = UUID.fromString(rf);
@@ -172,6 +199,17 @@ public final class PlotManager {
             String k = "plots." + p.id + ".";
             yml.set(k + "world", p.world);
             yml.set(k + "box", p.box.serialize());
+            yml.set(k + "category", p.category.key());
+            yml.set(k + "created-by", p.createdBy == null ? null : p.createdBy.toString());
+            yml.set(k + "name", p.name);
+            yml.set(k + "description", p.description);
+            if (p.hasHolo) {
+                yml.set(k + "holo.x", p.holoX);
+                yml.set(k + "holo.y", p.holoY);
+                yml.set(k + "holo.z", p.holoZ);
+            }
+            yml.set(k + "reset-on-release", p.resetOnRelease);
+            yml.set(k + "grace-until", p.graceUntil);
             yml.set(k + "price", p.price);
             yml.set(k + "rent-per-day", p.rentPerDay);
             yml.set(k + "status", p.status.name());
@@ -195,6 +233,10 @@ public final class PlotManager {
             }
             yml.set(k + "restore-pending", p.restorePending);
             yml.set(k + "restore-for", p.restoreFor == null ? null : p.restoreFor.toString());
+            yml.set(k + "restore-mode", p.restoreMode.name());
+            yml.set(k + "restore-arrest", p.restoreArrest);
+            yml.set(k + "restore-reason", p.restoreReason);
+            yml.set(k + "restore-batch", p.restoreBatch);
         }
         try {
             plugin.getDataFolder().mkdirs();

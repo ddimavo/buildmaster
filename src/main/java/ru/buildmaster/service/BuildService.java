@@ -71,6 +71,10 @@ public final class BuildService {
             Text.err(player, "Участок сейчас обрабатывается, попробуйте позже.");
             return;
         }
+        if (plot.isFrozen()) {
+            Text.err(player, "Участок заморожен до погашения платежа: изменять здание нельзя.");
+            return;
+        }
         if (!plugin.rules().canReplaceWith(to)) {
             Text.err(player, "Этим блоком заменять нельзя: <white>" + to.getKey().getKey() + "</white>.");
             return;

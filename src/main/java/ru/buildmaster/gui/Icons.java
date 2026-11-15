@@ -41,7 +41,10 @@ final class Icons {
 
     static String[] plotLore(BuildMasterPlugin plugin, Plot plot) {
         List<String> lore = new ArrayList<>();
-        lore.add("<gray>Размер: <white>" + plot.box.describe());
+        lore.add("<gray>Тип: <white>" + plot.category.title() + " <gray>· размер: <white>" + plot.box.describe());
+        if (plot.description != null && !plot.description.isBlank()) {
+            lore.add("<gray><italic>" + Text.esc(plot.description));
+        }
         switch (plot.status) {
             case FREE -> {
                 lore.add("<green>Свободен");
@@ -58,6 +61,10 @@ final class Icons {
                 lore.add("<gray>Арендатор: <white>" + Text.esc(String.valueOf(plot.ownerName)));
                 lore.add("<gray>Осталось: <white>" + Text.duration(plot.rentedUntil - System.currentTimeMillis()));
                 lore.add("<gray>Автопродление: " + (plot.autoRenew ? "<green>включено" : "<red>выключено"));
+                if (plot.isFrozen()) {
+                    lore.add("<red>Заморожен: платёж просрочен, осталось "
+                            + Text.duration(plot.graceUntil - System.currentTimeMillis()));
+                }
             }
         }
         return lore.toArray(new String[0]);

@@ -1,6 +1,5 @@
 package ru.buildmaster.command;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -17,7 +16,16 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 import ru.buildmaster.BuildMasterPlugin;
+import ru.buildmaster.gui.JournalMenu;
 import ru.buildmaster.gui.MainMenu;
+import ru.buildmaster.gui.ModerationMenu;
+import ru.buildmaster.gui.StorageMenu;
+import ru.buildmaster.model.Category;
+import ru.buildmaster.model.Request;
+import ru.buildmaster.model.StorageEntry;
+import ru.buildmaster.service.Journal;
+import ru.buildmaster.service.PlotService;
+import ru.buildmaster.service.RentRules;
 import ru.buildmaster.listener.SelectionListener;
 import ru.buildmaster.model.Box;
 import ru.buildmaster.model.Plot;
@@ -31,9 +39,11 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
     private static final int MAX_TRUSTED = 10;
 
     private static final List<String> PLAYER_SUBS = List.of("menu", "list", "info", "buy", "rent", "extend",
-            "autorenew", "release", "trust", "untrust", "tp", "replace", "zones", "claim", "help");
+            "autorenew", "autoreset", "release", "trust", "untrust", "tp", "replace", "zones", "storage", "claim", "journal",
+            "name", "desc", "help");
     private static final List<String> ADMIN_SUBS = List.of("wand", "pos1", "pos2", "create", "delete", "evict",
-            "setprice", "setrent", "setspawn", "zone", "resnapshot", "reload");
+            "setprice", "setrent", "setspawn", "zone", "resnapshot", "reload", "seize", "reset", "holo", "category",
+            "moderation", "arrest", "treasury");
 
     private final BuildMasterPlugin plugin;
 
@@ -74,7 +84,18 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
                 case "tp" -> withPlayer(sender, p -> teleport(p, rest));
                 case "replace" -> withPlayer(sender, p -> replace(p, rest));
                 case "zones" -> withPlayer(sender, p -> zones(p, rest.length > 0 ? rest[0] : null));
-                case "claim" -> withPlayer(sender, this::claim);
+                case "storage", "claim" -> withPlayer(sender, p -> new StorageMenu(plugin, p, 0).open());
+                case "journal" -> withPlayer(sender, p -> new JournalMenu(plugin, p, 0).open());
+                case "name" -> withPlayer(sender, p -> submitText(p, rest, Request.Type.NAME));
+                case "desc" -> withPlayer(sender, p -> submitText(p, rest, Request.Type.DESCRIPTION));
+                case "autoreset" -> withPlayer(sender, p -> autoReset(p, rest));
+                case "moderation" -> withPlayer(sender, p -> new ModerationMenu(plugin, p, 0).open());
+                case "seize" -> adminDecision(sender, rest, Journal.Action.SEIZED);
+                case "reset" -> adminDecision(sender, rest, Journal.Action.RESET);
+                case "holo" -> withPlayer(sender, p -> holo(p, rest));
+                case "category" -> category(sender, rest);
+                case "arrest" -> arrest(sender, rest);
+                case "treasury" -> treasury(sender, rest);
                 case "wand" -> withPlayer(sender, p -> {
                     p.getInventory().addItem(plugin.selection().createWand());
                     Text.ok(p, "Выдан топор выделения: ЛКМ - точка 1, ПКМ - точка 2.");
@@ -85,7 +106,7 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
                 });
                 case "create" -> withPlayer(sender, p -> create(p, rest));
                 case "delete" -> delete(sender, rest);
-                case "evict" -> evict(sender, rest);
+                case "evict" -> adminDecision(sender, rest, Journal.Action.EVICTED);
                 case "setprice" -> setPrice(sender, rest, true);
                 case "setrent" -> setPrice(sender, rest, false);
                 case "setspawn" -> withPlayer(sender, p -> setSpawn(p, rest));
@@ -191,7 +212,10 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
                 "/district replace <зона|все> <из> <в> - заменить материал в здании",
                 "/district zones [номер] - части здания",
                 "/district tp <номер> - телепорт к участку",
-                "/district claim - забрать возвращённые предметы"};
+                "/district storage - хранилище (вещи, возвращённые с участков)",
+                "/district journal - журнал ваших участков и решений администрации",
+                "/district name|desc [номер] <текст> - название и описание (после проверки администратором)",
+                "/district autoreset <on|off> [номер] - сбрасывать ли здание при отказе"};
         for (String l : lines) {
             s.sendMessage(Text.mm("<gray>" + Text.esc(l)));
         }
@@ -199,9 +223,14 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
             Text.send(s, "<yellow>Для администратора:");
             String[] admin = {
                     "/district wand | pos1 | pos2 - выделение области",
-                    "/district create <номер> <цена|-> <аренда в сутки|-> - создать участок из выделения",
+                    "/district create <номер> <тип> <цена|-> <аренда в сутки|-> - создать участок из выделения",
+                    "/district category <номер> <тип> - сменить тип участка",
+                    "/district holo [номер] - перенести голограмму в вашу позицию",
+                    "/district moderation - заявки на названия и описания",
+                    "/district evict|seize|reset <номер> <причина> - выселить, изъять (арест вещей), сбросить здание",
+                    "/district arrest list | release|delete|auction <игрок> <причина> - решение по арестованным вещам",
+                    "/district treasury [pay <игрок> <сумма> <причина>] - казна",
                     "/district delete <номер> - удалить свободный участок",
-                    "/district evict <номер> - выселить владельца/сбросить здание",
                     "/district setprice|setrent <номер> <цена|-> - изменить цены",
                     "/district setspawn [номер] - точка телепорта",
                     "/district zone add <номер> <имя> [блок-иконка] | remove <номер> <имя> | list [номер]",
@@ -403,35 +432,64 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
         Text.send(p, "<yellow>Зоны участка " + plot.id + ": <white>все, " + Text.esc(String.join(", ", plot.zones.keySet())));
     }
 
-    private void claim(Player p) {
-        int before = plugin.pending().count(p.getUniqueId());
-        if (before == 0) {
-            Text.send(p, "<gray>Для вас нет возвращённых предметов.");
-            return;
+    /** name|desc [номер] <текст...>: текст уходит на проверку администратору. */
+    private void submitText(Player p, String[] args, Request.Type type) {
+        if (args.length < 1) {
+            throw new CommandError("Использование: /district " + (type == Request.Type.NAME ? "name" : "desc") + " [номер] <текст>");
         }
-        int left = plugin.pending().claim(p);
-        if (left == 0) {
-            Text.ok(p, "Все предметы выданы (" + before + " шт.).");
+        Plot plot;
+        String text;
+        Plot byId = args.length > 1 ? plugin.plots().get(args[0]) : null;
+        if (byId != null) {
+            plot = byId;
+            text = String.join(" ", Arrays.copyOfRange(args, 1, args.length));
         } else {
-            Text.send(p, "<yellow>Выдано " + (before - left) + " шт., осталось " + left + ". Освободите место и повторите.");
+            plot = plotOrHere(p, null);
+            text = String.join(" ", args);
         }
+        if (!plot.isOwner(p.getUniqueId()) && !p.hasPermission("buildmaster.admin")) {
+            throw new CommandError("Это не ваш участок.");
+        }
+        String error = plugin.moderation().submit(p, plot, type, text);
+        if (error != null) {
+            throw new CommandError(error);
+        }
+    }
+
+    private void autoReset(Player p, String[] args) {
+        if (args.length < 1) {
+            throw new CommandError("Использование: /district autoreset <on|off> [номер]");
+        }
+        boolean value = switch (args[0].toLowerCase(Locale.ROOT)) {
+            case "on", "вкл", "true" -> true;
+            case "off", "выкл", "false" -> false;
+            default -> throw new CommandError("Укажите on или off.");
+        };
+        Plot plot = ownPlot(p, args.length > 1 ? args[1] : null);
+        plugin.service().setResetOnRelease(plot, value);
+        Text.ok(p, "Сброс здания при отказе от участка: " + (value ? "включён" : "выключен") + ".");
     }
 
     // ---------------------------------------------------------------- администратор
 
     private void create(Player p, String[] args) {
-        if (args.length < 3) {
-            throw new CommandError("Использование: /district create <номер> <цена|-> <аренда в сутки|->");
+        if (args.length < 4) {
+            throw new CommandError("Использование: /district create <номер> <тип> <цена|-> <аренда в сутки|->  (типы: "
+                    + categoryNames() + ")");
         }
         String id = args[0];
+        Category category = Category.parse(args[1]);
+        if (category == null) {
+            throw new CommandError("Неизвестный тип «" + args[1] + "». Доступно: " + categoryNames());
+        }
         if (!ID.matcher(id).matches()) {
             throw new CommandError("Номер участка: латиница, цифры, _ и -, до 32 символов.");
         }
         if (plugin.plots().get(id) != null || plugin.service().isCreating(id)) {
             throw new CommandError("Участок с таким номером уже есть.");
         }
-        double price = parsePrice(args[1]);
-        double rent = parsePrice(args[2]);
+        double price = parsePrice(args[2]);
+        double rent = parsePrice(args[3]);
         if (price < 0 && rent < 0) {
             throw new CommandError("Нужна хотя бы цена покупки или аренды.");
         }
@@ -451,7 +509,7 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
         if (overlap != null) {
             throw new CommandError("Область пересекается с участком " + overlap.id + ".");
         }
-        plugin.service().create(p, id, box, price, rent);
+        plugin.service().create(p, id, category, box, price, rent);
     }
 
     private Plot requirePlot(String id) {
@@ -471,24 +529,161 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
             throw new CommandError("Удалять можно только свободный участок. Сначала: /district evict " + plot.id);
         }
         plugin.plots().remove(plot);
-        File snap = plugin.plots().snapshotFile(plot.id);
-        if (snap.exists() && !snap.delete()) {
-            plugin.getLogger().warning("Не удалось удалить " + snap);
-        }
+        plugin.snapshots().delete(plugin.plots().snapshotDir(plot.id));
+        plugin.ledgers().delete(plot.id);
+        plugin.holograms().remove(plot);
         plugin.plots().save();
+        plugin.journal().add(plot.id, null, sender.getName(), Journal.Action.EVICTED, "Участок удалён");
         Text.ok(sender, "Участок " + plot.id + " удалён.");
     }
 
-    private void evict(CommandSender sender, String[] args) {
-        if (args.length < 1) {
-            throw new CommandError("Использование: /district evict <номер>");
+    /** evict | seize | reset <номер> <причина...>: любое решение администратора требует причину. */
+    private void adminDecision(CommandSender sender, String[] args, Journal.Action action) {
+        String name = action == Journal.Action.EVICTED ? "evict" : action == Journal.Action.SEIZED ? "seize" : "reset";
+        if (args.length < 2) {
+            throw new CommandError("Использование: /district " + name + " <номер> <причина>  (причина обязательна)");
         }
         Plot plot = requirePlot(args[0]);
         if (plugin.service().isLocked(plot)) {
             throw new CommandError("Участок сейчас обрабатывается.");
         }
-        plugin.service().evict(plot, "Администратор освободил участок <white>" + plot.id + "</white>.");
-        Text.ok(sender, "Участок " + plot.id + " освобождается, здание сбрасывается.");
+        String reason = String.join(" ", Arrays.copyOfRange(args, 1, args.length));
+        if (action == Journal.Action.RESET) {
+            plugin.service().reset(plot, sender.getName(), reason);
+            Text.ok(sender, "Здание участка " + plot.id + " сбрасывается к исходному виду.");
+            return;
+        }
+        if (plot.isFree()) {
+            throw new CommandError("Участок свободен. Для сброса здания: /district reset " + plot.id + " <причина>");
+        }
+        plugin.service().evict(plot, new PlotService.Release(sender.getName(), reason, action,
+                action == Journal.Action.SEIZED, Plot.RestoreMode.FULL));
+        Text.ok(sender, "Участок " + plot.id + (action == Journal.Action.SEIZED
+                ? " изъят, вещи арестованы." : " освобождён, вещи отправлены в хранилище владельца."));
+    }
+
+    private void holo(Player p, String[] args) {
+        Plot plot = plotOrHere(p, args.length > 0 ? args[0] : null);
+        Location l = p.getEyeLocation();
+        plot.hasHolo = true;
+        plot.holoX = l.getX();
+        plot.holoY = l.getY();
+        plot.holoZ = l.getZ();
+        plugin.plots().save();
+        plugin.holograms().update(plot);
+        Text.ok(p, "Голограмма участка " + plot.id + " перенесена в вашу позицию.");
+    }
+
+    private void category(CommandSender sender, String[] args) {
+        if (args.length < 2) {
+            throw new CommandError("Использование: /district category <номер> <тип>  (" + categoryNames() + ")");
+        }
+        Plot plot = requirePlot(args[0]);
+        Category c = Category.parse(args[1]);
+        if (c == null) {
+            throw new CommandError("Неизвестный тип. Доступно: " + categoryNames());
+        }
+        plot.category = c;
+        plugin.plots().save();
+        plugin.holograms().update(plot);
+        Text.ok(sender, "Тип участка " + plot.id + ": " + c.title());
+    }
+
+    private static String categoryNames() {
+        StringBuilder sb = new StringBuilder();
+        for (Category c : Category.values()) {
+            sb.append(sb.length() == 0 ? "" : ", ").append(c.key());
+        }
+        return sb.toString();
+    }
+
+    /** arrest list | release|delete|auction <игрок> <причина...> */
+    private void arrest(CommandSender sender, String[] args) {
+        if (args.length >= 1 && args[0].equalsIgnoreCase("list")) {
+            List<UUID> players = plugin.storage().playersWithState(StorageEntry.State.ARRESTED);
+            if (players.isEmpty()) {
+                Text.send(sender, "<gray>Арестованных вещей нет.");
+            }
+            for (UUID id : players) {
+                Text.send(sender, "<yellow>" + Text.esc(String.valueOf(Bukkit.getOfflinePlayer(id).getName()))
+                        + ": " + plugin.storage().countItems(id, StorageEntry.State.ARRESTED) + " шт.");
+            }
+            return;
+        }
+        if (args.length < 3) {
+            throw new CommandError("Использование: /district arrest list | <release|delete|auction> <игрок> <причина>");
+        }
+        OfflinePlayer target = Bukkit.getOfflinePlayerIfCached(args[1]);
+        if (target == null) {
+            throw new CommandError("Игрок «" + args[1] + "» не найден.");
+        }
+        String reason = String.join(" ", Arrays.copyOfRange(args, 2, args.length));
+        Journal.Action action;
+        int n;
+        switch (args[0].toLowerCase(Locale.ROOT)) {
+            case "release" -> {
+                n = plugin.storage().decideArrested(target.getUniqueId(), StorageEntry.State.AVAILABLE);
+                action = Journal.Action.STORAGE_RELEASED;
+            }
+            case "delete" -> {
+                n = plugin.storage().decideArrested(target.getUniqueId(), null);
+                action = Journal.Action.STORAGE_DELETED;
+            }
+            case "auction" -> {
+                n = plugin.storage().decideArrested(target.getUniqueId(), StorageEntry.State.AUCTION);
+                action = Journal.Action.STORAGE_AUCTION;
+            }
+            default -> throw new CommandError("Действие: release, delete или auction.");
+        }
+        if (n == 0) {
+            throw new CommandError("У игрока нет арестованных вещей.");
+        }
+        plugin.journal().add("-", target.getUniqueId(), sender.getName(), action, reason);
+        Player online = target.getPlayer();
+        if (online != null) {
+            Text.send(online, "<yellow>" + action.title() + ". Причина: " + Text.esc(reason));
+        }
+        Text.ok(sender, action.title() + ": записей " + n + ".");
+    }
+
+    /** treasury | treasury pay <игрок> <сумма> <причина...> */
+    private void treasury(CommandSender sender, String[] args) {
+        if (args.length == 0) {
+            Text.send(sender, "<yellow>Казна: <white>" + plugin.economy().format(plugin.treasury().balance()));
+            var log = plugin.treasury().log();
+            for (int i = Math.max(0, log.size() - 8); i < log.size(); i++) {
+                var tx = log.get(i);
+                sender.sendMessage(Text.mm("<gray> " + Text.date(tx.time()) + " <white>" + String.format("%+.2f", tx.amount())
+                        + " <gray>" + Text.esc(tx.reason())));
+            }
+            return;
+        }
+        if (!args[0].equalsIgnoreCase("pay") || args.length < 4) {
+            throw new CommandError("Использование: /district treasury | treasury pay <игрок> <сумма> <причина>");
+        }
+        OfflinePlayer target = Bukkit.getOfflinePlayerIfCached(args[1]);
+        if (target == null) {
+            throw new CommandError("Игрок «" + args[1] + "» не найден.");
+        }
+        double amount;
+        try {
+            amount = Double.parseDouble(args[2].replace(',', '.'));
+        } catch (NumberFormatException e) {
+            throw new CommandError("Сумма должна быть числом.");
+        }
+        String reason = String.join(" ", Arrays.copyOfRange(args, 3, args.length));
+        if (amount <= 0 || !plugin.treasury().withdraw(amount, sender.getName(), "Выплата " + target.getName() + ": " + reason)) {
+            throw new CommandError("В казне недостаточно средств или сумма неверна.");
+        }
+        if (!plugin.economy().deposit(target, amount)) {
+            plugin.treasury().deposit(amount, "Возврат: выплата не прошла");
+            plugin.saveTreasury();
+            throw new CommandError("Не удалось зачислить деньги игроку.");
+        }
+        plugin.saveTreasury();
+        plugin.journal().add("-", target.getUniqueId(), sender.getName(), Journal.Action.TREASURY,
+                plugin.economy().format(amount) + ": " + reason);
+        Text.ok(sender, "Выплачено " + plugin.economy().format(amount) + " игроку " + target.getName() + " из казны.");
     }
 
     private void setPrice(CommandSender sender, String[] args, boolean buy) {
@@ -603,7 +798,7 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
         String current = args[n - 1];
         Plot here = sender instanceof Player p ? plugin.plots().at(p.getLocation()) : null;
         switch (sub) {
-            case "info", "buy", "tp", "zones", "resnapshot", "setspawn", "delete", "evict" -> {
+            case "info", "buy", "tp", "zones", "resnapshot", "setspawn", "delete", "evict", "seize", "reset", "holo" -> {
                 if (n == 2) {
                     result.addAll(plotIds(sub.equals("buy") ? Plot.Status.FREE : null));
                 }
@@ -653,8 +848,40 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
                 }
             }
             case "create" -> {
-                if (n == 3 || n == 4) {
+                if (n == 3) {
+                    for (Category c : Category.values()) {
+                        result.add(c.key());
+                    }
+                } else if (n == 4 || n == 5) {
                     result.add("-");
+                }
+            }
+            case "category" -> {
+                if (n == 2) {
+                    result.addAll(plotIds(null));
+                } else if (n == 3) {
+                    for (Category c : Category.values()) {
+                        result.add(c.key());
+                    }
+                }
+            }
+            case "autoreset" -> {
+                if (n == 2) {
+                    result.addAll(List.of("on", "off"));
+                }
+            }
+            case "arrest" -> {
+                if (n == 2) {
+                    result.addAll(List.of("list", "release", "delete", "auction"));
+                } else if (n == 3) {
+                    Bukkit.getOnlinePlayers().forEach(pl -> result.add(pl.getName()));
+                }
+            }
+            case "treasury" -> {
+                if (n == 2) {
+                    result.add("pay");
+                } else if (n == 3) {
+                    Bukkit.getOnlinePlayers().forEach(pl -> result.add(pl.getName()));
                 }
             }
             case "zone" -> {

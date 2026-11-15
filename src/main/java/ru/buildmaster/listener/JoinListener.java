@@ -25,20 +25,22 @@ public final class JoinListener implements Listener {
             if (!player.isOnline()) {
                 return;
             }
-            int before = plugin.pending().count(player.getUniqueId());
-            if (before > 0) {
-                int left = plugin.pending().claim(player);
-                if (left == 0) {
-                    Text.ok(player, "Вам возвращены предметы с освобождённого участка: " + before + " шт.");
-                } else {
-                    Text.send(player, "<yellow>Вам возвращены не все предметы (осталось " + left
-                            + " шт.): освободите место и введите <white>/district claim</white>.");
-                }
+            int stored = plugin.storage().countItems(player.getUniqueId(), ru.buildmaster.model.StorageEntry.State.AVAILABLE);
+            if (stored > 0) {
+                Text.send(player, "<yellow>В вашем хранилище ждут вещи: " + stored + " шт. Откройте <white>/district storage</white>.");
             }
+            int arrested = plugin.storage().countItems(player.getUniqueId(), ru.buildmaster.model.StorageEntry.State.ARRESTED);
+            if (arrested > 0) {
+                Text.send(player, "<red>Часть ваших вещей арестована до решения администрации (" + arrested + " шт.).");
+            }
+            plugin.moderation().deliverMissed(player);
             long day = plugin.service().dayMillis();
             for (Plot plot : plugin.plots().ownedBy(player.getUniqueId())) {
                 long left = plot.rentedUntil - System.currentTimeMillis();
-                if (plot.status == Plot.Status.RENTED && left < day) {
+                if (plot.isFrozen()) {
+                    Text.send(player, "<red>Участок <white>" + plot.id + "</white> заморожен: не хватило средств на продление. "
+                            + "Осталось времени на погашение: " + Text.duration(plot.graceUntil - System.currentTimeMillis()));
+                } else if (plot.status == Plot.Status.RENTED && left < day) {
                     Text.send(player, "<yellow>Аренда участка <white>" + plot.id + "</white> заканчивается через "
                             + Text.duration(left) + (plot.autoRenew ? " (будет продлена автоматически)." : "."));
                 }

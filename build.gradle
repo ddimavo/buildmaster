@@ -3,7 +3,7 @@ plugins {
 }
 
 group = 'ru.buildmaster'
-version = '1.0.0'
+version = project.hasProperty('pluginVersion') ? project.property('pluginVersion') : '1.1.0-SNAPSHOT'
 
 repositories {
     mavenCentral()
@@ -20,6 +20,21 @@ dependencies {
     vaultStubCompileOnly 'io.papermc.paper:paper-api:1.21.6-R0.1-SNAPSHOT'
     compileOnly 'io.papermc.paper:paper-api:1.21.6-R0.1-SNAPSHOT'
     compileOnly sourceSets.vaultStub.output
+
+    testImplementation 'io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT'
+    testImplementation sourceSets.vaultStub.output
+    testImplementation 'org.mockbukkit.mockbukkit:mockbukkit-v1.21:4.116.3'
+    testImplementation platform('org.junit:junit-bom:5.11.4')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+test {
+    useJUnitPlatform()
+    testLogging {
+        events 'passed', 'skipped', 'failed'
+        exceptionFormat = 'full'
+    }
 }
 
 tasks.withType(JavaCompile).configureEach {
@@ -28,6 +43,8 @@ tasks.withType(JavaCompile).configureEach {
 }
 
 processResources {
+    // без этого Gradle не пересобирает plugin.yml при смене версии (-PpluginVersion=...)
+    inputs.property('pluginVersion', project.version.toString())
     filesMatching('plugin.yml') {
         expand(version: project.version)
     }

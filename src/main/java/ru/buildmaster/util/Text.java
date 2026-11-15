@@ -59,6 +59,10 @@ public final class Text {
         return stack;
     }
 
+    public static String date(long millis) {
+        return new java.text.SimpleDateFormat("dd.MM.yyyy HH:mm").format(new java.util.Date(millis));
+    }
+
     /** Остаток времени в виде "2 д. 5 ч." */
     public static String duration(long millis) {
         if (millis <= 0) {

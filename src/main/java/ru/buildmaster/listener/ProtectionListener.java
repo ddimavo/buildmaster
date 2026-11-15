@@ -40,6 +40,7 @@ import org.bukkit.event.world.StructureGrowEvent;
 import org.bukkit.inventory.BlockInventoryHolder;
 import org.bukkit.inventory.ItemStack;
 import ru.buildmaster.BuildMasterPlugin;
+import ru.buildmaster.model.Ledger;
 import ru.buildmaster.model.Plot;
 import ru.buildmaster.util.Text;
 
@@ -75,6 +76,8 @@ public final class ProtectionListener implements Listener {
             reason = "Участок свободен: чтобы строить, его нужно купить или арендовать.";
         } else if (!plot.isMember(player.getUniqueId())) {
             reason = "Это чужой участок.";
+        } else if (plot.isFrozen()) {
+            reason = "Участок заморожен до погашения платежа: изменять его нельзя, торговля работает.";
         }
         if (reason != null) {
             player.sendActionBar(Text.mm("<red>" + reason));
@@ -87,8 +90,22 @@ public final class ProtectionListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onBreak(BlockBreakEvent event) {
-        if (denied(event.getPlayer(), plotAt(event.getBlock()))) {
+        Block block = event.getBlock();
+        Plot plot = plotAt(block);
+        if (denied(event.getPlayer(), plot)) {
             event.setCancelled(true);
+            return;
+        }
+        if (plot == null) {
+            return;
+        }
+        Ledger ledger = plugin.ledgers().get(plot.id);
+        if (ledger.remove(block.getX(), block.getY(), block.getZ()) != null) {
+            plugin.ledgers().markDirty(plot.id);
+        } else if (plugin.getConfig().getBoolean("original-blocks-drop-nothing", true)) {
+            // Антидюп: исходный блок здания при сбросе восстановится, поэтому предмет из него не выпадает
+            event.setDropItems(false);
+            event.setExpToDrop(0);
         }
     }
 
@@ -104,6 +121,17 @@ public final class ProtectionListener implements Listener {
                 && !plugin.rules().canPlace(event.getBlockPlaced().getType())) {
             player.sendActionBar(Text.mm("<red>Этот блок нельзя ставить на участке."));
             event.setCancelled(true);
+            return;
+        }
+        if (plot != null && plot.isMember(player.getUniqueId())) {
+            // запоминаем, кто поставил блок: при сбросе здания предмет вернётся именно ему
+            Block placed = event.getBlockPlaced();
+            Material item = event.getItemInHand().getType();
+            boolean stacking = event.getBlockReplacedState().getType() == placed.getType()
+                    && !placed.getType().isAir();
+            plugin.ledgers().get(plot.id).place(placed.getX(), placed.getY(), placed.getZ(),
+                    player.getUniqueId(), item.name(), stacking);
+            plugin.ledgers().markDirty(plot.id);
         }
     }
 
