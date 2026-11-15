@@ -1,0 +1,209 @@
+package ru.buildmaster.service;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.UUID;
+import java.util.logging.Level;
+import org.bukkit.Location;
+import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.file.YamlConfiguration;
+import ru.buildmaster.BuildMasterPlugin;
+import ru.buildmaster.model.Box;
+import ru.buildmaster.model.Plot;
+
+/** Хранилище участков: загрузка/сохранение и быстрый поиск по координатам. */
+public final class PlotManager {
+
+    private final BuildMasterPlugin plugin;
+    private final File file;
+    private final Map<String, Plot> plots = new java.util.LinkedHashMap<>();
+    /** мир -> ключ чанка -> участки, задевающие этот чанк */
+    private final Map<String, Map<Long, List<Plot>>> index = new HashMap<>();
+
+    public PlotManager(BuildMasterPlugin plugin) {
+        this.plugin = plugin;
+        this.file = new File(plugin.getDataFolder(), "plots.yml");
+    }
+
+    public File snapshotFile(String id) {
+        return new File(new File(plugin.getDataFolder(), "snapshots"), id.toLowerCase(Locale.ROOT) + ".snap");
+    }
+
+    public Collection<Plot> all() {
+        return plots.values();
+    }
+
+    public Plot get(String id) {
+        return id == null ? null : plots.get(id.toLowerCase(Locale.ROOT));
+    }
+
+    public void add(Plot plot) {
+        plots.put(plot.id.toLowerCase(Locale.ROOT), plot);
+        reindex();
+    }
+
+    public void remove(Plot plot) {
+        plots.remove(plot.id.toLowerCase(Locale.ROOT));
+        reindex();
+    }
+
+    public Plot at(Location loc) {
+        return loc.getWorld() == null ? null : at(loc.getWorld().getName(), loc.getBlockX(), loc.getBlockY(), loc.getBlockZ());
+    }
+
+    public Plot at(String world, int x, int y, int z) {
+        Map<Long, List<Plot>> byChunk = index.get(world);
+        if (byChunk == null) {
+            return null;
+        }
+        List<Plot> list = byChunk.get(chunkKey(x >> 4, z >> 4));
+        if (list == null) {
+            return null;
+        }
+        for (Plot p : list) {
+            if (p.box.contains(x, y, z)) {
+                return p;
+            }
+        }
+        return null;
+    }
+
+    public Plot overlapping(String world, Box box) {
+        for (Plot p : plots.values()) {
+            if (p.world.equals(world) && p.box.intersects(box)) {
+                return p;
+            }
+        }
+        return null;
+    }
+
+    public List<Plot> ownedBy(UUID uuid) {
+        List<Plot> result = new ArrayList<>();
+        for (Plot p : plots.values()) {
+            if (p.isOwner(uuid)) {
+                result.add(p);
+            }
+        }
+        return result;
+    }
+
+    private static long chunkKey(int cx, int cz) {
+        return ((long) cx & 0xffffffffL) | ((long) cz << 32);
+    }
+
+    private void reindex() {
+        index.clear();
+        for (Plot p : plots.values()) {
+            Map<Long, List<Plot>> byChunk = index.computeIfAbsent(p.world, w -> new HashMap<>());
+            for (int cx = p.box.minX() >> 4; cx <= p.box.maxX() >> 4; cx++) {
+                for (int cz = p.box.minZ() >> 4; cz <= p.box.maxZ() >> 4; cz++) {
+                    byChunk.computeIfAbsent(chunkKey(cx, cz), k -> new ArrayList<>()).add(p);
+                }
+            }
+        }
+    }
+
+    public void load() {
+        plots.clear();
+        if (file.exists()) {
+            YamlConfiguration yml = YamlConfiguration.loadConfiguration(file);
+            ConfigurationSection root = yml.getConfigurationSection("plots");
+            if (root != null) {
+                for (String id : root.getKeys(false)) {
+                    try {
+                        Plot p = readPlot(id, root.getConfigurationSection(id));
+                        plots.put(id.toLowerCase(Locale.ROOT), p);
+                    } catch (Exception e) {
+                        plugin.getLogger().log(Level.SEVERE, "Не удалось загрузить участок " + id, e);
+                    }
+                }
+            }
+        }
+        reindex();
+    }
+
+    private Plot readPlot(String id, ConfigurationSection s) {
+        Plot p = new Plot(id, s.getString("world"), Box.parse(s.getString("box")));
+        p.price = s.getDouble("price", -1);
+        p.rentPerDay = s.getDouble("rent-per-day", -1);
+        p.status = Plot.Status.valueOf(s.getString("status", "FREE"));
+        String owner = s.getString("owner");
+        if (owner != null) {
+            p.owner = UUID.fromString(owner);
+        }
+        p.ownerName = s.getString("owner-name");
+        p.rentedUntil = s.getLong("rented-until");
+        p.autoRenew = s.getBoolean("auto-renew");
+        for (String t : s.getStringList("trusted")) {
+            p.trusted.add(UUID.fromString(t));
+        }
+        ConfigurationSection zones = s.getConfigurationSection("zones");
+        if (zones != null) {
+            for (String name : zones.getKeys(false)) {
+                ConfigurationSection z = zones.getConfigurationSection(name);
+                p.zones.put(name, new Plot.Zone(name, Box.parse(z.getString("box")), z.getString("icon", "BRICKS")));
+            }
+        }
+        if (s.contains("spawn")) {
+            p.hasSpawn = true;
+            p.spawnX = s.getDouble("spawn.x");
+            p.spawnY = s.getDouble("spawn.y");
+            p.spawnZ = s.getDouble("spawn.z");
+            p.spawnYaw = (float) s.getDouble("spawn.yaw");
+            p.spawnPitch = (float) s.getDouble("spawn.pitch");
+        }
+        p.restorePending = s.getBoolean("restore-pending");
+        String rf = s.getString("restore-for");
+        if (rf != null) {
+            p.restoreFor = UUID.fromString(rf);
+        }
+        return p;
+    }
+
+    public void save() {
+        YamlConfiguration yml = new YamlConfiguration();
+        for (Plot p : plots.values()) {
+            String k = "plots." + p.id + ".";
+            yml.set(k + "world", p.world);
+            yml.set(k + "box", p.box.serialize());
+            yml.set(k + "price", p.price);
+            yml.set(k + "rent-per-day", p.rentPerDay);
+            yml.set(k + "status", p.status.name());
+            yml.set(k + "owner", p.owner == null ? null : p.owner.toString());
+            yml.set(k + "owner-name", p.ownerName);
+            yml.set(k + "rented-until", p.rentedUntil);
+            yml.set(k + "auto-renew", p.autoRenew);
+            List<String> trusted = new ArrayList<>();
+            p.trusted.forEach(u -> trusted.add(u.toString()));
+            yml.set(k + "trusted", trusted);
+            for (Plot.Zone z : p.zones.values()) {
+                yml.set(k + "zones." + z.name() + ".box", z.box().serialize());
+                yml.set(k + "zones." + z.name() + ".icon", z.icon());
+            }
+            if (p.hasSpawn) {
+                yml.set(k + "spawn.x", p.spawnX);
+                yml.set(k + "spawn.y", p.spawnY);
+                yml.set(k + "spawn.z", p.spawnZ);
+                yml.set(k + "spawn.yaw", p.spawnYaw);
+                yml.set(k + "spawn.pitch", p.spawnPitch);
+            }
+            yml.set(k + "restore-pending", p.restorePending);
+            yml.set(k + "restore-for", p.restoreFor == null ? null : p.restoreFor.toString());
+        }
+        try {
+            plugin.getDataFolder().mkdirs();
+            File tmp = new File(file.getPath() + ".tmp");
+            yml.save(tmp);
+            java.nio.file.Files.move(tmp.toPath(), file.toPath(),
+                    java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException e) {
+            plugin.getLogger().log(Level.SEVERE, "Не удалось сохранить plots.yml", e);
+        }
+    }
+}

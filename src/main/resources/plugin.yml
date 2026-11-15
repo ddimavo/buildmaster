@@ -1,0 +1,22 @@
+name: BuildMaster
+version: '${version}'
+main: ru.buildmaster.BuildMasterPlugin
+api-version: '1.21'
+description: Район коммерции - участки, покупка, аренда и изменение зданий
+authors: [BuildMaster]
+depend: [Vault]
+commands:
+  district:
+    description: Управление участками
+    aliases: [dt, uchastok]
+    usage: /district help
+permissions:
+  buildmaster.use:
+    description: Покупка, аренда и управление своими участками
+    default: true
+  buildmaster.admin:
+    description: Создание и администрирование участков
+    default: op
+  buildmaster.bypass:
+    description: Обход защиты участков
+    default: op
