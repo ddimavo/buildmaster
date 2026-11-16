@@ -162,6 +162,32 @@ final class RoomCommands {
                 }
                 Text.ok(sender, "Дверь добавлена: " + target.getX() + ", " + target.getY() + ", " + target.getZ() + ".");
             }
+            case "auto" -> {
+                requireAdmin(sender);
+                if (rest.length < 2) {
+                    throw new CommandError("Использование: /district room auto <номер комнаты> <цена за сутки> "
+                            + "(смотрите на дверь номера, стоя в коридоре)");
+                }
+                String error = plugin.roomAuto().analyze(player(sender), rest[0], number(rest[1], "Цена"));
+                if (error != null) {
+                    throw new CommandError(error);
+                }
+            }
+            case "confirm" -> {
+                requireAdmin(sender);
+                String error = plugin.roomAuto().confirm(player(sender));
+                if (error != null) {
+                    throw new CommandError(error);
+                }
+            }
+            case "cancel" -> {
+                requireAdmin(sender);
+                if (plugin.roomAuto().cancel(player(sender))) {
+                    Text.ok(sender, "Создание номера отменено.");
+                } else {
+                    throw new CommandError("Нет номера, ожидающего подтверждения.");
+                }
+            }
             case "delete" -> {
                 requireAdmin(sender);
                 if (rest.length < 1) {
@@ -185,7 +211,7 @@ final class RoomCommands {
                         + plugin.economy().format(hotel.maxRoomRate) + " за сутки"
                         + (hotel.maxRoomRate <= 0 ? " (то есть не может)." : "."));
             }
-            default -> throw new CommandError("Использование: /district room [list|rate|create|template|door|delete|maxrate]");
+            default -> throw new CommandError("Использование: /district room [list|rate|create|auto|confirm|cancel|template|door|delete|maxrate]");
         }
     }
 
@@ -216,7 +242,7 @@ final class RoomCommands {
     List<String> complete(CommandSender sender, String[] args) {
         int n = args.length; // args[0] = "room"
         if (n == 2) {
-            return List.of("list", "rate", "create", "template", "door", "delete", "maxrate");
+            return List.of("list", "rate", "create", "auto", "confirm", "cancel", "template", "door", "delete", "maxrate");
         }
         String sub = args[1].toLowerCase(Locale.ROOT);
         List<String> hotels = plugin.plots().all().stream().filter(p -> p.category == Category.HOTEL).map(p -> p.id).toList();

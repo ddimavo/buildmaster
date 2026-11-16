@@ -68,6 +68,8 @@ public class BuildMasterPlugin extends JavaPlugin {
     private ru.buildmaster.auction.TreasuryAuction treasuryAuction;
     private ru.buildmaster.service.ArrestService arrests;
     private ru.buildmaster.service.MachineHolograms machineHolograms;
+    private ru.buildmaster.service.RoomAutoService roomAuto;
+    private ru.buildmaster.service.SelectionVisualizer visualizer;
     private ru.buildmaster.service.ManagerPanels managerPanels;
     private ChatPrompt chatPrompt;
     private SelectionListener selection;
@@ -113,6 +115,8 @@ public class BuildMasterPlugin extends JavaPlugin {
         treasuryAuction = new ru.buildmaster.auction.TreasuryAuction(this);
         arrests = new ru.buildmaster.service.ArrestService(this);
         machineHolograms = new ru.buildmaster.service.MachineHolograms(this);
+        roomAuto = new ru.buildmaster.service.RoomAutoService(this);
+        visualizer = new ru.buildmaster.service.SelectionVisualizer(this);
         managerPanels = new ru.buildmaster.service.ManagerPanels(this);
         jobs.load();
         plots = new PlotManager(this);
@@ -153,6 +157,7 @@ public class BuildMasterPlugin extends JavaPlugin {
         getServer().getScheduler().runTaskTimer(this, jobs::minuteTick, 1200L, 1200L);
         getServer().getScheduler().runTaskTimer(this, machineHolograms::tick, 60L, 20L);
         getServer().getScheduler().runTaskTimer(this, managerPanels::tick, 80L, 40L);
+        getServer().getScheduler().runTaskTimer(this, visualizer::tick, 40L, 10L);
         getServer().getScheduler().runTaskLater(this, () -> {
             stations.rescanAll();
             holograms.updateAll();
@@ -276,6 +281,14 @@ public class BuildMasterPlugin extends JavaPlugin {
     /** Только для тестов: подмена доступа к WorldGuard. */
     public void setRegions(RegionAccess access) {
         this.regions = access;
+    }
+
+    public ru.buildmaster.service.RoomAutoService roomAuto() {
+        return roomAuto;
+    }
+
+    public ru.buildmaster.service.SelectionVisualizer visualizer() {
+        return visualizer;
     }
 
     public ru.buildmaster.service.MachineHolograms machineHolograms() {

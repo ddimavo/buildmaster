@@ -46,7 +46,7 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
             "zones", "storage", "claim", "journal", "name", "desc", "bank", "service", "factory", "room", "region", "job", "hologram", "help");
     private static final List<String> ADMIN_SUBS = List.of("wand", "pos1", "pos2", "create", "delete", "evict",
             "setprice", "setrent", "setspawn", "zone", "resnapshot", "reload", "seize", "reset", "holo", "category",
-            "moderation", "arrest", "auction");
+            "moderation", "arrest", "auction", "show");
     /** Команды банка и электросети: отдельные права buildmaster.bank и buildmaster.grid. */
     private static final List<String> GRID_SUBS = List.of("grid", "area");
 
@@ -128,6 +128,17 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
                 case "region" -> new RegionCommands(plugin).handle(sender, rest);
                 case "job" -> new JobCommands(plugin).handle(sender, rest);
                 case "auction" -> auction(sender, rest);
+                case "show" -> withPlayer(sender, p -> {
+                    if (rest.length < 1) {
+                        throw new CommandError("Использование: /district show <номер участка> - подсветить область частицами на 15 секунд");
+                    }
+                    Plot plot = requirePlot(rest[0]);
+                    if (!plot.world.equals(p.getWorld().getName())) {
+                        throw new CommandError("Участок находится в другом мире (" + plot.world + ").");
+                    }
+                    plugin.visualizer().highlight(p, plot.world, plot.box, 15);
+                    Text.ok(p, "Область участка " + plot.id + " подсвечена на 15 секунд.");
+                });
                 case "grid" -> new GridCommands(plugin).grid(sender, rest);
                 case "area" -> new GridCommands(plugin).area(sender, rest);
                 case "wand" -> withPlayer(sender, p -> {
@@ -269,6 +280,8 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
                     "/district evict|seize|reset <номер> <причина> - выселить, изъять (арест вещей), сбросить здание",
                     "/district arrest - меню арестованных вещей; arrest list | release|delete|auction <игрок> <причина>",
                     "/district auction [status|run] - общий аукцион казны (zAuctionHouse)",
+                    "/district room auto <номер> <цена> - номер по двери (смотрите на дверь), затем room confirm | cancel",
+                    "/district show <номер> - подсветить область участка частицами",
                     "/district treasury [pay <игрок> <сумма> <причина>] - казна (право buildmaster.bank)",
                     "/district bank accounts|account <номер>|admin ... - счета, комиссии, штраф, налоги (право buildmaster.bank)",
                     "/district grid info|capacity|price|connect|disconnect|restore|autoconnect|report - электросеть (право buildmaster.grid)",

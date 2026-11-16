@@ -85,11 +85,11 @@ footer { max-width:980px; margin:50px auto 0; color:var(--muted); font-size:13px
 }
 </style>
 </head>
-<body data-version="1.13.0.">
+<body data-version="1.14.0.">
 <div class="topbar"><button id="menu">☰ Разделы</button><b>BuildMaster</b></div>
 <div class="layout">
 <aside id="side">
-  <div class="brand"><div class="logo">🏙️</div><div><b>BuildMaster</b><small>Руководство 1.13.0.</small></div></div>
+  <div class="brand"><div class="logo">🏙️</div><div><b>BuildMaster</b><small>Руководство 1.14.0.</small></div></div>
   <input id="search" type="search" placeholder="Поиск по разделам…" autocomplete="off">
   <nav id="nav">
 <a class="l2" href="#1-что-такое-buildmaster">1. Что такое BuildMaster</a>
@@ -182,12 +182,12 @@ footer { max-width:980px; margin:50px auto 0; color:var(--muted); font-size:13px
   <div class="hero">
     <h1>BuildMaster</h1>
     <p>Район коммерции для Minecraft: участки, аренда, мастерские и электричество, отели, работники и зарплаты, банк, общий аукцион и участки игроков на WorldGuard.</p>
-    <div class="chips"><span>Paper 1.21.6 – 26.x</span><span>Java 21</span><span>Vault</span><span>WorldGuard · ChestShop · zAuctionHouse (по желанию)</span><span>Руководство 1.13.0.</span></div>
+    <div class="chips"><span>Paper 1.21.6 – 26.x</span><span>Java 21</span><span>Vault</span><span>WorldGuard · ChestShop · zAuctionHouse (по желанию)</span><span>Руководство 1.14.0.</span></div>
   </div>
   <div class="content">
 
 <blockquote class="callout">
-<p>Версия руководства: 1.13.0. Плагин: Paper 1.21.6 – 26.x, Java 21+. Все команды начинаются с <code>/district</code> (псевдонимы <code>/dt</code>, <code>/uchastok</code>).
+<p>Версия руководства: 1.14.0. Плагин: Paper 1.21.6 – 26.x, Java 21+. Все команды начинаются с <code>/district</code> (псевдонимы <code>/dt</code>, <code>/uchastok</code>).
 Если вы только начинаете, прочитайте разделы 1–3 и сразу переходите к нужной роли: <strong>игрок</strong> (раздел 4), <strong>управляющий предприятием</strong> (5–8), <strong>владелец региона WorldGuard</strong> (9), <strong>администратор</strong> (13–14).</p>
 </blockquote>
 
@@ -252,6 +252,9 @@ footer { max-width:980px; margin:50px auto 0; color:var(--muted); font-size:13px
 <li>Откройте <code>/district</code> – участок появится в списке «Свободные участки». Игрок нажимает на него и покупает или арендует.</li>
 </ul>
 <blockquote class="callout">
+<p><strong>Выделение видно.</strong> Всё, что вы выделяете, подсвечивается контуром из частиц (их видите только вы): точка 1 зелёная, точка 2 красная, область золотая с белыми углами.
+Так же подсвечивается предложенный номер отеля. Команда <code>/district show &lt;номер&gt;</code> подсвечивает область любого существующего участка или номера на 15 секунд.
+Настройка: <code>visual</code> в <code>config.yml</code> (включение, число частиц, дальность).</p>
 <p>Совет: цену или аренду можно отключить, поставив <code>-</code> вместо числа (например, номера отелей только арендуются).</p>
 </blockquote>
 <hr />
@@ -921,6 +924,47 @@ footer { max-width:980px; margin:50px auto 0; color:var(--muted); font-size:13px
 </code></pre>
 <p>Цену номера задаёт администратор (любую) или управляющий в пределах <code>maxrate</code>: <code>/district room rate &lt;номер&gt; &lt;цена&gt;</code>.</p>
 <h3 id="84-создание-номеров-администратор">8.4. Создание номеров (администратор)</h3>
+<h4 id="автоматически-по-двери-самый-быстрый-способ">Автоматически по двери (самый быстрый способ)</h4>
+<ol>
+<li>Встаньте <strong>в коридоре</strong> перед дверью номера и посмотрите на дверь (любую из двух её половин, не дальше 6 блоков).</li>
+<li>Выполните <code>/district room auto &lt;номер комнаты&gt; &lt;цена за сутки&gt;</code>, например <code>/district room auto 101 60</code>.</li>
+<li>Плагин находит замкнутое помещение за дверью (на стороне, <strong>противоположной вам</strong>) и <strong>подсвечивает его зелёным контуром из частиц</strong>; дверь отмечена бирюзовой рамкой, углы белыми точками.
+   В чате появятся кнопки <strong>[Подтвердить]</strong> и <strong>[Отменить]</strong> (или <code>/district room confirm</code> и <code>/district room cancel</code>).</li>
+<li>Подтвердите – номер создастся вместе с дверью и снимком. Предложение ждёт 120 секунд (<code>hotel-auto.confirm-seconds</code>) и действует только для вас.</li>
+</ol>
+<p>Как плагин находит комнату: от клетки за дверью заливается свободное пространство (воздух, ковры, проходимые блоки); мебель и стены ограничивают его.
+Номером становится прямоугольник, охватывающий всё найденное пространство (для Г-образных комнат это общий прямоугольник). Ошибки:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Сообщение</th>
+<th>Причина</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>«Слишком большое или незамкнутое пространство»</td>
+<td>в стене дыра или окно открыто: пространство слилось с коридором или превысило <code>hotel-auto.max-cells</code> (4000 клеток)</td>
+</tr>
+<tr>
+<td>«Комната не замкнута: ... выходит за пределы отеля»</td>
+<td>заливка дошла до границы отеля</td>
+</tr>
+<tr>
+<td>«За дверью нет свободного места»</td>
+<td>вплотную к двери стена или мебель</td>
+</tr>
+<tr>
+<td>«Область пересекается с участком ...» / «Номер уже есть»</td>
+<td>комната уже создана или пересекается с другим номером</td>
+</tr>
+<tr>
+<td>«Дверь должна находиться внутри отеля»</td>
+<td>вы смотрите на дверь вне отеля (или на дверь не отеля)</td>
+</tr>
+</tbody>
+</table></div>
+<p>Если вы случайно стоите внутри номера и смотрите на дверь изнутри, плагин сочтёт комнатой коридор: выйдите и повторите.</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -929,6 +973,10 @@ footer { max-width:980px; margin:50px auto 0; color:var(--muted); font-size:13px
 </tr>
 </thead>
 <tbody>
+<tr>
+<td>По двери</td>
+<td><code>/district room auto &lt;номер&gt; &lt;цена&gt;</code>, затем <code>/district room confirm</code> или <code>cancel</code></td>
+</tr>
 <tr>
 <td>Вручную</td>
 <td>выделить интерьер, <code>/district room create &lt;отель&gt; &lt;номер&gt; &lt;цена&gt;</code></td>
@@ -1465,7 +1513,11 @@ footer { max-width:980px; margin:50px auto 0; color:var(--muted); font-size:13px
 <tbody>
 <tr>
 <td><code>wand</code>, <code>pos1</code>, <code>pos2</code></td>
-<td>выделение</td>
+<td>выделение (видно частицами)</td>
+</tr>
+<tr>
+<td><code>show &lt;номер&gt;</code></td>
+<td>подсветить область участка частицами на 15 секунд</td>
 </tr>
 <tr>
 <td><code>create &lt;номер&gt; &lt;тип&gt; &lt;цена|-&gt; &lt;аренда|-&gt;</code></td>
@@ -1518,6 +1570,10 @@ footer { max-width:980px; margin:50px auto 0; color:var(--muted); font-size:13px
 <tr>
 <td><code>treasury [pay ...]</code></td>
 <td>казна</td>
+</tr>
+<tr>
+<td><code>room auto|confirm|cancel</code></td>
+<td>номер отеля по двери с подтверждением</td>
 </tr>
 <tr>
 <td><code>room create|template|door|delete|maxrate</code></td>
@@ -1646,6 +1702,14 @@ footer { max-width:980px; margin:50px auto 0; color:var(--muted); font-size:13px
 <tr>
 <td><code>holograms</code></td>
 <td>включение голограмм станков и панелей управляющего</td>
+</tr>
+<tr>
+<td><code>visual</code></td>
+<td>видимое выделение частицами: включение, число частиц, дальность</td>
+</tr>
+<tr>
+<td><code>hotel-auto</code></td>
+<td>автосоздание номеров по двери: предел размера, время подтверждения</td>
 </tr>
 <tr>
 <td><code>public-permissions</code></td>
