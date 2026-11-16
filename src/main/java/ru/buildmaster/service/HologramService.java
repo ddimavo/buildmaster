@@ -31,7 +31,7 @@ public final class HologramService {
 
     private Component render(Plot plot) {
         List<String> lines = HologramText.lines(plot, plugin.economy()::format, plugin.power().nowSec(),
-                plugin.power().mode() == PowerService.Mode.USAGE);
+                plugin.power().mode() == PowerService.Mode.USAGE, plugin.grid().offReason(plot));
         return Text.mm(String.join("\n", lines));
     }
 

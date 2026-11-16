@@ -13,6 +13,8 @@ public final class PowerAccount {
     private double balance;
     private double ratePerDay;
     private long updatedAtSec;
+    /** Потребление в единицах V в сутки (сумма коэффициентов станков с учётом прогрессии). */
+    private double unitsPerDay;
 
     public double rawBalance() {
         return balance;
@@ -24,6 +26,14 @@ public final class PowerAccount {
 
     public long updatedAtSec() {
         return updatedAtSec;
+    }
+
+    public double unitsPerDay() {
+        return unitsPerDay;
+    }
+
+    public void setUnitsPerDay(double units) {
+        this.unitsPerDay = Math.max(0, units);
     }
 
     /** Восстановление из файла. */

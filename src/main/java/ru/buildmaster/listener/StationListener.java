@@ -52,11 +52,18 @@ public final class StationListener implements Listener {
     }
 
     private void tell(HumanEntity who) {
-        if (who instanceof Player p) {
-            p.sendActionBar(Text.mm(usage()
-                    ? "<red>На счёте мастерской недостаточно средств для этой операции."
-                    : "<red>Мастерская обесточена: станки не работают."));
+        if (!(who instanceof Player p)) {
+            return;
         }
+        Plot plot = plotAt(p.getTargetBlockExact(6));
+        String gridReason = plot == null ? null : plugin.power().gridOffReason(plot);
+        if (gridReason != null) {
+            p.sendActionBar(Text.mm("<red>Предприятие отключено от электростанции: " + Text.esc(gridReason)));
+            return;
+        }
+        p.sendActionBar(Text.mm(usage()
+                ? "<red>На счёте мастерской недостаточно средств для этой операции."
+                : "<red>Мастерская обесточена: станки не работают."));
     }
 
     /** Операция на станке: false - не разрешена (нет электричества или денег). */

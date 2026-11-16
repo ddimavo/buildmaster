@@ -41,7 +41,11 @@ public final class Journal {
         ACCOUNT_PENALTY("Штраф при изъятии"),
         ACCOUNT_GIFT("Подарок на счёт"),
         TARIFF("Изменение тарифа"),
-        RIGHTS("Изменение прав");
+        RIGHTS("Изменение прав"),
+        TAX("Налог"),
+        COMMISSION("Комиссия банка"),
+        BANK_SETTINGS("Настройки банка"),
+        GRID("Электросеть");
 
         private final String title;
 

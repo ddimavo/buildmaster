@@ -101,8 +101,11 @@ public final class PlotService {
             Plot plot = new Plot(id, world.getName(), box);
             plot.category = category;
             plot.createdBy = admin.getUniqueId();
-            plot.price = price;
-            plot.rentPerDay = rent;
+            plot.price = category.isAdminOnly() ? -1 : price;
+            plot.rentPerDay = category.isAdminOnly() ? -1 : rent;
+            if (category == Category.POWER_PLANT) {
+                plot.plantCapacity = plugin.getConfig().getDouble("grid.default-capacity", 1000);
+            }
             plot.hasHolo = true;
             plot.holoX = holo.getX();
             plot.holoY = holo.getY();
@@ -156,6 +159,10 @@ public final class PlotService {
     // ---------------------------------------------------------------- покупка и аренда
 
     private boolean checkAvailable(Player p, Plot plot) {
+        if (plot.category.isAdminOnly()) {
+            Text.err(p, "«" + plot.category.title() + "» - административное здание: купить или арендовать его нельзя.");
+            return false;
+        }
         if (!plugin.economy().available()) {
             Text.err(p, "Экономика недоступна: не найден плагин с поддержкой Vault.");
             return false;
@@ -251,6 +258,11 @@ public final class PlotService {
         plot.graceUntil = 0;
         plot.clearRights();
         plot.powerWarnLevel = 0;
+        plot.nextTaxAt = System.currentTimeMillis() + plugin.bank().taxPeriodMillis();
+        plot.taxDebt = 0;
+        plot.gridReason = null;
+        // новый управляющий мастерской автоматически подключается к наименее загруженной станции
+        plugin.grid().autoConnect(plot, "система");
         plugin.plots().save();
         plugin.power().recalc(plot);
     }
@@ -360,6 +372,11 @@ public final class PlotService {
         plot.warned = false;
         plot.graceUntil = 0;
         plugin.power().closeAccount(plot, previous, release.action() == Journal.Action.SEIZED);
+        // подключение принадлежит зданию: отключение за нарушения прежнего управляющего не переходит к новому
+        if (plot.plantId == null && plot.lastPlantId != null && plugin.plots().get(plot.lastPlantId) != null) {
+            plot.plantId = plot.lastPlantId;
+        }
+        plot.gridReason = null;
         plot.clearRights();
         plot.powerWarnLevel = 0;
         startRestore(plot, previous, release);
@@ -660,6 +677,8 @@ public final class PlotService {
             }
         }
         plugin.power().tick();
+        plugin.grid().tick();
+        plugin.bank().tick();
         plugin.holograms().updateAll();
         plugin.ledgers().flush();
         if (tickCounter % 4320 == 4319) { // примерно раз в сутки

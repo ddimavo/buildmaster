@@ -181,6 +181,14 @@ public final class PlotManager {
             }
         }
         p.discountPercent = s.getDouble("discount-percent");
+        p.plantCapacity = s.getDouble("plant.capacity");
+        p.plantMultiplier = s.getDouble("plant.multiplier", 1.0);
+        p.plantId = s.getString("grid.plant");
+        p.gridReason = s.getString("grid.reason");
+        p.lastPlantId = s.getString("grid.last-plant");
+        p.nextTaxAt = s.getLong("tax.next");
+        p.taxDebt = s.getDouble("tax.debt");
+        p.account.setUnitsPerDay(s.getDouble("account.units"));
         p.account.restore(s.getDouble("account.balance"), s.getDouble("account.rate"), s.getLong("account.updated"));
         ConfigurationSection zones = s.getConfigurationSection("zones");
         if (zones != null) {
@@ -242,6 +250,14 @@ public final class PlotManager {
             }
             yml.set(k + "public-perms", p.publicPerms.stream().map(Enum::name).toList());
             yml.set(k + "discount-percent", p.discountPercent);
+            yml.set(k + "plant.capacity", p.plantCapacity);
+            yml.set(k + "plant.multiplier", p.plantMultiplier);
+            yml.set(k + "grid.plant", p.plantId);
+            yml.set(k + "grid.reason", p.gridReason);
+            yml.set(k + "grid.last-plant", p.lastPlantId);
+            yml.set(k + "tax.next", p.nextTaxAt);
+            yml.set(k + "tax.debt", p.taxDebt);
+            yml.set(k + "account.units", p.account.unitsPerDay());
             yml.set(k + "account.balance", p.account.rawBalance());
             yml.set(k + "account.rate", p.account.ratePerDay());
             yml.set(k + "account.updated", p.account.updatedAtSec());

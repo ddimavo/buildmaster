@@ -17,6 +17,15 @@ permissions:
   buildmaster.admin:
     description: Создание и администрирование участков
     default: op
+    children:
+      buildmaster.bank: true
+      buildmaster.grid: true
+  buildmaster.bank:
+    description: Работа банка - казна, проверка всех счетов, комиссии, штраф и налоги
+    default: op
+  buildmaster.grid:
+    description: Работа электросети - станции, тариф, отчёты, отключение предприятий и районы
+    default: op
   buildmaster.bypass:
     description: Обход защиты участков
     default: op

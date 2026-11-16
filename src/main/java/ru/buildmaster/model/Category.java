@@ -8,7 +8,9 @@ public enum Category {
     SHOP("Магазин"),
     WORKSHOP("Мастерская"),
     RESTAURANT("Ресторан"),
-    WAREHOUSE("Склад");
+    WAREHOUSE("Склад"),
+    BANK("Банк"),
+    POWER_PLANT("Электростанция");
 
     private final String title;
 
@@ -25,13 +27,18 @@ public enum Category {
         return name().toLowerCase(Locale.ROOT);
     }
 
+    /** Административные здания: создаёт только администратор, купить или арендовать их нельзя. */
+    public boolean isAdminOnly() {
+        return this == BANK || this == POWER_PLANT;
+    }
+
     public static Category parse(String s) {
         if (s == null) {
             return null;
         }
         String v = s.trim().toLowerCase(Locale.ROOT);
         for (Category c : values()) {
-            if (c.key().equals(v) || c.title.toLowerCase(Locale.ROOT).equals(v)) {
+            if (c.key().equals(v) || c.key().replace("_", "").equals(v) || c.title.toLowerCase(Locale.ROOT).equals(v)) {
                 return c;
             }
         }

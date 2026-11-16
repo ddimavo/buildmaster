@@ -82,6 +82,18 @@ public final class Plot {
     public final EnumSet<Perm> publicPerms = EnumSet.noneOf(Perm.class);
     /** Денежный счёт предприятия; в мастерских с него списывается электричество. */
     public final PowerAccount account = new PowerAccount();
+    /** Электростанция: мощность в V в сутки и текущий множитель тарифа при перегрузке (1.0 - нагрузки нет). */
+    public double plantCapacity;
+    public double plantMultiplier = 1.0;
+    /** Предприятие подключено ровно к одной электростанции (id участка-станции); null - не подключено. */
+    public String plantId;
+    /** Почему предприятие не подключено (причина отключения администратором и т.п.). */
+    public String gridReason;
+    /** К какой станции было подключено до отключения - для быстрого восстановления. */
+    public String lastPlantId;
+    /** Следующее начисление налога на имущество (мс, 0 - не назначено) и неоплаченный налог. */
+    public long nextTaxAt;
+    public double taxDebt;
     /** Индивидуальная скидка на электричество (0-100 %), назначается администратором. */
     public double discountPercent;
     public final Map<String, Zone> zones = new LinkedHashMap<>();

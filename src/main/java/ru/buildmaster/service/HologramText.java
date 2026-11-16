@@ -24,10 +24,27 @@ public final class HologramText {
      * @param usageMode     тариф по факту использования: вместо остатка времени показывается способ оплаты
      */
     public static List<String> lines(Plot plot, DoubleFunction<String> money, Long billingNowSec, boolean usageMode) {
+        return lines(plot, money, billingNowSec, usageMode, null);
+    }
+
+    /** @param gridOffReason причина, по которой предприятие отключено от электростанции (null - подключено) */
+    public static List<String> lines(Plot plot, DoubleFunction<String> money, Long billingNowSec, boolean usageMode,
+                                     String gridOffReason) {
         List<String> lines = new ArrayList<>();
         lines.add("<gold><bold>" + Text.esc(plot.displayName()));
         lines.add("<gray>" + plot.category.title() + " · № " + Text.esc(plot.id)
                 + " · " + plot.box.describe());
+        if (plot.category == ru.buildmaster.model.Category.BANK) {
+            lines.add("<yellow>Счета, налоги, казна");
+            return lines;
+        }
+        if (plot.category == ru.buildmaster.model.Category.POWER_PLANT) {
+            lines.add("<yellow>Мощность: <white>" + plot.plantCapacity + " V/сут");
+            if (plot.plantMultiplier > 1.0) {
+                lines.add("<red>Перегрузка: тариф ×" + plot.plantMultiplier);
+            }
+            return lines;
+        }
         if (plot.isFree()) {
             lines.add("<green>Свободен");
             if (plot.price >= 0) {
@@ -41,7 +58,9 @@ public final class HologramText {
             if (plot.isFrozen()) {
                 lines.add("<red>Платёж просрочен");
             }
-            if (billingNowSec != null && plot.category == ru.buildmaster.model.Category.WORKSHOP && usageMode) {
+            if (billingNowSec != null && plot.category == ru.buildmaster.model.Category.WORKSHOP && gridOffReason != null) {
+                lines.add("<red>Отключено от электростанции");
+            } else if (billingNowSec != null && plot.category == ru.buildmaster.model.Category.WORKSHOP && usageMode) {
                 lines.add(plot.account.rawBalance() > 1e-9
                         ? "<yellow>Электричество: <white>оплата по использованию"
                         : "<red>Обесточено: на счёте нет средств");

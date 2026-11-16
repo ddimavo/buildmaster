@@ -43,6 +43,8 @@ public abstract class PluginTestBase {
         PlayerMock p = server.addPlayer(name);
         p.addAttachment(plugin, "buildmaster.admin", true);
         p.addAttachment(plugin, "buildmaster.bypass", true);
+        p.addAttachment(plugin, "buildmaster.bank", true);
+        p.addAttachment(plugin, "buildmaster.grid", true);
         return p;
     }
 

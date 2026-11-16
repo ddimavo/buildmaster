@@ -9,7 +9,10 @@ import ru.buildmaster.listener.JoinListener;
 import ru.buildmaster.listener.ProtectionListener;
 import ru.buildmaster.listener.SelectionListener;
 import ru.buildmaster.service.BlockRules;
+import ru.buildmaster.service.BankService;
 import ru.buildmaster.service.BuildService;
+import ru.buildmaster.service.DistrictManager;
+import ru.buildmaster.service.GridService;
 import ru.buildmaster.service.EconomyHook;
 import ru.buildmaster.service.PlotManager;
 import ru.buildmaster.service.HologramService;
@@ -41,6 +44,9 @@ public class BuildMasterPlugin extends JavaPlugin {
     private StationService stations;
     private PowerService power;
     private WarningLog warnings;
+    private BankService bank;
+    private GridService grid;
+    private DistrictManager districts;
     private ChatPrompt chatPrompt;
     private SelectionListener selection;
 
@@ -67,6 +73,11 @@ public class BuildMasterPlugin extends JavaPlugin {
         power = new PowerService(this);
         power.load();
         warnings = new WarningLog(new java.io.File(getDataFolder(), "warnings"));
+        bank = new BankService(this);
+        bank.load();
+        grid = new GridService(this);
+        districts = new DistrictManager(new java.io.File(getDataFolder(), "districts.yml"));
+        districts.load();
         plots = new PlotManager(this);
         plots.load();
         service = new PlotService(this);
@@ -171,6 +182,18 @@ public class BuildMasterPlugin extends JavaPlugin {
 
     public PowerService power() {
         return power;
+    }
+
+    public BankService bank() {
+        return bank;
+    }
+
+    public GridService grid() {
+        return grid;
+    }
+
+    public DistrictManager districts() {
+        return districts;
     }
 
     public WarningLog warnings() {

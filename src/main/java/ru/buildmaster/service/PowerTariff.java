@@ -18,6 +18,12 @@ public final class PowerTariff {
      */
     public static double dailyRate(double base, double progression, Map<String, Integer> counts,
                                    Function<String, Double> coefficient, double discountPercent) {
+        double discount = Math.min(100, Math.max(0, discountPercent));
+        return base * dailyUnits(progression, counts, coefficient) * (1 - discount / 100.0);
+    }
+
+    /** Потребление в единицах V в сутки: Σ по типам коэффициент × Σ(1 + прогрессия × k). */
+    public static double dailyUnits(double progression, Map<String, Integer> counts, Function<String, Double> coefficient) {
         double sum = 0;
         for (Map.Entry<String, Integer> e : counts.entrySet()) {
             int n = e.getValue() == null ? 0 : e.getValue();
@@ -30,7 +36,6 @@ public final class PowerTariff {
             }
             sum += c * (n + progression * n * (n - 1) / 2.0);
         }
-        double discount = Math.min(100, Math.max(0, discountPercent));
-        return base * sum * (1 - discount / 100.0);
+        return sum;
     }
 }

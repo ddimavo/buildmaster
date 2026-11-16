@@ -38,12 +38,15 @@ public final class PowerService {
     private boolean treasuryDirty;
     private PowerOverrides overrides = new PowerOverrides();
     private StationStats stats = new StationStats();
+    private final File consumptionFile;
+    private ConsumptionLog consumption = new ConsumptionLog();
 
     public PowerService(BuildMasterPlugin plugin) {
         this.plugin = plugin;
         this.billingFile = new File(plugin.getDataFolder(), "billing.yml");
         this.overridesFile = new File(plugin.getDataFolder(), "overrides.yml");
         this.statsFile = new File(plugin.getDataFolder(), "stats.yml");
+        this.consumptionFile = new File(plugin.getDataFolder(), "consumption.yml");
     }
 
     public void load() {
@@ -51,6 +54,7 @@ public final class PowerService {
         clock = new BillingClock(saved, wallClock.getAsLong(), maxStepSeconds() * 1000L);
         overrides = PowerOverrides.load(overridesFile);
         stats = StationStats.load(statsFile);
+        consumption = ConsumptionLog.load(consumptionFile);
     }
 
     /** Только для тестов: подмена источника времени (биллинговые часы сохраняют накопленное). */
@@ -96,6 +100,10 @@ public final class PowerService {
 
     public StationStats stats() {
         return stats;
+    }
+
+    public ConsumptionLog consumption() {
+        return consumption;
     }
 
     public Mode mode() {
@@ -145,28 +153,45 @@ public final class PowerService {
         return PowerTariff.dailyRate(base(), progression(), counts, this::coefficient, discountPercent);
     }
 
-    /** Суточный тариф участка; в режиме USAGE непрерывного расхода нет. */
+    /** Потребление участка в V в сутки (по установленным станкам). */
+    public double unitsFor(Plot plot) {
+        return isBilled(plot)
+                ? PowerTariff.dailyUnits(progression(), plugin.stations().tariffCounts(plot), this::coefficient) : 0;
+    }
+
+    /** Подключено ли предприятие к электросети (без электростанций сеть не действует). */
+    public boolean isOnGrid(Plot plot) {
+        return plugin.grid().onGrid(plot);
+    }
+
+    /** Суточный тариф участка с множителем станции; в режиме USAGE непрерывного расхода нет. */
     public double rateFor(Plot plot) {
-        if (!isBilled(plot) || mode() == Mode.USAGE) {
+        if (!isBilled(plot) || mode() == Mode.USAGE || !isOnGrid(plot)) {
             return 0;
         }
-        return dailyRate(plugin.stations().tariffCounts(plot), plot.discountPercent);
+        return dailyRate(plugin.stations().tariffCounts(plot), plot.discountPercent) * plugin.grid().multiplier(plot);
     }
 
     /** Цена одной операции на станке (режим USAGE) с учётом скидки участка. */
     public double operationPrice(Plot plot, String tariffKey) {
         double discount = Math.min(100, Math.max(0, plot.discountPercent));
-        return usageBase() * coefficient(tariffKey) * (1 - discount / 100.0);
+        return usageBase() * coefficient(tariffKey) * (1 - discount / 100.0) * plugin.grid().multiplier(plot);
     }
 
     // ------------------------------------------------------------ счёт
 
     /** Фиксирует расход электричества и переводит потраченное в казну. */
     public void touch(Plot plot) {
-        double consumed = plot.account.settle(nowSec());
+        long now = nowSec();
+        double rate = plot.account.ratePerDay();
+        double units = plot.account.unitsPerDay();
+        double consumed = plot.account.settle(now);
         if (consumed > 1e-9) {
             plugin.treasury().deposit(consumed, "Электричество участка " + plot.id);
             treasuryDirty = true;
+            // потреблённые V пропорциональны потраченным деньгам: тариф = цена за V × потребление × надбавки
+            double v = rate > 0 ? consumed * units / rate : 0;
+            consumption.record(plot.id, now, v, consumed);
         }
     }
 
@@ -177,6 +202,7 @@ public final class PowerService {
 
     private void recalc(Plot plot, boolean save) {
         touch(plot);
+        plot.account.setUnitsPerDay(unitsFor(plot));
         plot.account.setRate(rateFor(plot));
         if (save) {
             plugin.plots().save();
@@ -189,10 +215,18 @@ public final class PowerService {
         if (!isBilled(plot)) {
             return true;
         }
+        if (!isOnGrid(plot)) {
+            return false;
+        }
         if (mode() == Mode.USAGE) {
             return plot.account.balanceAt(nowSec()) > 1e-9;
         }
         return plot.account.powered(nowSec());
+    }
+
+    /** Почему станки не работают из-за сети (отключено от электростанции), либо null. */
+    public String gridOffReason(Plot plot) {
+        return plugin.grid().offReason(plot);
     }
 
     public double balance(Plot plot) {
@@ -207,6 +241,9 @@ public final class PowerService {
     public boolean useStation(Plot plot, String tariffKey) {
         if (!isBilled(plot)) {
             return true;
+        }
+        if (!isOnGrid(plot)) {
+            return false;
         }
         if (mode() == Mode.DAILY) {
             if (!plot.account.powered(nowSec())) {
@@ -226,6 +263,7 @@ public final class PowerService {
             treasuryDirty = true;
         }
         stats.record(plot.id, tariffKey, price);
+        consumption.record(plot.id, nowSec(), coefficient(tariffKey), price);
         return true;
     }
 
@@ -243,18 +281,29 @@ public final class PowerService {
             Text.err(payer, "Сумма должна быть больше нуля.");
             return false;
         }
+        String refusal = plugin.bank().checkOperation(payer);
+        if (refusal != null) {
+            Text.err(payer, refusal);
+            return false;
+        }
         if (!plugin.economy().withdraw(payer, amount)) {
             Text.err(payer, "Недостаточно средств. Нужно: " + plugin.economy().format(amount));
             return false;
         }
+        double fee = TaxRules.percentOf(amount, plugin.bank().depositCommission());
+        if (fee > 0) {
+            plugin.treasury().deposit(fee, "Комиссия банка за пополнение, участок " + plot.id);
+            treasuryDirty = true;
+        }
         touch(plot);
-        plot.account.deposit(amount);
+        plot.account.deposit(amount - fee);
         plot.powerWarnLevel = 0;
         plugin.plots().save();
         plugin.holograms().update(plot);
         plugin.journal().add(plot.id, plot.owner, payer.getName(), Journal.Action.ACCOUNT_DEPOSIT,
-                plugin.economy().format(amount));
-        Text.ok(payer, "На счёт участка " + Text.esc(plot.id) + " внесено " + plugin.economy().format(amount)
+                plugin.economy().format(amount) + (fee > 0 ? " (комиссия " + plugin.economy().format(fee) + ")" : ""));
+        Text.ok(payer, "На счёт участка " + Text.esc(plot.id) + " зачислено " + plugin.economy().format(amount - fee)
+                + (fee > 0 ? " (комиссия банка " + plugin.economy().format(fee) + ")" : "")
                 + ". Баланс: " + plugin.economy().format(balance(plot)) + ".");
         return true;
     }
@@ -269,6 +318,11 @@ public final class PowerService {
             Text.err(manager, "Сумма должна быть больше нуля.");
             return false;
         }
+        String refusal = plugin.bank().checkOperation(manager);
+        if (refusal != null) {
+            Text.err(manager, refusal);
+            return false;
+        }
         touch(plot);
         double reserve = isBilled(plot) ? plot.account.ratePerDay() : 0;
         double available = Math.max(0, plot.account.rawBalance() - reserve);
@@ -277,14 +331,26 @@ public final class PowerService {
                     + (reserve > 0 ? " (резерв на сутки электричества: " + plugin.economy().format(reserve) + ")." : "."));
             return false;
         }
-        if (!plot.account.withdraw(amount) || !plugin.economy().deposit(manager, amount)) {
+        double fee = TaxRules.percentOf(amount, plugin.bank().withdrawCommission());
+        if (!plot.account.withdraw(amount)) {
             Text.err(manager, "Не удалось снять деньги.");
             return false;
         }
+        if (!plugin.economy().deposit(manager, amount - fee)) {
+            plot.account.deposit(amount);   // возврат на счёт: деньги игроку не зачислены
+            Text.err(manager, "Не удалось снять деньги.");
+            return false;
+        }
+        if (fee > 0) {
+            plugin.treasury().deposit(fee, "Комиссия банка за снятие, участок " + plot.id);
+            treasuryDirty = true;
+        }
         plugin.plots().save();
         plugin.journal().add(plot.id, manager.getUniqueId(), manager.getName(), Journal.Action.ACCOUNT_WITHDRAW,
-                plugin.economy().format(amount));
-        Text.ok(manager, "Со счёта снято " + plugin.economy().format(amount) + ".");
+                plugin.economy().format(amount) + (fee > 0 ? " (комиссия " + plugin.economy().format(fee) + ")" : ""));
+        Text.ok(manager, "Со счёта снято " + plugin.economy().format(amount)
+                + (fee > 0 ? ", вы получили " + plugin.economy().format(amount - fee) + " (комиссия банка "
+                + plugin.economy().format(fee) + ")" : "") + ".");
         return true;
     }
 
@@ -359,13 +425,25 @@ public final class PowerService {
         touch(plot);
         double balance = plot.account.rawBalance();
         plot.account.restore(0, 0, plot.account.updatedAtSec());
+        plot.account.setUnitsPerDay(0);
         plot.discountPercent = 0;
+        // сначала погашается долг по налогам
+        if (plot.taxDebt > 1e-9 && balance > 1e-9) {
+            double paid = Math.min(balance, plot.taxDebt);
+            plugin.treasury().deposit(paid, "Погашение долга по налогу из остатка счёта, участок " + plot.id);
+            treasuryDirty = true;
+            plugin.journal().add(plot.id, previous, "система", Journal.Action.TAX,
+                    "Долг по налогу погашен из остатка счёта: " + plugin.economy().format(paid));
+            balance -= paid;
+        }
+        plot.taxDebt = 0;
+        plot.nextTaxAt = 0;
         if (previous == null || balance <= 1e-9) {
             return;
         }
         double penalty = 0;
         if (seized) {
-            penalty = balance * plugin.getConfig().getDouble("electricity.seizure-penalty-percent", 10) / 100.0;
+            penalty = TaxRules.percentOf(balance, plugin.bank().seizurePenalty());
             plugin.treasury().deposit(penalty, "Штраф при изъятии участка " + plot.id);
             treasuryDirty = true;
         }
@@ -413,6 +491,13 @@ public final class PowerService {
         if (treasuryDirty) {
             plugin.saveTreasury();
             treasuryDirty = false;
+        }
+        if (consumption.isDirty()) {
+            try {
+                consumption.save(consumptionFile);
+            } catch (IOException e) {
+                plugin.getLogger().log(Level.WARNING, "Не удалось сохранить consumption.yml", e);
+            }
         }
         if (stats.isDirty()) {
             try {

@@ -42,10 +42,12 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
 
     private static final List<String> PLAYER_SUBS = List.of("menu", "list", "info", "buy", "rent", "extend",
             "autorenew", "autoreset", "release", "trust", "untrust", "perm", "account", "power", "warnings", "tp", "replace",
-            "zones", "storage", "claim", "journal", "name", "desc", "help");
+            "zones", "storage", "claim", "journal", "name", "desc", "bank", "help");
     private static final List<String> ADMIN_SUBS = List.of("wand", "pos1", "pos2", "create", "delete", "evict",
             "setprice", "setrent", "setspawn", "zone", "resnapshot", "reload", "seize", "reset", "holo", "category",
-            "moderation", "arrest", "treasury");
+            "moderation", "arrest");
+    /** Команды банка и электросети: отдельные права buildmaster.bank и buildmaster.grid. */
+    private static final List<String> GRID_SUBS = List.of("grid", "area");
 
     private final BuildMasterPlugin plugin;
 
@@ -57,6 +59,10 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         String sub = args.length == 0 ? "menu" : args[0].toLowerCase(Locale.ROOT);
         String[] rest = args.length == 0 ? new String[0] : Arrays.copyOfRange(args, 1, args.length);
+        if (GRID_SUBS.contains(sub) && !sender.hasPermission("buildmaster.grid")) {
+            Text.err(sender, "Недостаточно прав.");
+            return true;
+        }
         if (ADMIN_SUBS.contains(sub) && !sender.hasPermission("buildmaster.admin")) {
             Text.err(sender, "Недостаточно прав.");
             return true;
@@ -101,7 +107,15 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
                 case "holo" -> withPlayer(sender, p -> holo(p, rest));
                 case "category" -> category(sender, rest);
                 case "arrest" -> arrest(sender, rest);
-                case "treasury" -> treasury(sender, rest);
+                case "treasury" -> {
+                    if (!sender.hasPermission("buildmaster.bank")) {
+                        throw new CommandError("Недостаточно прав.");
+                    }
+                    treasury(sender, rest);
+                }
+                case "bank" -> new BankCommands(plugin).handle(sender, rest);
+                case "grid" -> new GridCommands(plugin).grid(sender, rest);
+                case "area" -> new GridCommands(plugin).area(sender, rest);
                 case "wand" -> withPlayer(sender, p -> {
                     p.getInventory().addItem(plugin.selection().createWand());
                     Text.ok(p, "Выдан топор выделения: ЛКМ - точка 1, ПКМ - точка 2.");
@@ -134,12 +148,6 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
     }
 
     // ---------------------------------------------------------------- вспомогательное
-
-    private static final class CommandError extends RuntimeException {
-        CommandError(String message) {
-            super(message, null, false, false);
-        }
-    }
 
     private void withPlayer(CommandSender sender, java.util.function.Consumer<Player> action) {
         if (sender instanceof Player p) {
@@ -223,7 +231,8 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
                 "/district name|desc [номер] <текст> - название и описание (после проверки администратором)",
                 "/district autoreset <on|off> [номер] - сбрасывать ли здание при отказе",
                 "/district perm <игрок|public> <build|containers|stations> <on|off> - права на участке",
-                "/district account [deposit|withdraw <сумма>] - счёт предприятия",
+                "/district account [deposit|withdraw <сумма>|statement] - счёт предприятия",
+                "/district bank [info|statement] - банк: меню, условия, выписка",
                 "/district power - электричество мастерской",
                 "/district warnings - журнал предупреждений"};
         for (String l : lines) {
@@ -239,7 +248,10 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
                     "/district moderation - заявки на названия и описания",
                     "/district evict|seize|reset <номер> <причина> - выселить, изъять (арест вещей), сбросить здание",
                     "/district arrest list | release|delete|auction <игрок> <причина> - решение по арестованным вещам",
-                    "/district treasury [pay <игрок> <сумма> <причина>] - казна",
+                    "/district treasury [pay <игрок> <сумма> <причина>] - казна (право buildmaster.bank)",
+                    "/district bank accounts|account <номер>|admin ... - счета, комиссии, штраф, налоги (право buildmaster.bank)",
+                    "/district grid info|capacity|price|connect|disconnect|restore|autoconnect|report - электросеть (право buildmaster.grid)",
+                    "/district area create|delete|add|remove|list|info - районы (право buildmaster.grid)",
                     "/district power calc [smelter:2 anvil:1] - калькулятор тарифа",
                     "/district power admin info|base|progression|usage|mode|coef|discount|add|stats - тарифы и статистика",
                     "/district delete <номер> - удалить свободный участок",
@@ -437,8 +449,12 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
             return;
         }
         String sub = args[0].toLowerCase(Locale.ROOT);
+        if (sub.equals("statement")) {
+            new BankCommands(plugin).statement(sender, args.length > 1 ? args[1] : null);
+            return;
+        }
         if (!sub.equals("deposit") && !sub.equals("withdraw")) {
-            throw new CommandError("Использование: /district account [deposit|withdraw] <сумма> [номер]");
+            throw new CommandError("Использование: /district account [deposit|withdraw|statement] <сумма> [номер]");
         }
         withPlayer(sender, p -> {
             if (args.length < 2) {
@@ -475,14 +491,14 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
     /** power [calc ...] | power deposit <сумма> [номер] */
     private void power(CommandSender sender, String[] args) {
         if (args.length > 0 && args[0].equalsIgnoreCase("calc")) {
-            if (!sender.hasPermission("buildmaster.admin")) {
+            if (!sender.hasPermission("buildmaster.grid")) {
                 throw new CommandError("Недостаточно прав.");
             }
             powerCalc(sender, Arrays.copyOfRange(args, 1, args.length));
             return;
         }
         if (args.length > 0 && args[0].equalsIgnoreCase("admin")) {
-            if (!sender.hasPermission("buildmaster.admin")) {
+            if (!sender.hasPermission("buildmaster.grid")) {
                 throw new CommandError("Недостаточно прав.");
             }
             powerAdmin(sender, Arrays.copyOfRange(args, 1, args.length));
@@ -837,7 +853,7 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
         }
         double price = parsePrice(args[2]);
         double rent = parsePrice(args[3]);
-        if (price < 0 && rent < 0) {
+        if (price < 0 && rent < 0 && !category.isAdminOnly()) {
             throw new CommandError("Нужна хотя бы цена покупки или аренды.");
         }
         SelectionListener.Selection sel = plugin.selection().get(p);
@@ -1138,9 +1154,22 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
             if (admin) {
                 result.addAll(ADMIN_SUBS);
             }
+            if (sender.hasPermission("buildmaster.grid")) {
+                result.addAll(GRID_SUBS);
+            }
+            if (sender.hasPermission("buildmaster.bank")) {
+                result.add("treasury");
+            }
             return filter(result, args[0]);
         }
         String sub = args[0].toLowerCase(Locale.ROOT);
+        if (sub.equals("bank")) {
+            return filter(new BankCommands(plugin).complete(sender, args), args[args.length - 1]);
+        }
+        if (sub.equals("grid") || sub.equals("area")) {
+            return sender.hasPermission("buildmaster.grid")
+                    ? filter(new GridCommands(plugin).complete(sender, args), args[args.length - 1]) : result;
+        }
         int n = args.length;
         String current = args[n - 1];
         Plot here = sender instanceof Player p ? plugin.plots().at(p.getLocation()) : null;

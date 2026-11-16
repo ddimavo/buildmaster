@@ -109,6 +109,40 @@ class HologramTextTest {
     }
 
     @Test
+    void bankAndPowerPlantHaveTheirOwnHolograms() {
+        Plot bank = plot();
+        bank.category = Category.BANK;
+        String text = String.join("\n", HologramText.lines(bank, HologramTextTest::money));
+        assertTrue(text.contains("Банк"), text);
+        assertTrue(text.contains("Счета, налоги, казна"), text);
+        assertFalse(text.contains("Свободен"), text);
+        assertFalse(text.contains("Продажа"), text);
+
+        Plot plant = plot();
+        plant.category = Category.POWER_PLANT;
+        plant.plantCapacity = 1500;
+        String calm = String.join("\n", HologramText.lines(plant, HologramTextTest::money));
+        assertTrue(calm.contains("Электростанция"), calm);
+        assertTrue(calm.contains("1500.0 V/сут"), calm);
+        assertFalse(calm.contains("Перегрузка"), calm);
+
+        plant.plantMultiplier = 1.12;
+        assertTrue(String.join("\n", HologramText.lines(plant, HologramTextTest::money)).contains("тариф ×1.12"));
+    }
+
+    @Test
+    void disconnectedWorkshopHologramShowsTheCutOff() {
+        Plot p = plot();
+        p.category = Category.WORKSHOP;
+        p.status = Plot.Status.RENTED;
+        p.ownerName = "Steve";
+        p.account.restore(500, 100, 0);
+        String text = String.join("\n", HologramText.lines(p, HologramTextTest::money, 0L, false, "авария"));
+        assertTrue(text.contains("Отключено от электростанции"), text);
+        assertFalse(text.contains("Электричество:"), text);
+    }
+
+    @Test
     void nonWorkshopHasNoElectricityLine() {
         Plot p = plot();
         p.status = Plot.Status.RENTED;

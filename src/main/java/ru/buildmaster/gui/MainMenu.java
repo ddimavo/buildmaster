@@ -32,6 +32,12 @@ public final class MainMenu extends Menu {
         set(20, Text.icon(unread > 0 ? Material.BELL : Material.NOTE_BLOCK, "<gold>Журнал предупреждений",
                 "<gray>Непрочитанных: <white>" + unread, "<gray>Аренда, электричество, отказы"),
                 e -> new WarningsMenu(plugin, player, 0).open());
+        set(24, Text.icon(Material.GOLD_INGOT, "<gold>Банк", "<gray>Счета, комиссии, налоги"),
+                e -> new BankMenu(plugin, player).open());
+        if (player.hasPermission("buildmaster.grid")) {
+            set(25, Text.icon(Material.LIGHTNING_ROD, "<red>Электросеть", "<gray>Станции, нагрузка, отчёты"),
+                    e -> new GridMenu(plugin, player, 0).open());
+        }
         if (player.hasPermission("buildmaster.admin")) {
             int pending = plugin.moderation().pending().size();
             set(22, Text.icon(Material.ANVIL, "<red>Модерация", "<gray>Ожидают проверки: <white>" + pending,
