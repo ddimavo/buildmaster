@@ -85,11 +85,11 @@ footer { max-width:980px; margin:50px auto 0; color:var(--muted); font-size:13px
 }
 </style>
 </head>
-<body data-version="1.15.0.">
+<body data-version="1.16.0.">
 <div class="topbar"><button id="menu">☰ Разделы</button><b>BuildMaster</b></div>
 <div class="layout">
 <aside id="side">
-  <div class="brand"><div class="logo">🏙️</div><div><b>BuildMaster</b><small>Руководство 1.15.0.</small></div></div>
+  <div class="brand"><div class="logo">🏙️</div><div><b>BuildMaster</b><small>Руководство 1.16.0.</small></div></div>
   <input id="search" type="search" placeholder="Поиск по разделам…" autocomplete="off">
   <nav id="nav">
 <a class="l2" href="#1-что-такое-buildmaster">1. Что такое BuildMaster</a>
@@ -136,6 +136,7 @@ footer { max-width:980px; margin:50px auto 0; color:var(--muted); font-size:13px
 <a class="l2" href="#8-отели">8. Отели</a>
 <a class="l3" href="#81-как-это-устроено">8.1. Как это устроено</a>
 <a class="l3" href="#82-двери">8.2. Двери</a>
+<a class="l3" href="#821-голограмма-над-дверью">8.2.1. Голограмма над дверью</a>
 <a class="l3" href="#83-деньги">8.3. Деньги</a>
 <a class="l3" href="#84-создание-номеров-администратор">8.4. Создание номеров (администратор)</a>
 <a class="l3" href="#85-выезд-и-гости">8.5. Выезд и гости</a>
@@ -182,12 +183,12 @@ footer { max-width:980px; margin:50px auto 0; color:var(--muted); font-size:13px
   <div class="hero">
     <h1>BuildMaster</h1>
     <p>Район коммерции для Minecraft: участки, аренда, мастерские и электричество, отели, работники и зарплаты, банк, общий аукцион и участки игроков на WorldGuard.</p>
-    <div class="chips"><span>Paper 1.21.6 – 26.x</span><span>Java 21</span><span>Vault</span><span>WorldGuard · ChestShop · zAuctionHouse (по желанию)</span><span>Руководство 1.15.0.</span></div>
+    <div class="chips"><span>Paper 1.21.6 – 26.x</span><span>Java 21</span><span>Vault</span><span>WorldGuard · ChestShop · zAuctionHouse (по желанию)</span><span>Руководство 1.16.0.</span></div>
   </div>
   <div class="content">
 
 <blockquote class="callout">
-<p>Версия руководства: 1.15.0. Плагин: Paper 1.21.6 – 26.x, Java 21+. Все команды начинаются с <code>/district</code> (псевдонимы <code>/dt</code>, <code>/uchastok</code>).
+<p>Версия руководства: 1.16.0. Плагин: Paper 1.21.6 – 26.x, Java 21+. Все команды начинаются с <code>/district</code> (псевдонимы <code>/dt</code>, <code>/uchastok</code>).
 Если вы только начинаете, прочитайте разделы 1–3 и сразу переходите к нужной роли: <strong>игрок</strong> (раздел 4), <strong>управляющий предприятием</strong> (5–8), <strong>владелец региона WorldGuard</strong> (9), <strong>администратор</strong> (13–14).</p>
 </blockquote>
 
@@ -930,6 +931,11 @@ footer { max-width:980px; margin:50px auto 0; color:var(--muted); font-size:13px
 <h3 id="82-двери">8.2. Двери</h3>
 <p>Дверь номера заперта для посторонних. Занятый номер открывают гость, его доверенные, управляющий отеля и администратор.
 Свободный номер открыт всем, чтобы его можно было осмотреть.</p>
+<h3 id="821-голограмма-над-дверью">8.2.1. Голограмма над дверью</h3>
+<p>Над дверью каждого номера со стороны коридора висит голограмма (когда рядом игрок): <strong>номер</strong> (101), название отеля, <strong>статус</strong> –
+● свободен (цена за сутки, размер), ● занят (имя гостя, до какого срока и сколько осталось), ● ожидает оплаты (отсрочка), ● идёт уборка.
+Обновляется само при аренде, продлении и выезде. Положение определяется по двери: коридор – сторона, где нет интерьера номера.
+Отключить: <code>holograms.doors</code>, дальность: <code>holograms.door-view-distance</code> в <code>config.yml</code>.</p>
 <h3 id="83-деньги">8.3. Деньги</h3>
 <pre><code class="language-text">гость платит за номер
    ├─ у отеля есть управляющий → налог на аренду (bank.rent-tax-percent) в казну,
