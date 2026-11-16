@@ -32,6 +32,11 @@ public final class MainMenu extends Menu {
         set(20, Text.icon(unread > 0 ? Material.BELL : Material.NOTE_BLOCK, "<gold>Журнал предупреждений",
                 "<gray>Непрочитанных: <white>" + unread, "<gray>Аренда, электричество, отказы"),
                 e -> new WarningsMenu(plugin, player, 0).open());
+        if (plugin.jobs().enabled()) {
+            set(18, Text.icon(Material.OAK_SIGN, "<green>Доска объявлений",
+                    "<gray>Вакансий: <white>" + plugin.jobs().board().size(),
+                    "<gray>Найдите работу и зарплату"), e -> new JobBoardMenu(plugin, player, 0).open());
+        }
         set(26, Text.icon(Material.CHEST, "<aqua>Мои заказы",
                 "<gray>Заказов: <white>" + plugin.orders().ofClient(player.getUniqueId()).size(),
                 "<gray>Заберите готовые или отмените ожидающие"), e -> new MyOrdersMenu(plugin, player, 0).open());

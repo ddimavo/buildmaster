@@ -470,6 +470,7 @@ public final class PlotService {
         plot.autoRenew = false;
         plot.warned = false;
         plot.graceUntil = 0;
+        plugin.jobs().closePlot(plot, previous);
         plugin.orders().closeWorkshop(plot, previous);
         plugin.factory().closeWorkshop(plot, previous, release.arrest(), release.reason());
         plot.offers.clear();

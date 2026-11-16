@@ -90,6 +90,7 @@ public final class HotelService {
         plugin.power().touch(hotel);
         double net = plugin.bank().applyRentTax(hotel.id, hotel.owner, amount);
         hotel.account.deposit(net);
+        plugin.jobs().onIncome(hotel, net);
         plugin.plots().save();
         plugin.journal().add(hotel.id, hotel.owner, "система", Journal.Action.HOTEL,
                 reason + ": на счёт отеля " + plugin.economy().format(net)

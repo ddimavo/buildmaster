@@ -64,6 +64,7 @@ public class BuildMasterPlugin extends JavaPlugin {
     private HotelService hotels;
     private RegionAccess regions;
     private PlayerPlotService playerPlots;
+    private ru.buildmaster.service.JobService jobs;
     private ChatPrompt chatPrompt;
     private SelectionListener selection;
 
@@ -104,6 +105,8 @@ public class BuildMasterPlugin extends JavaPlugin {
         hotels = new HotelService(this);
         regions = new WorldGuardRegions(getLogger());
         playerPlots = new PlayerPlotService(this);
+        jobs = new ru.buildmaster.service.JobService(this);
+        jobs.load();
         plots = new PlotManager(this);
         plots.load();
         service = new PlotService(this);
@@ -120,6 +123,8 @@ public class BuildMasterPlugin extends JavaPlugin {
         pm.registerEvents(new ru.buildmaster.listener.HologramListener(this), this);
         pm.registerEvents(new ru.buildmaster.listener.StationListener(this), this);
 
+        new ru.buildmaster.service.ChestShopHook(this).register();
+
         DistrictCommand command = new DistrictCommand(this);
         var district = Objects.requireNonNull(getCommand("district"));
         district.setExecutor(command);
@@ -127,6 +132,7 @@ public class BuildMasterPlugin extends JavaPlugin {
 
         // проверка сроков аренды, автопродление и продолжение незавершённых сбросов зданий
         getServer().getScheduler().runTaskTimer(this, service::tick, 100L, 400L);
+        getServer().getScheduler().runTaskTimer(this, jobs::minuteTick, 1200L, 1200L);
         getServer().getScheduler().runTaskLater(this, () -> {
             stations.rescanAll();
             holograms.updateAll();
@@ -144,6 +150,9 @@ public class BuildMasterPlugin extends JavaPlugin {
         }
         if (orders != null) {
             orders.save();
+        }
+        if (jobs != null) {
+            jobs.save();
         }
         if (holograms != null) {
             holograms.removeAll();
@@ -241,6 +250,10 @@ public class BuildMasterPlugin extends JavaPlugin {
     /** Только для тестов: подмена доступа к WorldGuard. */
     public void setRegions(RegionAccess access) {
         this.regions = access;
+    }
+
+    public ru.buildmaster.service.JobService jobs() {
+        return jobs;
     }
 
     public PlayerPlotService playerPlots() {

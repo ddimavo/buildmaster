@@ -42,7 +42,7 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
 
     private static final List<String> PLAYER_SUBS = List.of("menu", "list", "info", "buy", "rent", "extend",
             "autorenew", "autoreset", "release", "trust", "untrust", "perm", "account", "power", "warnings", "tp", "replace",
-            "zones", "storage", "claim", "journal", "name", "desc", "bank", "service", "factory", "room", "region", "help");
+            "zones", "storage", "claim", "journal", "name", "desc", "bank", "service", "factory", "room", "region", "job", "help");
     private static final List<String> ADMIN_SUBS = List.of("wand", "pos1", "pos2", "create", "delete", "evict",
             "setprice", "setrent", "setspawn", "zone", "resnapshot", "reload", "seize", "reset", "holo", "category",
             "moderation", "arrest");
@@ -118,6 +118,7 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
                 case "factory" -> new FactoryCommands(plugin).handle(sender, rest);
                 case "room" -> new RoomCommands(plugin).handle(sender, rest);
                 case "region" -> new RegionCommands(plugin).handle(sender, rest);
+                case "job" -> new JobCommands(plugin).handle(sender, rest);
                 case "grid" -> new GridCommands(plugin).grid(sender, rest);
                 case "area" -> new GridCommands(plugin).area(sender, rest);
                 case "wand" -> withPlayer(sender, p -> {
@@ -1180,6 +1181,9 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
             return filter(result, args[0]);
         }
         String sub = args[0].toLowerCase(Locale.ROOT);
+        if (sub.equals("job")) {
+            return filter(new JobCommands(plugin).complete(sender, args), args[args.length - 1]);
+        }
         if (sub.equals("region")) {
             return filter(new RegionCommands(plugin).complete(sender, args), args[args.length - 1]);
         }

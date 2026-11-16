@@ -53,7 +53,8 @@ public final class Journal {
         FACTORY("Производство"),
         UPGRADE("Улучшение мастерской"),
         HOTEL("Отель"),
-        PLAYER_PLOT("Участок игрока");
+        PLAYER_PLOT("Участок игрока"),
+        JOB("Работа");
 
         private final String title;
 

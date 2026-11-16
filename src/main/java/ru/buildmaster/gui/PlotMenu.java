@@ -168,6 +168,14 @@ public final class PlotMenu extends Menu {
                     });
         }
 
+        if (plugin.jobs().enabled() && plugin.jobs().categoryAllowed(plot.category)) {
+            set(16, Text.icon(Material.VILLAGER_SPAWN_EGG, "<gold>Работники",
+                    "<gray>Работают: <white>" + plugin.jobs().employeesOf(plot.id).size(),
+                    "<gray>Откликов: <white>" + plugin.jobs().applicationsFor(plot.id).size(),
+                    "<yellow>Вакансии, наём, зарплаты"),
+                    e -> new StaffMenu(plugin, player, plot, back, StaffMenu.Tab.VACANCIES).open());
+        }
+
         set(25, Text.icon(Material.WRITABLE_BOOK, "<aqua>Права",
                 "<gray>Игроков с правами: <white>" + plot.grants.size(),
                 "<gray>Публичный доступ: <white>" + (plot.publicPerms.isEmpty() ? "нет"
