@@ -180,6 +180,17 @@ public final class PlotManager {
                 p.publicPerms.add(perm);
             }
         }
+        p.level = s.getInt("factory.level");
+        ConfigurationSection lines = s.getConfigurationSection("factory.lines");
+        if (lines != null) {
+            for (String lineId : lines.getKeys(false)) {
+                Plot.Line line = new Plot.Line();
+                line.input = lines.getInt(lineId + ".input");
+                line.output = lines.getInt(lineId + ".output");
+                line.progress = lines.getDouble(lineId + ".progress");
+                p.lines.put(lineId, line);
+            }
+        }
         ConfigurationSection offers = s.getConfigurationSection("offers");
         if (offers != null) {
             for (String key : offers.getKeys(false)) {
@@ -255,6 +266,12 @@ public final class PlotManager {
                 yml.set(k + "grants." + e.getKey(), e.getValue().stream().map(Enum::name).toList());
             }
             yml.set(k + "public-perms", p.publicPerms.stream().map(Enum::name).toList());
+            yml.set(k + "factory.level", p.level);
+            for (var l : p.lines.entrySet()) {
+                yml.set(k + "factory.lines." + l.getKey() + ".input", l.getValue().input);
+                yml.set(k + "factory.lines." + l.getKey() + ".output", l.getValue().output);
+                yml.set(k + "factory.lines." + l.getKey() + ".progress", l.getValue().progress);
+            }
             for (var o : p.offers.entrySet()) {
                 yml.set(k + "offers." + o.getKey() + ".enabled", o.getValue().enabled);
                 yml.set(k + "offers." + o.getKey() + ".price", o.getValue().price);

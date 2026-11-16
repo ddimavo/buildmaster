@@ -42,6 +42,9 @@ public final class PlotMenu extends Menu {
         if (plot.category == ru.buildmaster.model.Category.WORKSHOP && !plot.isFree()
                 && !plugin.service().isLocked(plot)) {
             if (owner) {
+                set(13, Text.icon(Material.BLAST_FURNACE, "<gold>Производство и улучшения",
+                        "<gray>Линии, склад сырья, продукция", "<gray>Уровень мастерской: <white>" + plot.level),
+                        e -> new FactoryMenu(plugin, player, plot, back).open());
                 set(14, Text.icon(Material.WRITABLE_BOOK, "<gold>Прайс услуг",
                         "<gray>Включить услуги и назначить цены"),
                         e -> new OffersMenu(plugin, player, plot, back).open());

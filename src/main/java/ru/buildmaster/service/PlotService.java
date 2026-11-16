@@ -372,6 +372,7 @@ public final class PlotService {
         plot.warned = false;
         plot.graceUntil = 0;
         plugin.orders().closeWorkshop(plot, previous);
+        plugin.factory().closeWorkshop(plot, previous, release.arrest(), release.reason());
         plot.offers.clear();
         plugin.power().closeAccount(plot, previous, release.action() == Journal.Action.SEIZED);
         // подключение принадлежит зданию: отключение за нарушения прежнего управляющего не переходит к новому
@@ -680,6 +681,7 @@ public final class PlotService {
         }
         plugin.power().tick();
         plugin.orders().tick();
+        plugin.factory().tick();
         plugin.grid().tick();
         plugin.bank().tick();
         plugin.holograms().updateAll();

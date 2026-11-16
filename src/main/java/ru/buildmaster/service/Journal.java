@@ -49,7 +49,9 @@ public final class Journal {
         SERVICE_ORDER("Заказ в мастерской"),
         SERVICE_DONE("Заказ выдан"),
         SERVICE_REFUND("Возврат по заказу"),
-        SERVICE_PRICE("Прайс услуг");
+        SERVICE_PRICE("Прайс услуг"),
+        FACTORY("Производство"),
+        UPGRADE("Улучшение мастерской");
 
         private final String title;
 

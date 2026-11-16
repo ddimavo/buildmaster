@@ -97,7 +97,8 @@ public final class OrderService {
         if (def.kind() == ServiceCatalog.Kind.SMELT && !order.input.isEmpty()) {
             base = plugin.catalog().baseSeconds(def, ItemStack.deserializeBytes(order.input.get(0)));
         }
-        return OrderProgress.secondsPerUnit(base, stations, timeFactor());
+        double speed = Math.max(0.01, plugin.upgrades().of(plot).speed());
+        return OrderProgress.secondsPerUnit(base, stations, timeFactor()) / speed;
     }
 
     /** Оценка, через сколько секунд заказ будет готов (с учётом очереди); бесконечность - если не движется. */
@@ -221,7 +222,7 @@ public final class OrderService {
         }
         var cfg = plugin.getConfig();
         if (ofPlot(plot.id).stream().filter(o -> o.state != ServiceOrder.State.READY).count()
-                >= cfg.getInt("services.max-active-orders-per-workshop", 20)) {
+                >= cfg.getInt("services.max-active-orders-per-workshop", 20) + plugin.upgrades().of(plot).orderQueue()) {
             return "В мастерской слишком большая очередь, попробуйте позже.";
         }
         if (ofClient(client.getUniqueId()).size() >= cfg.getInt("services.max-orders-per-client", 5)) {
@@ -253,7 +254,7 @@ public final class OrderService {
             return "Не удалось забрать предметы для заказа.";
         }
         if (!plugin.economy().withdraw(client, total)) {
-            giveOrStore(client.getUniqueId(), plot.id, prepared.consume(), "Возврат: не удалось списать оплату заказа");
+            deliver(client.getUniqueId(), plot.id, prepared.consume(), "Возврат: не удалось списать оплату заказа");
             return "Недостаточно средств. Нужно: " + plugin.economy().format(total);
         }
 
@@ -284,7 +285,7 @@ public final class OrderService {
     // ------------------------------------------------------------ выдача, отмена, возврат
 
     /** Возвращает предметы онлайн-игроку, остаток и всё для оффлайн-игрока - в хранилище. */
-    private void giveOrStore(UUID uuid, String plotId, List<ItemStack> items, String reason) {
+    public void deliver(UUID uuid, String plotId, List<ItemStack> items, String reason) {
         if (items.isEmpty()) {
             return;
         }
@@ -343,7 +344,7 @@ public final class OrderService {
         }
         orders.remove(o.id);
         save();
-        giveOrStore(client.getUniqueId(), o.plotId, stacks(o.output), "Готовый заказ " + o.shortId());
+        deliver(client.getUniqueId(), o.plotId, stacks(o.output), "Готовый заказ " + o.shortId());
         Plot workshop = plugin.plots().get(o.plotId);
         payWorkshop(workshop, o, workshop == null ? null : workshop.owner);
         plugin.journal().add(o.plotId, client.getUniqueId(), client.getName(), Journal.Action.SERVICE_DONE,
@@ -370,7 +371,7 @@ public final class OrderService {
     private void refund(ServiceOrder o, String reason, String actor) {
         orders.remove(o.id);
         save();
-        giveOrStore(o.client, o.plotId, stacks(o.input), reason + ": материалы заказа " + o.shortId());
+        deliver(o.client, o.plotId, stacks(o.input), reason + ": материалы заказа " + o.shortId());
         refundMoney(o.client, o.paid);
         plugin.journal().add(o.plotId, o.client, actor, Journal.Action.SERVICE_REFUND,
                 "Заказ " + o.shortId() + ": " + reason + ", возвращено " + plugin.economy().format(o.paid));
@@ -388,7 +389,7 @@ public final class OrderService {
             // материалы уже переработаны: клиенту результат и деньги
             orders.remove(o.id);
             save();
-            giveOrStore(o.client, o.plotId, stacks(o.output), "Отмена администратором: заказ " + o.shortId());
+            deliver(o.client, o.plotId, stacks(o.output), "Отмена администратором: заказ " + o.shortId());
             refundMoney(o.client, o.paid);
             plugin.journal().add(o.plotId, o.client, admin, Journal.Action.SERVICE_REFUND,
                     "Заказ " + o.shortId() + " отменён администратором: " + reason);
@@ -408,7 +409,7 @@ public final class OrderService {
         for (ServiceOrder o : ofPlot(plot.id)) {
             if (o.state == ServiceOrder.State.READY) {
                 orders.remove(o.id);
-                giveOrStore(o.client, o.plotId, stacks(o.output), "Готовый заказ " + o.shortId() + " (мастерская закрыта)");
+                deliver(o.client, o.plotId, stacks(o.output), "Готовый заказ " + o.shortId() + " (мастерская закрыта)");
                 payWorkshop(plot, o, manager);
                 plugin.journal().add(o.plotId, o.client, "система", Journal.Action.SERVICE_DONE,
                         "Заказ " + o.shortId() + " выдан в хранилище: мастерская закрыта");
@@ -462,7 +463,7 @@ public final class OrderService {
         for (ServiceOrder o : ofPlot(plot.id)) {
             if (o.state == ServiceOrder.State.READY && System.currentTimeMillis() - o.readyAt > limit) {
                 orders.remove(o.id);
-                giveOrStore(o.client, o.plotId, stacks(o.output), "Заказ " + o.shortId() + " не забрали вовремя");
+                deliver(o.client, o.plotId, stacks(o.output), "Заказ " + o.shortId() + " не забрали вовремя");
                 payWorkshop(plot, o, plot.owner);
                 plugin.journal().add(o.plotId, o.client, "система", Journal.Action.SERVICE_DONE,
                         "Заказ " + o.shortId() + " не забрали за " + plugin.getConfig().getInt("services.ready-expire-days", 30)

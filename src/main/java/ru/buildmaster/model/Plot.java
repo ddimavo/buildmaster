@@ -15,6 +15,13 @@ public final class Plot {
     /** FULL - здание полностью возвращается к исходному виду; ITEMS_ONLY - только забираются вещи игроков. */
     public enum RestoreMode { FULL, ITEMS_ONLY }
 
+    /** Производственная линия: запас сырья, готовая продукция в буфере и накопленное время партии. */
+    public static final class Line {
+        public int input;
+        public int output;
+        public double progress;
+    }
+
     /** Предложение услуги: управляющий включает его и назначает цену за единицу работы. */
     public static final class Offer {
         public boolean enabled;
@@ -105,6 +112,9 @@ public final class Plot {
     /** Следующее начисление налога на имущество (мс, 0 - не назначено) и неоплаченный налог. */
     public long nextTaxAt;
     public double taxDebt;
+    /** Уровень улучшений мастерской (0 - базовый) и производственные линии. */
+    public int level;
+    public final Map<String, Line> lines = new LinkedHashMap<>();
     /** Услуги мастерской: ключ предложения -> цена и включено ли оно. */
     public final Map<String, Offer> offers = new LinkedHashMap<>();
     /** Индивидуальная скидка на электричество (0-100 %), назначается администратором. */

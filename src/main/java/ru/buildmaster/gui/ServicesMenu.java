@@ -57,6 +57,10 @@ public final class ServicesMenu extends Menu {
         fill(Material.GRAY_STAINED_GLASS_PANE);
     }
 
+    static Material iconFor(Material m) {
+        return m != null && m.isItem() ? m : Material.CRAFTING_TABLE;
+    }
+
     static Material icon(ServiceCatalog.Offer def) {
         return switch (def.kind()) {
             case SMELT -> Material.FURNACE;

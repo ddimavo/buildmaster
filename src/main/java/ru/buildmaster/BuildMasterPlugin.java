@@ -12,7 +12,10 @@ import ru.buildmaster.service.BlockRules;
 import ru.buildmaster.service.BankService;
 import ru.buildmaster.service.BuildService;
 import ru.buildmaster.service.DistrictManager;
+import ru.buildmaster.service.FactoryService;
 import ru.buildmaster.service.GridService;
+import ru.buildmaster.service.ProductionCatalog;
+import ru.buildmaster.service.UpgradeCatalog;
 import ru.buildmaster.service.EconomyHook;
 import ru.buildmaster.service.PlotManager;
 import ru.buildmaster.service.HologramService;
@@ -51,6 +54,9 @@ public class BuildMasterPlugin extends JavaPlugin {
     private DistrictManager districts;
     private ServiceCatalog catalog;
     private OrderService orders;
+    private UpgradeCatalog upgrades;
+    private ProductionCatalog production;
+    private FactoryService factory;
     private ChatPrompt chatPrompt;
     private SelectionListener selection;
 
@@ -85,6 +91,9 @@ public class BuildMasterPlugin extends JavaPlugin {
         catalog = new ServiceCatalog(this);
         orders = new OrderService(this);
         orders.load();
+        upgrades = new UpgradeCatalog(this::getConfig);
+        production = new ProductionCatalog(this::getConfig);
+        factory = new FactoryService(this);
         plots = new PlotManager(this);
         plots.load();
         service = new PlotService(this);
@@ -204,6 +213,18 @@ public class BuildMasterPlugin extends JavaPlugin {
 
     public ServiceCatalog catalog() {
         return catalog;
+    }
+
+    public UpgradeCatalog upgrades() {
+        return upgrades;
+    }
+
+    public ProductionCatalog production() {
+        return production;
+    }
+
+    public FactoryService factory() {
+        return factory;
     }
 
     public OrderService orders() {
