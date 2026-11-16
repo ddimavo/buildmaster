@@ -74,6 +74,7 @@ public class BuildMasterPlugin extends JavaPlugin {
     private ru.buildmaster.service.EnchantService enchants;
     private ru.buildmaster.service.LinkService links;
     private ru.buildmaster.service.ServicesHolograms servicesHolograms;
+    private ru.buildmaster.service.BankHolograms bankHolograms;
     private ru.buildmaster.service.SelectionVisualizer visualizer;
     private ru.buildmaster.service.ManagerPanels managerPanels;
     private ChatPrompt chatPrompt;
@@ -126,6 +127,7 @@ public class BuildMasterPlugin extends JavaPlugin {
         enchants = new ru.buildmaster.service.EnchantService(this);
         links = new ru.buildmaster.service.LinkService(this);
         servicesHolograms = new ru.buildmaster.service.ServicesHolograms(this);
+        bankHolograms = new ru.buildmaster.service.BankHolograms(this);
         visualizer = new ru.buildmaster.service.SelectionVisualizer(this);
         managerPanels = new ru.buildmaster.service.ManagerPanels(this);
         jobs.load();
@@ -172,6 +174,7 @@ public class BuildMasterPlugin extends JavaPlugin {
         getServer().getScheduler().runTaskTimer(this, visualizer::tick, 40L, 10L);
         getServer().getScheduler().runTaskTimer(this, doorHolograms::tick, 100L, 40L);
         getServer().getScheduler().runTaskTimer(this, servicesHolograms::tick, 120L, 40L);
+        getServer().getScheduler().runTaskTimer(this, bankHolograms::tick, 140L, 40L);
         getServer().getScheduler().runTaskLater(this, () -> {
             stations.rescanAll();
             holograms.updateAll();
@@ -204,6 +207,9 @@ public class BuildMasterPlugin extends JavaPlugin {
         }
         if (doorHolograms != null) {
             doorHolograms.removeAll();
+        }
+        if (bankHolograms != null) {
+            bankHolograms.removeAll();
         }
         if (servicesHolograms != null) {
             servicesHolograms.removeAll();
@@ -313,6 +319,10 @@ public class BuildMasterPlugin extends JavaPlugin {
 
     public ru.buildmaster.service.LinkService links() {
         return links;
+    }
+
+    public ru.buildmaster.service.BankHolograms bankHolograms() {
+        return bankHolograms;
     }
 
     public ru.buildmaster.service.ServicesHolograms servicesHolograms() {

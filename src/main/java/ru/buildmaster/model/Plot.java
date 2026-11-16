@@ -142,7 +142,7 @@ public final class Plot {
     public int level;
     /** Какую из голограмм участка двигают: общая, услуги и товары, панель управляющего. */
     public enum HoloKind {
-        MAIN("Общая голограмма"), SERVICES("Голограмма услуг и товаров"), MANAGER("Панель управляющего");
+        MAIN("Общая голограмма"), SERVICES("Голограмма услуг и товаров"), MANAGER("Панель управляющего"), LOG("Голограмма последних операций банка");
 
         private final String title;
 
@@ -162,6 +162,7 @@ public final class Plot {
                 case "main", "общая", "основная" -> MAIN;
                 case "services", "service", "услуги", "товары" -> SERVICES;
                 case "manager", "панель", "управляющий" -> MANAGER;
+                case "log", "операции", "журнал" -> LOG;
                 default -> null;
             };
         }
@@ -170,6 +171,8 @@ public final class Plot {
     /** Положение голограммы услуг и панели управляющего {x, y, z}; null - автоматически рядом с общей. */
     public double[] servicesPos;
     public double[] managerPos;
+    /** Положение голограммы последних операций банка. */
+    public double[] logPos;
     /** Товары на продажу (витрина): материал -> количество, цена за штуку. */
     public final Map<org.bukkit.Material, Integer> goods = new LinkedHashMap<>();
     public final Map<org.bukkit.Material, Double> prices = new LinkedHashMap<>();

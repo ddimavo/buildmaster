@@ -1246,7 +1246,7 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
             return filter(new GoodsCommands(plugin).complete(sub, sender, args), args[args.length - 1]);
         }
         if (sub.equals("hologram") && args.length == 2) {
-            return filter(List.of("main", "services", "manager"), args[1]);
+            return filter(List.of("main", "services", "manager", "log"), args[1]);
         }
         if (sub.equals("enchant")) {
             return filter(new EnchantCommands(plugin).complete(sender, args), args[args.length - 1]);

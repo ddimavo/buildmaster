@@ -349,6 +349,7 @@ public final class PlotService {
         plugin.grid().autoConnect(plot, "система");
         plugin.plots().save();
         plugin.power().recalc(plot);
+        plugin.power().roomChanged(plot);
     }
 
     public boolean extend(Player p, Plot plot, int days) {
@@ -476,6 +477,7 @@ public final class PlotService {
         plugin.factory().closeWorkshop(plot, previous, release.arrest(), release.reason());
         plot.offers.clear();
         plugin.power().closeAccount(plot, previous, release.action() == Journal.Action.SEIZED);
+        plugin.power().roomChanged(plot);
         // подключение принадлежит зданию: отключение за нарушения прежнего управляющего не переходит к новому
         if (plot.plantId == null && plot.lastPlantId != null && plugin.plots().get(plot.lastPlantId) != null) {
             plot.plantId = plot.lastPlantId;

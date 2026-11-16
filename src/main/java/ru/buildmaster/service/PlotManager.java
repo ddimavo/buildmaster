@@ -243,6 +243,10 @@ public final class PlotManager {
             var l = s.getDoubleList("manager-pos");
             p.managerPos = new double[] {l.get(0), l.get(1), l.get(2)};
         }
+        if (s.isList("log-pos") && s.getDoubleList("log-pos").size() == 3) {
+            var l = s.getDoubleList("log-pos");
+            p.logPos = new double[] {l.get(0), l.get(1), l.get(2)};
+        }
         ConfigurationSection goods = s.getConfigurationSection("goods");
         if (goods != null) {
             for (String m : goods.getKeys(false)) {
@@ -392,6 +396,9 @@ public final class PlotManager {
             }
             if (p.servicesPos != null) {
                 yml.set(k + "services-pos", java.util.List.of(p.servicesPos[0], p.servicesPos[1], p.servicesPos[2]));
+            }
+            if (p.logPos != null) {
+                yml.set(k + "log-pos", java.util.List.of(p.logPos[0], p.logPos[1], p.logPos[2]));
             }
             if (p.managerPos != null) {
                 yml.set(k + "manager-pos", java.util.List.of(p.managerPos[0], p.managerPos[1], p.managerPos[2]));

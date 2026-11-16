@@ -222,6 +222,7 @@ public final class ModerationService {
             }
             case SERVICES -> plot.servicesPos = new double[] {at.getX(), at.getY(), at.getZ()};
             case MANAGER -> plot.managerPos = new double[] {at.getX(), at.getY(), at.getZ()};
+            case LOG -> plot.logPos = new double[] {at.getX(), at.getY(), at.getZ()};
         }
         plugin.plots().save();
         plugin.holograms().update(plot);

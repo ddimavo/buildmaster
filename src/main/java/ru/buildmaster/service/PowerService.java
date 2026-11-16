@@ -145,7 +145,45 @@ public final class PowerService {
 
     /** Платит ли участок за электричество: мастерская с управляющим. */
     public boolean isBilled(Plot plot) {
-        return plot.category == Category.WORKSHOP && !plot.isFree();
+        return !plot.isFree() && (plot.category == Category.WORKSHOP || isHotel(plot) && hotelElectricity());
+    }
+
+    /** Отель (здание, не номер). */
+    public static boolean isHotel(Plot plot) {
+        return plot.category == Category.HOTEL && plot.parentId == null;
+    }
+
+    public boolean hotelElectricity() {
+        return plugin.getConfig().getBoolean("hotel-electricity.enabled", true);
+    }
+
+    /** Потребление одного занятого номера, V в сутки: начальное значение + рост от площади пола. */
+    public double roomUnits(Plot room) {
+        double area = (double) room.box.sizeX() * room.box.sizeZ();
+        return plugin.getConfig().getDouble("hotel-electricity.base-units", 10)
+                + plugin.getConfig().getDouble("hotel-electricity.per-area", 0.5) * area;
+    }
+
+    /** Потребление отеля: сумма по занятым номерам. */
+    public double hotelUnits(Plot hotel) {
+        double sum = 0;
+        for (Plot room : plugin.plots().childrenOf(hotel.id)) {
+            if (!room.isFree()) {
+                sum += roomUnits(room);
+            }
+        }
+        return sum;
+    }
+
+    /** Номер заселён или освобождён: тариф отеля пересчитывается. */
+    public void roomChanged(Plot room) {
+        if (room.parentId == null) {
+            return;
+        }
+        Plot hotel = plugin.plots().get(room.parentId);
+        if (hotel != null && isBilled(hotel)) {
+            recalc(hotel);
+        }
     }
 
     /** Суточный тариф для набора станков (по ключам тарифа). */
@@ -155,6 +193,9 @@ public final class PowerService {
 
     /** Потребление участка в V в сутки (по установленным станкам). */
     public double unitsFor(Plot plot) {
+        if (isHotel(plot)) {
+            return isBilled(plot) ? hotelUnits(plot) : 0;
+        }
         return isBilled(plot)
                 ? PowerTariff.dailyUnits(progression(), plugin.stations().tariffCounts(plot), this::coefficient) : 0;
     }
@@ -166,6 +207,14 @@ public final class PowerService {
 
     /** Суточный тариф участка с множителем станции; в режиме USAGE непрерывного расхода нет. */
     public double rateFor(Plot plot) {
+        if (isHotel(plot)) {
+            // у отеля нет станков с операциями: он всегда платит суточный тариф за занятые номера
+            if (!isBilled(plot) || !isOnGrid(plot)) {
+                return 0;
+            }
+            double discount = Math.min(100, Math.max(0, plot.discountPercent));
+            return base() * hotelUnits(plot) * (1 - discount / 100.0) * plugin.grid().multiplier(plot);
+        }
         if (!isBilled(plot) || mode() == Mode.USAGE || !isOnGrid(plot)) {
             return 0;
         }
@@ -218,7 +267,7 @@ public final class PowerService {
         if (!isOnGrid(plot)) {
             return false;
         }
-        if (mode() == Mode.USAGE) {
+        if (mode() == Mode.USAGE && !isHotel(plot)) {
             return plot.account.balanceAt(nowSec()) > 1e-9;
         }
         return plot.account.powered(nowSec());
@@ -482,7 +531,7 @@ public final class PowerService {
                 continue;
             }
             touch(plot);
-            if (mode() == Mode.USAGE) {
+            if (mode() == Mode.USAGE && !isHotel(plot)) {
                 warnUsage(plot);
             } else {
                 warnDaily(plot);

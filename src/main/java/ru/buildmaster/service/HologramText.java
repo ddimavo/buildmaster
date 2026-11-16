@@ -27,6 +27,11 @@ public final class HologramText {
         return lines(plot, money, billingNowSec, usageMode, null);
     }
 
+    private static boolean powerClient(Plot plot) {
+        return plot.category == ru.buildmaster.model.Category.WORKSHOP
+                || plot.category == ru.buildmaster.model.Category.HOTEL && plot.parentId == null;
+    }
+
     /** @param gridOffReason причина, по которой предприятие отключено от электростанции (null - подключено) */
     public static List<String> lines(Plot plot, DoubleFunction<String> money, Long billingNowSec, boolean usageMode,
                                      String gridOffReason) {
@@ -58,13 +63,13 @@ public final class HologramText {
             if (plot.isFrozen()) {
                 lines.add("<red>Платёж просрочен");
             }
-            if (billingNowSec != null && plot.category == ru.buildmaster.model.Category.WORKSHOP && gridOffReason != null) {
+            if (billingNowSec != null && powerClient(plot) && gridOffReason != null) {
                 lines.add("<red>Отключено от электростанции");
-            } else if (billingNowSec != null && plot.category == ru.buildmaster.model.Category.WORKSHOP && usageMode) {
+            } else if (billingNowSec != null && powerClient(plot) && usageMode && plot.category == ru.buildmaster.model.Category.WORKSHOP) {
                 lines.add(plot.account.rawBalance() > 1e-9
                         ? "<yellow>Электричество: <white>оплата по использованию"
                         : "<red>Обесточено: на счёте нет средств");
-            } else if (billingNowSec != null && plot.category == ru.buildmaster.model.Category.WORKSHOP) {
+            } else if (billingNowSec != null && powerClient(plot)) {
                 if (!plot.account.powered(billingNowSec)) {
                     lines.add("<red>Обесточено");
                 } else if (plot.account.ratePerDay() > 0) {

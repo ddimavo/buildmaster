@@ -3,6 +3,7 @@ package ru.buildmaster.service;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
@@ -83,7 +84,11 @@ public final class DoorHolograms {
                     removeOne(key);
                     continue;
                 }
-                show(key, at, String.join("\n", DoorText.lines(room, hotel, plugin.economy()::format, System.currentTimeMillis())));
+                List<String> lines = new java.util.ArrayList<>(DoorText.lines(room, hotel, plugin.economy()::format, System.currentTimeMillis()));
+                if (!room.isFree() && plugin.power().isBilled(hotel) && !plugin.power().isPowered(hotel)) {
+                    lines.add("<red>⚡ Нет электричества");
+                }
+                show(key, at, String.join("\n", lines));
             }
         }
         Iterator<Map.Entry<String, TextDisplay>> it = spawned.entrySet().iterator();

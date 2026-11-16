@@ -55,6 +55,11 @@ public final class GridService {
         return plant != null && plant.category == Category.POWER_PLANT ? plant : null;
     }
 
+    /** Потребители электросети: мастерские и отели (не номера). */
+    public static boolean gridClient(Plot p) {
+        return p.category == Category.WORKSHOP || PowerService.isHotel(p);
+    }
+
     /** Подключено ли предприятие к сети (если сети нет - считается подключённым). */
     public boolean onGrid(Plot plot) {
         return !active() || plantOf(plot) != null;
@@ -64,7 +69,7 @@ public final class GridService {
     public List<Plot> connected(Plot plant) {
         List<Plot> list = new ArrayList<>();
         for (Plot p : plugin.plots().all()) {
-            if (p.plantId != null && p.plantId.equalsIgnoreCase(plant.id) && p.category == Category.WORKSHOP) {
+            if (p.plantId != null && p.plantId.equalsIgnoreCase(plant.id) && gridClient(p)) {
                 list.add(p);
             }
         }
@@ -105,8 +110,8 @@ public final class GridService {
 
     /** Подключает мастерскую к станции (прежнее подключение заменяется). Возвращает ошибку или null. */
     public String connect(Plot plot, Plot plant, String actor) {
-        if (plot.category != Category.WORKSHOP) {
-            return "К электросети подключаются только мастерские.";
+        if (!gridClient(plot)) {
+            return "К электросети подключаются только мастерские и отели.";
         }
         if (plant.category != Category.POWER_PLANT) {
             return "«" + plant.id + "» не электростанция.";
@@ -129,8 +134,8 @@ public final class GridService {
 
     /** Отключает предприятие от станции с причиной; тариф не начисляется, станки не работают. */
     public String disconnect(Plot plot, String reason, String actor) {
-        if (plot.category != Category.WORKSHOP) {
-            return "К электросети подключаются только мастерские.";
+        if (!gridClient(plot)) {
+            return "К электросети подключаются только мастерские и отели.";
         }
         if (plot.plantId == null) {
             return "Предприятие уже отключено.";
@@ -183,7 +188,7 @@ public final class GridService {
 
     /** Подключает мастерскую к наименее загруженной станции, если она ещё не подключена. */
     public boolean autoConnect(Plot plot, String actor) {
-        if (plot.category != Category.WORKSHOP || plot.plantId != null || !active()) {
+        if (!gridClient(plot) || plot.plantId != null || !active()) {
             return false;
         }
         Plot plant = leastLoaded(plot);
@@ -194,7 +199,7 @@ public final class GridService {
     public int autoConnectAll(String actor) {
         int n = 0;
         for (Plot p : new ArrayList<>(plugin.plots().all())) {
-            if (p.category == Category.WORKSHOP && p.plantId == null && autoConnect(p, actor)) {
+            if (gridClient(p) && p.plantId == null && autoConnect(p, actor)) {
                 n++;
             }
         }
@@ -227,7 +232,7 @@ public final class GridService {
         double u7 = 0;
         double m7 = 0;
         for (Plot p : plots) {
-            if (p.category != Category.WORKSHOP) {
+            if (!gridClient(p)) {
                 continue;
             }
             n++;
