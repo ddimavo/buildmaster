@@ -239,20 +239,29 @@ public final class StorageService {
 
     /** Решение администратора по арестованным вещам игрока. Возвращает число затронутых записей. */
     public int decideArrested(UUID owner, StorageEntry.State newState) {
+        return decideArrested(owner, null, newState);
+    }
+
+    /** То же для одной записи (entryId) либо для всех арестованных (entryId == null). */
+    public int decideArrested(UUID owner, UUID entryId, StorageEntry.State newState) {
         List<StorageEntry> list = entries(owner);
         int n = 0;
+        java.util.function.Predicate<StorageEntry> match = e -> e.state == StorageEntry.State.ARRESTED
+                && (entryId == null || e.id.equals(entryId));
         if (newState == null) { // удалить
-            n = (int) list.stream().filter(e -> e.state == StorageEntry.State.ARRESTED).count();
-            list.removeIf(e -> e.state == StorageEntry.State.ARRESTED);
+            n = (int) list.stream().filter(match).count();
+            list.removeIf(match);
         } else {
             for (StorageEntry e : list) {
-                if (e.state == StorageEntry.State.ARRESTED) {
+                if (match.test(e)) {
                     e.state = newState;
                     n++;
                 }
             }
         }
-        save(owner);
+        if (n > 0) {
+            save(owner);
+        }
         return n;
     }
 }

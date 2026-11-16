@@ -66,6 +66,7 @@ public class BuildMasterPlugin extends JavaPlugin {
     private PlayerPlotService playerPlots;
     private ru.buildmaster.service.JobService jobs;
     private ru.buildmaster.auction.TreasuryAuction treasuryAuction;
+    private ru.buildmaster.service.ArrestService arrests;
     private ChatPrompt chatPrompt;
     private SelectionListener selection;
 
@@ -108,6 +109,7 @@ public class BuildMasterPlugin extends JavaPlugin {
         playerPlots = new PlayerPlotService(this);
         jobs = new ru.buildmaster.service.JobService(this);
         treasuryAuction = new ru.buildmaster.auction.TreasuryAuction(this);
+        arrests = new ru.buildmaster.service.ArrestService(this);
         jobs.load();
         plots = new PlotManager(this);
         plots.load();
@@ -262,6 +264,10 @@ public class BuildMasterPlugin extends JavaPlugin {
     /** Только для тестов: подмена доступа к WorldGuard. */
     public void setRegions(RegionAccess access) {
         this.regions = access;
+    }
+
+    public ru.buildmaster.service.ArrestService arrests() {
+        return arrests;
     }
 
     public ru.buildmaster.auction.TreasuryAuction treasuryAuction() {

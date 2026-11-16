@@ -48,6 +48,10 @@ public final class MainMenu extends Menu {
         }
         if (player.hasPermission("buildmaster.admin")) {
             int pending = plugin.moderation().pending().size();
+            int arrested = plugin.arrests().players().size();
+            set(23, Text.icon(Material.IRON_BARS, "<red>Арестованные вещи",
+                    "<gray>Игроков: <white>" + arrested, "<yellow>Вернуть, удалить или на аукцион"),
+                    e -> new ArrestedMenu(plugin, player, 0).open());
             set(22, Text.icon(Material.ANVIL, "<red>Модерация", "<gray>Ожидают проверки: <white>" + pending,
                     "<yellow>Названия и описания участков"),
                     e -> new ModerationMenu(plugin, player, 0).open());

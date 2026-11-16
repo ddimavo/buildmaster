@@ -25,6 +25,7 @@ import ru.buildmaster.model.Station;
 import ru.buildmaster.model.Category;
 import ru.buildmaster.model.Request;
 import ru.buildmaster.model.StorageEntry;
+import ru.buildmaster.service.ArrestService;
 import ru.buildmaster.service.Journal;
 import ru.buildmaster.service.PlotService;
 import ru.buildmaster.service.RentRules;
@@ -1003,6 +1004,10 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
 
     /** arrest list | release|delete|auction <игрок> <причина...> */
     private void arrest(CommandSender sender, String[] args) {
+        if (args.length == 0 && sender instanceof Player p) {
+            new ru.buildmaster.gui.ArrestedMenu(plugin, p, 0).open();
+            return;
+        }
         if (args.length >= 1 && args[0].equalsIgnoreCase("list")) {
             List<UUID> players = plugin.storage().playersWithState(StorageEntry.State.ARRESTED);
             if (players.isEmpty()) {
@@ -1022,32 +1027,18 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
             throw new CommandError("Игрок «" + args[1] + "» не найден.");
         }
         String reason = String.join(" ", Arrays.copyOfRange(args, 2, args.length));
-        Journal.Action action;
-        int n;
-        switch (args[0].toLowerCase(Locale.ROOT)) {
-            case "release" -> {
-                n = plugin.storage().decideArrested(target.getUniqueId(), StorageEntry.State.AVAILABLE);
-                action = Journal.Action.STORAGE_RELEASED;
-            }
-            case "delete" -> {
-                n = plugin.storage().decideArrested(target.getUniqueId(), null);
-                action = Journal.Action.STORAGE_DELETED;
-            }
-            case "auction" -> {
-                n = plugin.storage().decideArrested(target.getUniqueId(), StorageEntry.State.AUCTION);
-                action = Journal.Action.STORAGE_AUCTION;
-            }
+        ArrestService.Decision decision = switch (args[0].toLowerCase(Locale.ROOT)) {
+            case "release" -> ArrestService.Decision.RELEASE;
+            case "delete" -> ArrestService.Decision.DELETE;
+            case "auction" -> ArrestService.Decision.AUCTION;
             default -> throw new CommandError("Действие: release, delete или auction.");
+        };
+        int before = plugin.arrests().count(target.getUniqueId());
+        String error = plugin.arrests().decide(sender.getName(), target.getUniqueId(), null, decision, reason);
+        if (error != null) {
+            throw new CommandError(before == 0 ? "У игрока нет арестованных вещей." : error);
         }
-        if (n == 0) {
-            throw new CommandError("У игрока нет арестованных вещей.");
-        }
-        plugin.journal().add("-", target.getUniqueId(), sender.getName(), action, reason);
-        Player online = target.getPlayer();
-        if (online != null) {
-            Text.send(online, "<yellow>" + action.title() + ". Причина: " + Text.esc(reason));
-        }
-        Text.ok(sender, action.title() + ": записей " + n + ".");
+        Text.ok(sender, decision.action().title() + ": вещей " + before + ".");
     }
 
     /** treasury | treasury pay <игрок> <сумма> <причина...> */

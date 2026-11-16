@@ -31,15 +31,27 @@ public final class ChatPrompt implements Listener {
         Text.send(player, "<yellow>" + hint + " <gray>(напишите <white>отмена</white>, чтобы вернуться)");
     }
 
+    /** Игрок ждёт ввода. */
+    public boolean isWaiting(Player player) {
+        return waiting.containsKey(player.getUniqueId());
+    }
+
+    /** Передаёт текст ожидающему вводу (для чата и тестов). false - игрок ничего не вводил. */
+    public boolean deliver(Player player, String text) {
+        Consumer<String> callback = waiting.remove(player.getUniqueId());
+        if (callback == null) {
+            return false;
+        }
+        Bukkit.getScheduler().runTask(plugin, () -> callback.accept(text.trim()));
+        return true;
+    }
+
     @EventHandler(priority = EventPriority.LOWEST)
     public void onChat(AsyncChatEvent event) {
-        Consumer<String> callback = waiting.remove(event.getPlayer().getUniqueId());
-        if (callback == null) {
-            return;
-        }
-        event.setCancelled(true);
         String text = PlainTextComponentSerializer.plainText().serialize(event.message()).trim();
-        Bukkit.getScheduler().runTask(plugin, () -> callback.accept(text));
+        if (deliver(event.getPlayer(), text)) {
+            event.setCancelled(true);
+        }
     }
 
     @EventHandler
