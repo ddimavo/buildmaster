@@ -1,0 +1,1785 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BuildMaster - руководство</title>
+<style>
+:root {
+  --bg:#f6f7fb; --panel:#ffffff; --text:#1d2433; --muted:#667085; --line:#e4e7ec;
+  --accent:#2f6fed; --accent2:#12b76a; --warn:#f79009; --code:#0f172a; --codetext:#e2e8f0;
+  --side:#111827; --sidetext:#cbd5e1; --shadow:0 1px 3px rgba(16,24,40,.08),0 8px 24px rgba(16,24,40,.06);
+}
+:root[data-theme=dark] {
+  --bg:#0b1020; --panel:#121a2e; --text:#e5e9f2; --muted:#98a2b3; --line:#243049;
+  --accent:#6ea0ff; --accent2:#32d583; --warn:#fdb022; --code:#070b16; --codetext:#dbe4f5;
+  --side:#0a0f1d; --sidetext:#9fb0cc; --shadow:0 1px 3px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+}
+* { box-sizing:border-box; }
+html { scroll-behavior:smooth; scroll-padding-top:20px; }
+body { margin:0; font:16px/1.65 -apple-system,"Segoe UI",Roboto,"Noto Sans",Arial,sans-serif; background:var(--bg); color:var(--text); }
+.layout { display:flex; min-height:100vh; }
+aside { position:sticky; top:0; align-self:flex-start; height:100vh; width:320px; flex:none; background:var(--side); color:var(--sidetext);
+        overflow-y:auto; padding:22px 14px 30px; }
+aside .brand { display:flex; gap:12px; align-items:center; color:#fff; padding:0 8px 14px; }
+aside .logo { width:42px; height:42px; border-radius:12px; display:grid; place-items:center; font-size:22px;
+              background:linear-gradient(135deg,#2f6fed,#12b76a); }
+aside .brand b { display:block; font-size:18px; }
+aside .brand small { color:#8ea0bf; }
+#search { width:100%; padding:10px 12px; border-radius:10px; border:1px solid #243049; background:#0d1424; color:#fff; margin:6px 0 12px; font-size:14px; }
+#search::placeholder { color:#6b7c99; }
+aside nav a { display:block; color:var(--sidetext); text-decoration:none; padding:6px 10px; border-radius:8px; font-size:14px; line-height:1.35; }
+aside nav a.l2 { margin-top:8px; font-weight:600; color:#e8eefb; }
+aside nav a.l3 { padding-left:26px; font-size:13px; }
+aside nav a:hover, aside nav a.active { background:rgba(110,160,255,.16); color:#fff; }
+aside nav a.hide { display:none; }
+main { flex:1; min-width:0; padding:0 28px 80px; }
+.hero { margin:28px auto 8px; max-width:980px; border-radius:20px; padding:34px 36px; color:#fff; box-shadow:var(--shadow);
+        background:radial-gradient(1200px 400px at 90% -20%,#3b82f6 0,transparent 60%),linear-gradient(135deg,#0f172a,#1e3a8a 55%,#0f766e); }
+.hero h1 { margin:0 0 8px; font-size:34px; letter-spacing:-.5px; }
+.hero p { margin:0; color:#d6e2ff; max-width:760px; }
+.chips { display:flex; flex-wrap:wrap; gap:8px; margin-top:16px; }
+.chips span { background:rgba(255,255,255,.14); padding:5px 12px; border-radius:999px; font-size:13px; }
+.content { max-width:980px; margin:0 auto; }
+.content > h2 { margin:56px 0 14px; font-size:27px; display:flex; align-items:center; gap:12px; padding-top:12px; border-top:1px solid var(--line); }
+.num { display:inline-grid; place-items:center; min-width:38px; height:38px; padding:0 8px; border-radius:11px; background:var(--accent); color:#fff; font-size:17px; }
+h3 { margin:30px 0 8px; font-size:20px; }
+h4 { margin:22px 0 6px; font-size:16px; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; }
+p, li { max-width:860px; }
+a { color:var(--accent); }
+code { font-family:ui-monospace,"JetBrains Mono",Consolas,monospace; font-size:.9em; background:rgba(47,111,237,.1); color:var(--accent);
+       padding:2px 6px; border-radius:6px; }
+pre { position:relative; background:var(--code); color:var(--codetext); padding:16px 18px; border-radius:14px; overflow:auto; box-shadow:var(--shadow); }
+pre code { background:none; color:inherit; padding:0; font-size:13.5px; line-height:1.6; }
+.copy { position:absolute; top:8px; right:8px; border:0; background:rgba(255,255,255,.12); color:#cbd5e1; padding:4px 10px; border-radius:8px;
+        cursor:pointer; font-size:12px; }
+.copy:hover { background:rgba(255,255,255,.25); }
+.table-wrap { overflow-x:auto; margin:14px 0 18px; border:1px solid var(--line); border-radius:14px; background:var(--panel); box-shadow:var(--shadow); }
+table { border-collapse:collapse; width:100%; font-size:14.5px; }
+th { background:rgba(47,111,237,.08); text-align:left; font-weight:600; }
+th, td { padding:9px 14px; border-bottom:1px solid var(--line); vertical-align:top; }
+tr:last-child td { border-bottom:0; }
+tbody tr:hover { background:rgba(47,111,237,.04); }
+blockquote.callout { margin:16px 0; padding:12px 18px; border-left:4px solid var(--accent2); background:rgba(18,183,106,.09); border-radius:0 12px 12px 0; }
+blockquote.callout p { margin:6px 0; }
+hr { border:0; border-top:1px solid var(--line); margin:34px 0; }
+ul, ol { padding-left:24px; }
+li { margin:4px 0; }
+.topbar { display:none; }
+.tools { position:fixed; right:18px; bottom:18px; display:flex; flex-direction:column; gap:8px; z-index:5; }
+.tools button { width:44px; height:44px; border-radius:50%; border:0; background:var(--accent); color:#fff; font-size:18px; cursor:pointer; box-shadow:var(--shadow); }
+footer { max-width:980px; margin:50px auto 0; color:var(--muted); font-size:13px; text-align:center; }
+@media (max-width:980px) {
+  aside { position:fixed; z-index:10; left:-340px; transition:left .2s; }
+  aside.open { left:0; }
+  .topbar { display:flex; position:sticky; top:0; z-index:4; align-items:center; gap:12px; padding:10px 14px; background:var(--panel); border-bottom:1px solid var(--line); }
+  .topbar button { border:1px solid var(--line); background:var(--bg); color:var(--text); border-radius:8px; padding:6px 12px; font-size:15px; }
+  main { padding:0 14px 80px; }
+  .hero { padding:24px 20px; } .hero h1 { font-size:26px; }
+}
+@media print {
+  aside, .tools, .topbar, .copy { display:none !important; }
+  body { background:#fff; color:#000; font-size:12px; }
+  main { padding:0; } .hero { color:#000; background:none; box-shadow:none; padding:0; } .hero p, .chips span { color:#000; }
+  .table-wrap, pre { box-shadow:none; } pre { background:#f3f4f6; color:#111; }
+}
+</style>
+</head>
+<body data-version="1.12.0.">
+<div class="topbar"><button id="menu">☰ Разделы</button><b>BuildMaster</b></div>
+<div class="layout">
+<aside id="side">
+  <div class="brand"><div class="logo">🏙️</div><div><b>BuildMaster</b><small>Руководство 1.12.0.</small></div></div>
+  <input id="search" type="search" placeholder="Поиск по разделам…" autocomplete="off">
+  <nav id="nav">
+<a class="l2" href="#1-что-такое-buildmaster">1. Что такое BuildMaster</a>
+<a class="l2" href="#2-установка-и-быстрый-старт">2. Установка и быстрый старт</a>
+<a class="l3" href="#требования">Требования</a>
+<a class="l3" href="#установка">Установка</a>
+<a class="l3" href="#первый-участок-за-пять-минут-администратор">Первый участок за пять минут (администратор)</a>
+<a class="l2" href="#3-основные-понятия">3. Основные понятия</a>
+<a class="l3" href="#участок">Участок</a>
+<a class="l3" href="#типы-участков">Типы участков</a>
+<a class="l3" href="#статусы">Статусы</a>
+<a class="l3" href="#роли">Роли</a>
+<a class="l3" href="#деньги">Деньги</a>
+<a class="l3" href="#журналы">Журналы</a>
+<a class="l2" href="#4-руководство-игрока">4. Руководство игрока</a>
+<a class="l3" href="#41-главное-меню">4.1. Главное меню</a>
+<a class="l3" href="#42-покупка-и-аренда">4.2. Покупка и аренда</a>
+<a class="l3" href="#43-правила-аренды">4.3. Правила аренды</a>
+<a class="l3" href="#44-отказ-от-участка">4.4. Отказ от участка</a>
+<a class="l3" href="#45-изменение-здания">4.5. Изменение здания</a>
+<a class="l3" href="#46-названия-и-описания">4.6. Названия и описания</a>
+<a class="l3" href="#47-позиция-голограммы">4.7. Позиция голограммы</a>
+<a class="l3" href="#48-права-на-участке">4.8. Права на участке</a>
+<a class="l3" href="#49-счёт-предприятия">4.9. Счёт предприятия</a>
+<a class="l3" href="#410-хранилище">4.10. Хранилище</a>
+<a class="l3" href="#411-телепорт">4.11. Телепорт</a>
+<a class="l3" href="#412-защита-участков">4.12. Защита участков</a>
+<a class="l2" href="#5-мастерские-магазины-рестораны-склады">5. Мастерские, магазины, рестораны, склады</a>
+<a class="l3" href="#51-что-где-можно-ставить">5.1. Что где можно ставить</a>
+<a class="l3" href="#52-станки-и-электричество">5.2. Станки и электричество</a>
+<a class="l3" href="#53-магазины-и-chestshop">5.3. Магазины и ChestShop</a>
+<a class="l2" href="#6-электричество-и-производство">6. Электричество и производство</a>
+<a class="l3" href="#61-тариф">6.1. Тариф</a>
+<a class="l3" href="#62-что-происходит-при-нуле">6.2. Что происходит при нуле</a>
+<a class="l3" href="#63-команды-управляющего">6.3. Команды управляющего</a>
+<a class="l3" href="#64-производственные-линии">6.4. Производственные линии</a>
+<a class="l3" href="#65-улучшения">6.5. Улучшения</a>
+<a class="l2" href="#7-услуги-мастерских-заказы">7. Услуги мастерских (заказы)</a>
+<a class="l3" href="#71-для-клиента">7.1. Для клиента</a>
+<a class="l3" href="#72-для-управляющего-мастерской">7.2. Для управляющего мастерской</a>
+<a class="l3" href="#73-услуги-по-умолчанию">7.3. Услуги по умолчанию</a>
+<a class="l2" href="#8-отели">8. Отели</a>
+<a class="l3" href="#81-как-это-устроено">8.1. Как это устроено</a>
+<a class="l3" href="#82-двери">8.2. Двери</a>
+<a class="l3" href="#83-деньги">8.3. Деньги</a>
+<a class="l3" href="#84-создание-номеров-администратор">8.4. Создание номеров (администратор)</a>
+<a class="l3" href="#85-выезд-и-гости">8.5. Выезд и гости</a>
+<a class="l2" href="#9-участки-игроков-на-worldguard">9. Участки игроков на WorldGuard</a>
+<a class="l3" href="#91-порядок">9.1. Порядок</a>
+<a class="l3" href="#92-что-происходит-с-регионом">9.2. Что происходит с регионом</a>
+<a class="l3" href="#93-предел-цены-аренды">9.3. Предел цены аренды</a>
+<a class="l3" href="#94-деньги">9.4. Деньги</a>
+<a class="l3" href="#95-защита-вещей-арендодателя">9.5. Защита вещей арендодателя</a>
+<a class="l2" href="#10-работники-и-зарплаты">10. Работники и зарплаты</a>
+<a class="l3" href="#101-как-это-работает">10.1. Как это работает</a>
+<a class="l3" href="#102-должности-и-доступ">10.2. Должности и доступ</a>
+<a class="l3" href="#103-зарплата">10.3. Зарплата</a>
+<a class="l3" href="#104-команды">10.4. Команды</a>
+<a class="l3" href="#105-лимиты">10.5. Лимиты</a>
+<a class="l2" href="#11-банк-налоги-и-электросеть">11. Банк, налоги и электросеть</a>
+<a class="l3" href="#111-банк">11.1. Банк</a>
+<a class="l3" href="#112-электросеть">11.2. Электросеть</a>
+<a class="l2" href="#12-хранилище-арест-вещей-и-общий-аукцион">12. Хранилище, арест вещей и общий аукцион</a>
+<a class="l3" href="#121-хранилище-и-книга-учёта">12.1. Хранилище и книга учёта</a>
+<a class="l3" href="#122-арест-вещей">12.2. Арест вещей</a>
+<a class="l3" href="#123-общий-аукцион-zauctionhouse">12.3. Общий аукцион (zAuctionHouse)</a>
+<a class="l2" href="#13-руководство-администратора">13. Руководство администратора</a>
+<a class="l3" href="#131-создание-участка">13.1. Создание участка</a>
+<a class="l3" href="#132-модерация">13.2. Модерация</a>
+<a class="l3" href="#133-решения-по-участкам">13.3. Решения по участкам</a>
+<a class="l3" href="#134-казна">13.4. Казна</a>
+<a class="l3" href="#135-электричество-и-тарифы">13.5. Электричество и тарифы</a>
+<a class="l3" href="#136-что-делать-если">13.6. Что делать, если</a>
+<a class="l3" href="#137-перезагрузка">13.7. Перезагрузка</a>
+<a class="l2" href="#14-справочник-команд">14. Справочник команд</a>
+<a class="l3" href="#141-игроки">14.1. Игроки</a>
+<a class="l3" href="#142-администраторы-buildmasteradmin">14.2. Администраторы (buildmaster.admin)</a>
+<a class="l2" href="#15-права-доступа">15. Права доступа</a>
+<a class="l2" href="#16-настройка-configyml">16. Настройка (config.yml)</a>
+<a class="l2" href="#17-файлы-данных-и-резервные-копии">17. Файлы данных и резервные копии</a>
+<a class="l2" href="#18-интеграции-с-другими-плагинами">18. Интеграции с другими плагинами</a>
+<a class="l2" href="#19-частые-вопросы-и-устранение-проблем">19. Частые вопросы и устранение проблем</a>
+<a class="l2" href="#20-ограничения-и-что-проверить-на-сервере">20. Ограничения и что проверить на сервере</a>
+<a class="l2" href="#21-сборка-тесты-и-релизы">21. Сборка, тесты и релизы</a>
+  </nav>
+</aside>
+<main>
+  <div class="hero">
+    <h1>BuildMaster</h1>
+    <p>Район коммерции для Minecraft: участки, аренда, мастерские и электричество, отели, работники и зарплаты, банк, общий аукцион и участки игроков на WorldGuard.</p>
+    <div class="chips"><span>Paper 1.21.6 – 26.x</span><span>Java 21</span><span>Vault</span><span>WorldGuard · ChestShop · zAuctionHouse (по желанию)</span><span>Руководство 1.12.0.</span></div>
+  </div>
+  <div class="content">
+
+<blockquote class="callout">
+<p>Версия руководства: 1.12.0. Плагин: Paper 1.21.6 – 26.x, Java 21+. Все команды начинаются с <code>/district</code> (псевдонимы <code>/dt</code>, <code>/uchastok</code>).
+Если вы только начинаете, прочитайте разделы 1–3 и сразу переходите к нужной роли: <strong>игрок</strong> (раздел 4), <strong>управляющий предприятием</strong> (5–8), <strong>владелец региона WorldGuard</strong> (9), <strong>администратор</strong> (13–14).</p>
+</blockquote>
+
+<hr />
+<h2 id="1-что-такое-buildmaster"><span class="num">1</span>Что такое BuildMaster</h2>
+<p>BuildMaster делит «район коммерции» на <strong>участки</strong> со зданиями. Администрация строит здания (магазины, мастерские, рестораны,
+склады, отели, банк, электростанции), игроки <strong>покупают или арендуют</strong> их, меняют внутреннее устройство, торгуют, нанимают
+работников, платят налоги и электричество. Игроки с собственным регионом WorldGuard могут сами продавать и сдавать его.</p>
+<p>Главные идеи:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Идея</th>
+<th>Как это выглядит в игре</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Главный владелец – администрация</strong></td>
+<td>Игрок становится <em>управляющим</em>. Админ вправе выселить, изъять или сбросить здание в любой момент, но всегда с причиной, которая попадает в журнал игрока.</td>
+</tr>
+<tr>
+<td><strong>Ничего не пропадает</strong></td>
+<td>Вещи уходят в <strong>хранилище</strong> тому, кто их поставил (60 суток), а не исчезают при сбросе здания.</td>
+</tr>
+<tr>
+<td><strong>Нет дюпа</strong></td>
+<td>Исходные блоки здания при поломке ничего не дают (они вернутся при сбросе), блоки игроков запоминаются в «книге учёта».</td>
+</tr>
+<tr>
+<td><strong>Деньги не появляются из воздуха</strong></td>
+<td>Платежи идут в казну или на счёт предприятия; производство – переработка сырья, а не создание из ничего.</td>
+</tr>
+<tr>
+<td><strong>Всё, что вводит игрок, проверяется</strong></td>
+<td>Названия, описания, позиции голограмм и участки игроков публикуются только после одобрения администратором.</td>
+</tr>
+</tbody>
+</table></div>
+<hr />
+<h2 id="2-установка-и-быстрый-старт"><span class="num">2</span>Установка и быстрый старт</h2>
+<h3 id="требования">Требования</h3>
+<ul>
+<li>Сервер <strong>Paper 1.21.6 – 26.x</strong>, <strong>Java 21</strong>.</li>
+<li><strong>Vault</strong> и любой экономический плагин (например, EssentialsX) – обязательны.</li>
+<li>По желанию: <strong>WorldGuard</strong> (участки игроков), <strong>ChestShop</strong> (процент работникам магазина), <strong>zAuctionHouse</strong> (общий аукцион).</li>
+</ul>
+<h3 id="установка">Установка</h3>
+<ol>
+<li>Скачайте <code>BuildMaster-&lt;версия&gt;.jar</code> из раздела <strong>Releases</strong> репозитория и положите в папку <code>plugins/</code>.</li>
+<li>Перезапустите сервер. Появятся <code>plugins/BuildMaster/config.yml</code> и файлы данных.</li>
+<li>Проверьте экономику: в консоли должно быть сообщение о загруженном плагине без ошибок Vault.</li>
+</ol>
+<h3 id="первый-участок-за-пять-минут-администратор">Первый участок за пять минут (администратор)</h3>
+<pre><code class="language-text">/district wand                       # выдаст топор выделения
+ЛКМ – точка 1, ПКМ – точка 2         # выделите здание целиком
+/district create shop1 shop 5000 200 # участок «shop1», тип «магазин», цена 5000, аренда 200 в сутки
+</code></pre>
+<ul>
+<li>Позиция, где вы стоите в момент создания, становится центром <strong>голограммы</strong> участка.</li>
+<li>Плагин снимает «снимок» здания (по чанкам, постепенно): к нему здание вернётся при сбросе.</li>
+<li>Откройте <code>/district</code> – участок появится в списке «Свободные участки». Игрок нажимает на него и покупает или арендует.</li>
+</ul>
+<blockquote class="callout">
+<p>Совет: цену или аренду можно отключить, поставив <code>-</code> вместо числа (например, номера отелей только арендуются).</p>
+</blockquote>
+<hr />
+<h2 id="3-основные-понятия"><span class="num">3</span>Основные понятия</h2>
+<h3 id="участок">Участок</h3>
+<p>Прямоугольная область с номером (идентификатором), типом, ценой и арендой. Участки могут быть <strong>вложенными</strong>: номер отеля – участок
+внутри отеля. На любой точке действует <strong>самый внутренний</strong> участок.</p>
+<h3 id="типы-участков">Типы участков</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Тип</th>
+<th>Ключ</th>
+<th>Кто создаёт</th>
+<th>Покупка / аренда</th>
+<th>Особенности</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Дом</td>
+<td><code>house</code></td>
+<td>админ или игрок (WorldGuard)</td>
+<td>да</td>
+<td>станки без ограничений и бесплатно</td>
+</tr>
+<tr>
+<td>Магазин</td>
+<td><code>shop</code></td>
+<td>админ</td>
+<td>да</td>
+<td>по одному верстаку, печи, наковальне; работники; ChestShop</td>
+</tr>
+<tr>
+<td>Мастерская</td>
+<td><code>workshop</code></td>
+<td>админ</td>
+<td>да</td>
+<td>платное электричество, услуги, производство</td>
+</tr>
+<tr>
+<td>Ресторан</td>
+<td><code>restaurant</code></td>
+<td>админ</td>
+<td>да</td>
+<td>верстак 1, печей до 3, работники</td>
+</tr>
+<tr>
+<td>Склад</td>
+<td><code>warehouse</code></td>
+<td>админ или игрок</td>
+<td>да</td>
+<td>верстак 1, контейнеры без ограничений</td>
+</tr>
+<tr>
+<td>Отель</td>
+<td><code>hotel</code></td>
+<td>админ или игрок</td>
+<td>да</td>
+<td>делится на номера, доход от аренды номеров</td>
+</tr>
+<tr>
+<td>Номер</td>
+<td><code>room</code></td>
+<td>админ</td>
+<td>только аренда</td>
+<td>вложен в отель, всегда сбрасывается при выезде</td>
+</tr>
+<tr>
+<td>Банк</td>
+<td><code>bank</code></td>
+<td>админ</td>
+<td>нет</td>
+<td>административное здание: счета, налоги, комиссии</td>
+</tr>
+<tr>
+<td>Электростанция</td>
+<td><code>power_plant</code></td>
+<td>админ</td>
+<td>нет</td>
+<td>административное здание: мощность и подключение мастерских</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="статусы">Статусы</h3>
+<ul>
+<li><strong>Свободен</strong> – можно купить или арендовать.</li>
+<li><strong>Куплен</strong> – управляющий владеет участком без срока, но налог на имущество платит.</li>
+<li><strong>Арендован</strong> – действует до даты; продлевается вручную или автоматически.</li>
+<li><strong>Заморожен</strong> – аренда не продлена и не оплачена: идёт отсрочка (3 суток по умолчанию). Строить и менять нельзя, торговля табличками работает.</li>
+<li><strong>Обрабатывается</strong> – идёт сброс здания: на короткое время участок недоступен.</li>
+</ul>
+<h3 id="роли">Роли</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Роль</th>
+<th>Что может</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Игрок</strong></td>
+<td>смотреть список, покупать/арендовать, откликаться на вакансии, пользоваться услугами</td>
+</tr>
+<tr>
+<td><strong>Управляющий</strong></td>
+<td>всё в своём участке: права другим, названия, счёт, работники, услуги, производство</td>
+</tr>
+<tr>
+<td><strong>Доверенный / работник</strong></td>
+<td>действия по выданным правам: строительство, контейнеры, станки</td>
+</tr>
+<tr>
+<td><strong>Арендодатель</strong> (участки игроков)</td>
+<td>владелец региона WorldGuard, сдающий его</td>
+</tr>
+<tr>
+<td><strong>Администратор</strong></td>
+<td><code>buildmaster.admin</code>: создание участков, модерация, выселение, казна, настройки</td>
+</tr>
+<tr>
+<td><strong>Сотрудник банка / сети</strong></td>
+<td><code>buildmaster.bank</code> / <code>buildmaster.grid</code>: счета и электросеть</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="деньги">Деньги</h3>
+<ul>
+<li><strong>Казна</strong> – общий счёт сервера: платежи за участки, налоги, комиссии, электричество, штрафы, выручка аукциона. Казна не создаёт деньги:
+  всё, что в неё приходит, взято у игроков.</li>
+<li><strong>Счёт предприятия</strong> – у каждого предприятия свой счёт управляющего (<code>/district account</code>). С него списывается электричество, платятся налоги,
+  зарплаты и установка производственных линий.</li>
+</ul>
+<h3 id="журналы">Журналы</h3>
+<ul>
+<li><strong>Журнал</strong> (<code>/district journal</code>) – история ваших участков, решения администрации и их причины.</li>
+<li><strong>Журнал предупреждений</strong> (<code>/district warnings</code>) – личные уведомления: аренда заканчивается, электричество на исходе, отклики и др.</li>
+</ul>
+<hr />
+<h2 id="4-руководство-игрока"><span class="num">4</span>Руководство игрока</h2>
+<h3 id="41-главное-меню">4.1. Главное меню</h3>
+<p><code>/district</code> открывает меню. Его кнопки:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Кнопка</th>
+<th>Что делает</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Свободные участки</td>
+<td>список с фильтрами по типу, сортировкой и поиском по названию</td>
+</tr>
+<tr>
+<td>Мои участки</td>
+<td>управление всем, чем вы владеете или что арендуете</td>
+</tr>
+<tr>
+<td>Хранилище</td>
+<td>вещи, возвращённые с участков</td>
+</tr>
+<tr>
+<td>Журнал</td>
+<td>история и решения администрации</td>
+</tr>
+<tr>
+<td>Журнал предупреждений</td>
+<td>личные уведомления (с числом непрочитанных)</td>
+</tr>
+<tr>
+<td>Доска объявлений</td>
+<td>вакансии предприятий</td>
+</tr>
+<tr>
+<td>Мои заказы</td>
+<td>заказы услуг в мастерских</td>
+</tr>
+<tr>
+<td>Банк</td>
+<td>счета и условия</td>
+</tr>
+<tr>
+<td>Электросеть, Модерация, Арестованные вещи</td>
+<td>только для сотрудников и администраторов</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="42-покупка-и-аренда">4.2. Покупка и аренда</h3>
+<ul>
+<li><strong>Купить:</strong> меню участка → «Купить» или <code>/district buy [номер]</code>.</li>
+<li><strong>Арендовать:</strong> меню → кнопки на 1, 7, 14 суток или <code>/district rent &lt;дней&gt; [номер]</code>.</li>
+<li><strong>Лимиты владения:</strong> по умолчанию не более 6 участков всего (дом 2, магазин 2, мастерская 1, ресторан 1, склад 1, отель 1, номер 1).
+  При превышении плагин объяснит причину. Лимиты задаются в <code>config.yml</code> → <code>limits</code>.</li>
+</ul>
+<h3 id="43-правила-аренды">4.3. Правила аренды</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Правило</th>
+<th>Значение</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Максимальный срок</td>
+<td><strong>14 суток</strong> вместе с продлениями (остаток + продление не больше 14)</td>
+</tr>
+<tr>
+<td>Цена</td>
+<td>за сутки; продление стоит столько же</td>
+</tr>
+<tr>
+<td>Продление</td>
+<td>кнопки в меню или <code>/district extend &lt;дней&gt; [номер]</code></td>
+</tr>
+<tr>
+<td>Автопродление</td>
+<td><code>/district autorenew on|off [номер]</code>: продлевается на 7 суток (настраивается)</td>
+</tr>
+<tr>
+<td>Не хватило денег</td>
+<td><strong>отсрочка 3 суток</strong>: участок заморожен (строить нельзя, торговля работает). Потом участок отбирается</td>
+</tr>
+<tr>
+<td>Предупреждение</td>
+<td>за сутки до окончания придёт сообщение в чат и в журнал предупреждений</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="44-отказ-от-участка">4.4. Отказ от участка</h3>
+<p><code>/district release [номер] confirm</code> или кнопка «Отказаться» в меню. Ваши вещи вернутся в хранилище. Если включён
+<strong>сброс здания при отказе</strong> (<code>/district autoreset on|off</code>), здание вернётся к исходному виду. Администрация вправе сбросить здание в любой момент.</p>
+<h3 id="45-изменение-здания">4.5. Изменение здания</h3>
+<ul>
+<li><strong>Меню «Изменить здание»</strong> или <code>/district replace &lt;зона|все&gt; &lt;из&gt; &lt;в&gt;</code>, например <code>/district replace фасад oak_planks bricks</code>.</li>
+<li><strong>Зоны</strong> (<code>/district zones</code>) – части здания (фасад, крыша), которые заранее задал администратор.</li>
+<li>Запрещены блоки из списка <code>replace-banned</code> (TNT, лава, вода, огонь, командные блоки, бедрок и др.) и все станки: станки ставятся только руками.</li>
+<li>Нельзя менять участки игроков (здание принадлежит арендодателю) и стены/двери номеров отелей.</li>
+</ul>
+<h3 id="46-названия-и-описания">4.6. Названия и описания</h3>
+<p><code>/district name [номер] &lt;текст&gt;</code> и <code>/district desc [номер] &lt;текст&gt;</code> или кнопки в меню. Текст проверяется (длина, запрещённые символы)
+и уходит администратору. Решение придёт в чат; если вы были не в сети – при входе. При отказе вы увидите причину.</p>
+<h3 id="47-позиция-голограммы">4.7. Позиция голограммы</h3>
+<p>Голограмма над участком показывает название, цену, срок, электричество и свободные номера. Чтобы перенести её:</p>
+<ol>
+<li>Встаньте в нужное место внутри своего участка.</li>
+<li>Меню участка → «Позиция голограммы» или <code>/district hologram [номер]</code>.</li>
+<li>Администратор получит заявку; пока она не одобрена, действует прежняя позиция.</li>
+</ol>
+<p>Точка должна быть внутри вашего участка и не внутри чужого номера отеля.</p>
+<h3 id="48-права-на-участке">4.8. Права на участке</h3>
+<p>Управляющий выдаёт другим игрокам по отдельности:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Право</th>
+<th>Что даёт</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>build</code> – Строительство</td>
+<td>ставить и ломать блоки</td>
+</tr>
+<tr>
+<td><code>containers</code> – Контейнеры</td>
+<td>открывать сундуки, бочки, шалкеры и т. п.</td>
+</tr>
+<tr>
+<td><code>stations</code> – Станки</td>
+<td>пользоваться станками</td>
+</tr>
+</tbody>
+</table></div>
+<p>Команды: <code>/district trust &lt;игрок&gt; [номер]</code> (все права), <code>/district untrust &lt;игрок&gt; [номер]</code>,
+<code>/district perm &lt;игрок|public&gt; &lt;build|containers|stations&gt; &lt;on|off&gt; [номер]</code>. Меню «Права» делает то же кнопками.</p>
+<p><strong>Публичный режим.</strong> <code>public</code> открывает контейнеры или станки для <strong>всех посетителей</strong>. Администратор решает, для каких типов это
+разрешено (<code>public-permissions</code>): по умолчанию – только станки в мастерских. Публичное строительство запрещено.</p>
+<h3 id="49-счёт-предприятия">4.9. Счёт предприятия</h3>
+<ul>
+<li><code>/district account</code> – баланс.</li>
+<li><code>/district account deposit &lt;сумма&gt; [номер]</code>, <code>withdraw</code>, <code>statement</code> (выписка).</li>
+<li>В мастерской нельзя снять деньги ниже суточного тарифа электричества: так счёт не обнулят прямо перед изъятием.</li>
+<li>Остаток возвращается вам при добровольном отказе; при изъятии администратором удерживается штраф (10%, настраивается).</li>
+</ul>
+<h3 id="410-хранилище">4.10. Хранилище</h3>
+<p>Всё, что возвращено с участков, лежит в <code>/district storage</code> (команда <code>claim</code> – то же). Вещи хранятся <strong>60 суток</strong>, затем уходят на
+общий аукцион от казны (если он подключён), иначе удаляются. Арестованные вещи видны, но не забираются до решения администрации.
+Если в инвентаре нет места, предмет остаётся в хранилище.</p>
+<h3 id="411-телепорт">4.11. Телепорт</h3>
+<p><code>/district tp &lt;номер&gt;</code> или кнопка в меню (если <code>allow-visit-teleport: true</code>).</p>
+<h3 id="412-защита-участков">4.12. Защита участков</h3>
+<p>Чужие игроки не могут строить, ломать, открывать контейнеры и пользоваться станками без права. Включены защита от огня, взрывов и
+затекания жидкостей (<code>fire-protection</code>, <code>explosion-protection</code>, <code>liquid-protection</code>). Вне участков плагин ничего не защищает.</p>
+<hr />
+<h2 id="5-мастерские-магазины-рестораны-склады"><span class="num">5</span>Мастерские, магазины, рестораны, склады</h2>
+<h3 id="51-что-где-можно-ставить">5.1. Что где можно ставить</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Тип</th>
+<th>Верстак</th>
+<th>Печь (любая из 3)</th>
+<th>Наковальня</th>
+<th>Прочие станки</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Дом</td>
+<td>без ограничений</td>
+<td>без ограничений</td>
+<td>без ограничений</td>
+<td>без ограничений</td>
+</tr>
+<tr>
+<td>Магазин</td>
+<td>1</td>
+<td>1</td>
+<td>1</td>
+<td>нельзя</td>
+</tr>
+<tr>
+<td>Мастерская</td>
+<td>без ограничений</td>
+<td>без ограничений</td>
+<td>без ограничений</td>
+<td>без ограничений</td>
+</tr>
+<tr>
+<td>Ресторан</td>
+<td>1</td>
+<td>3</td>
+<td>нельзя</td>
+<td>нельзя</td>
+</tr>
+<tr>
+<td>Склад</td>
+<td>1</td>
+<td>нельзя</td>
+<td>нельзя</td>
+<td>нельзя</td>
+</tr>
+<tr>
+<td>Отель</td>
+<td>без ограничений</td>
+<td>без ограничений</td>
+<td>без ограничений</td>
+<td>без ограничений</td>
+</tr>
+<tr>
+<td>Номер</td>
+<td>1</td>
+<td>1</td>
+<td>нельзя</td>
+<td>нельзя</td>
+</tr>
+</tbody>
+</table></div>
+<p>«Прочие станки» – варочная стойка, стол зачарований, точило, кузнечный стол, ткацкий станок и т. п. Значения меняются в <code>station-limits</code>.
+При запрете игрок получает объяснение и подсказку со списком свободных мастерских.</p>
+<h3 id="52-станки-и-электричество">5.2. Станки и электричество</h3>
+<p>Платит за электричество <strong>только мастерская</strong>. В остальных типах станки обычные и бесплатные. Что считается станком:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Станок</th>
+<th>Ключ</th>
+<th>Коэффициент</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Печь, плавильная печь, коптильня</td>
+<td><code>smelter</code></td>
+<td>1.0</td>
+</tr>
+<tr>
+<td>Наковальня</td>
+<td><code>anvil</code></td>
+<td>1.5</td>
+</tr>
+<tr>
+<td>Варочная стойка</td>
+<td><code>alchemy</code></td>
+<td>2.5</td>
+</tr>
+<tr>
+<td>Стол зачарований</td>
+<td><code>enchanting</code></td>
+<td>4.0</td>
+</tr>
+</tbody>
+</table></div>
+<p>Подробности тарифа – в разделе 6.</p>
+<h3 id="53-магазины-и-chestshop">5.3. Магазины и ChestShop</h3>
+<p>Магазины пользуются табличками ChestShop. Если установлен ChestShop, покупки клиентов в магазине участка засчитываются как
+<strong>выручка магазина</strong> для процента работников (раздел 10). Без ChestShop процент не начисляется, остальное работает.</p>
+<hr />
+<h2 id="6-электричество-и-производство"><span class="num">6</span>Электричество и производство</h2>
+<h3 id="61-тариф">6.1. Тариф</h3>
+<pre><code class="language-text">тариф_в_сутки = база × Σ по типам [ коэффициент × Σ по станкам (1 + прогрессия × k) ] × (1 − скидка)
+                                                    k = 0, 1, 2... – номер такого же станка
+</code></pre>
+<p>Пример: база 100, прогрессия 0.1, две плавильни и наковальня: <code>100 × (1.0 + 1.1 + 1.5) = 360</code> в сутки.</p>
+<ul>
+<li>Нет станков – тариф 0.</li>
+<li><strong>Режимы</strong> (<code>electricity.mode</code>): <code>DAILY</code> – суточный тариф списывается непрерывно; <code>USAGE</code> – плата за каждую операцию
+  (плавка, варка, ремонт, зачарование): <code>usage-base × коэффициент</code>.</li>
+<li>Расход считается лениво: тиков нет, баланс вычисляется по времени. Простой сервера не оплачивается (шаг часов не больше 120 секунд).</li>
+<li>Приоритет значений: скидка участка → переопределение администратора → <code>config.yml</code>.</li>
+</ul>
+<h3 id="62-что-происходит-при-нуле">6.2. Что происходит при нуле</h3>
+<ul>
+<li>Станки мастерской не работают (печь не горит, стойка не варит, наковальня и зачарование блокируются).</li>
+<li>На голограмме появляется строка «Обесточено», игрок получает сообщение (за 24 и 6 часов – предупреждения).</li>
+<li>Строить, торговать и пользоваться дверями и табличками можно. Аренда и отсрочка идут по обычным правилам.</li>
+<li>Пополнить счёт может любой игрок: <code>/district power deposit &lt;сумма&gt; [номер]</code>; деньги принадлежат управляющему, пока не израсходованы.</li>
+</ul>
+<h3 id="63-команды-управляющего">6.3. Команды управляющего</h3>
+<pre><code class="language-text">/district power                           тариф, баланс, на сколько хватит
+/district power deposit &lt;сумма&gt; [номер]   пополнить счёт
+/district power calc smelter:2 anvil:1    калькулятор тарифа (право buildmaster.grid)
+</code></pre>
+<h3 id="64-производственные-линии">6.4. Производственные линии</h3>
+<p>Линия перерабатывает сырьё со склада в продукцию и работает сама, пока есть электричество. Сырьё не появляется из ничего.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Линия (по умолчанию)</th>
+<th>Станок</th>
+<th>Вход → выход</th>
+<th>Время партии</th>
+<th>Установка</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Выплавка железа</td>
+<td>smelter</td>
+<td>руда железа → слиток</td>
+<td>10 с</td>
+<td>500</td>
+</tr>
+<tr>
+<td>Выплавка золота</td>
+<td>smelter</td>
+<td>руда золота → слиток</td>
+<td>10 с</td>
+<td>800</td>
+</tr>
+<tr>
+<td>Стекло</td>
+<td>smelter</td>
+<td>песок → стекло</td>
+<td>8 с</td>
+<td>300</td>
+</tr>
+<tr>
+<td>Гладкий камень</td>
+<td>smelter</td>
+<td>булыжник → камень</td>
+<td>6 с</td>
+<td>200</td>
+</tr>
+<tr>
+<td>Укрепление железа</td>
+<td>anvil</td>
+<td>9 слитков → блок</td>
+<td>12 с</td>
+<td>600</td>
+</tr>
+</tbody>
+</table></div>
+<p>Команды: <code>/district factory [menu|info|levels|install|remove|load|collect|upgrade]</code></p>
+<pre><code class="language-text">/district factory install &lt;мастерская&gt; &lt;линия&gt;        установить (оплата со счёта предприятия, деньги в казну)
+/district factory load &lt;мастерская&gt; &lt;линия&gt; [N|all]   загрузить сырьё из инвентаря
+/district factory collect &lt;мастерская&gt; [линия]        забрать продукцию (излишек – в хранилище)
+/district factory upgrade [мастерская]                повысить уровень
+/district factory remove &lt;мастерская&gt; &lt;линия&gt;         снять линию
+</code></pre>
+<ul>
+<li>Время партии = <code>seconds / число станков нужного типа / скорость уровня</code>.</li>
+<li>Склад сырья (<code>stock-items</code>, 256) и буфер продукции (<code>buffer-batches</code>, 64) ограничены; при полном буфере или без сырья линия простаивает, время не копится.</li>
+<li>Нужны станки нужного типа и электричество; в режиме <code>USAGE</code> партия платная.</li>
+</ul>
+<h3 id="65-улучшения">6.5. Улучшения</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Уровень</th>
+<th>Цена</th>
+<th>Линий</th>
+<th>Скорость</th>
+<th>Склад</th>
+<th>Буфер</th>
+<th>Очередь заказов</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>–</td>
+<td>1</td>
+<td>×1.0</td>
+<td>×1</td>
+<td>×1</td>
+<td>+0</td>
+</tr>
+<tr>
+<td>1</td>
+<td>3000</td>
+<td>2</td>
+<td>×1.25</td>
+<td>×2</td>
+<td>×2</td>
+<td>+10</td>
+</tr>
+<tr>
+<td>2</td>
+<td>8000</td>
+<td>3</td>
+<td>×1.5</td>
+<td>×4</td>
+<td>×4</td>
+<td>+20</td>
+</tr>
+<tr>
+<td>3</td>
+<td>20000</td>
+<td>5</td>
+<td>×2.0</td>
+<td>×8</td>
+<td>×8</td>
+<td>+40</td>
+</tr>
+</tbody>
+</table></div>
+<p>Оплата со счёта предприятия, деньги уходят в казну. Скорость влияет и на выполнение заказов клиентов. При освобождении мастерской уровень сбрасывается.</p>
+<hr />
+<h2 id="7-услуги-мастерских-заказы"><span class="num">7</span>Услуги мастерских (заказы)</h2>
+<p>Клиент платит за услугу и отдаёт материалы (они хранятся в эскроу), мастерская выполняет заказ сама, пока есть электричество, клиент
+забирает результат, оплата поступает на счёт мастерской при выдаче.</p>
+<h3 id="71-для-клиента">7.1. Для клиента</h3>
+<pre><code class="language-text">/district service list                          услуги мастерских
+/district service order &lt;мастерская&gt; &lt;услуга&gt; [all]    предметы возьмите в руку; all – все такие же из инвентаря
+/district service orders                         мои заказы (меню)
+/district service collect &lt;номер заказа&gt;         забрать готовое
+/district service cancel &lt;номер заказа&gt;          отменить ожидающий заказ (полный возврат)
+</code></pre>
+<p>Готовый заказ, который не забрали за 30 суток, уходит в хранилище клиента. Максимум 5 заказов на клиента.</p>
+<h3 id="72-для-управляющего-мастерской">7.2. Для управляющего мастерской</h3>
+<pre><code class="language-text">/district service offers [мастерская]                    ваши услуги и цены
+/district service toggle &lt;мастерская&gt; &lt;услуга&gt; &lt;on|off&gt; включить/выключить услугу
+/district service price &lt;мастерская&gt; &lt;услуга&gt; &lt;цена за единицу&gt;   цена в пределах максимума администратора
+</code></pre>
+<h3 id="73-услуги-по-умолчанию">7.3. Услуги по умолчанию</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Услуга</th>
+<th>Что делает</th>
+<th>Цена за единицу (по умолчанию / максимум)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Переплавка</td>
+<td>рецепты печи берутся из игры, время – из рецепта</td>
+<td>1 / 20</td>
+</tr>
+<tr>
+<td>Ремонт</td>
+<td>ремонт повреждённых предметов на наковальне, 5 с</td>
+<td>10 / 100</td>
+</tr>
+<tr>
+<td>Слитки из самородков</td>
+<td>9 железных самородков → слиток</td>
+<td>1 / 20</td>
+</tr>
+<tr>
+<td>Золотые слитки из самородков</td>
+<td>9 золотых самородков → слиток</td>
+<td>1 / 20</td>
+</tr>
+</tbody>
+</table></div>
+<p>Администратор может добавлять свои рецепты в <code>services.recipes</code>. Очередь: до 20 активных заказов на мастерскую (улучшения увеличивают).
+Администратор отменяет заказ с причиной: <code>/district service admin cancel &lt;номер&gt; &lt;причина&gt;</code>.</p>
+<hr />
+<h2 id="8-отели"><span class="num">8</span>Отели</h2>
+<p><strong>Отель</strong> – участок типа <code>hotel</code>. Игрок покупает или арендует его и становится управляющим. <strong>Номера</strong> – вложенные в отель участки типа
+<code>room</code>; их создаёт администратор.</p>
+<h3 id="81-как-это-устроено">8.1. Как это устроено</h3>
+<ul>
+<li>Номер – настоящий участок: своя область (интерьер), аренда, права, книга учёта, снимок для сброса.</li>
+<li>Стены, пол, потолок и коридоры принадлежат <strong>отелю</strong>: гость их менять не может. Внутри номера гость меняет всё, кроме стен и двери.</li>
+<li>Номера только арендуются, при выезде <strong>всегда</strong> сбрасываются к исходному виду.</li>
+<li>Гость снимает номер сам (меню «Номера отеля», <code>/district room list [отель]</code>) на срок до 14 суток; действуют продление, автопродление и отсрочка.</li>
+</ul>
+<h3 id="82-двери">8.2. Двери</h3>
+<p>Дверь номера заперта для посторонних. Занятый номер открывают гость, его доверенные, управляющий отеля и администратор.
+Свободный номер открыт всем, чтобы его можно было осмотреть.</p>
+<h3 id="83-деньги">8.3. Деньги</h3>
+<pre><code class="language-text">гость платит за номер
+   ├─ у отеля есть управляющий → налог на аренду (bank.rent-tax-percent) в казну,
+   │                              остальное на счёт отеля
+   └─ управляющего нет ─────────→ всё в казну
+</code></pre>
+<p>Цену номера задаёт администратор (любую) или управляющий в пределах <code>maxrate</code>: <code>/district room rate &lt;номер&gt; &lt;цена&gt;</code>.</p>
+<h3 id="84-создание-номеров-администратор">8.4. Создание номеров (администратор)</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Способ</th>
+<th>Команда</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Вручную</td>
+<td>выделить интерьер, <code>/district room create &lt;отель&gt; &lt;номер&gt; &lt;цена&gt;</code></td>
+</tr>
+<tr>
+<td>Шаблоном</td>
+<td><code>/district room template &lt;отель&gt; &lt;префикс&gt; &lt;x|z&gt; &lt;шаг&gt; &lt;количество&gt; &lt;цена&gt; [dx dy dz]</code></td>
+</tr>
+<tr>
+<td>Дверь</td>
+<td>смотреть на блок двери, <code>/district room door &lt;номер&gt;</code>; <code>room door clear &lt;номер&gt;</code> убирает</td>
+</tr>
+<tr>
+<td>Предел цены</td>
+<td><code>/district room maxrate &lt;отель&gt; &lt;цена&gt;</code></td>
+</tr>
+<tr>
+<td>Удаление</td>
+<td><code>/district room delete &lt;номер&gt;</code> (только свободный; отель с номерами удалить нельзя)</td>
+</tr>
+</tbody>
+</table></div>
+<p>Шаблон проверяет все области заранее: если хоть одна выходит за отель или пересекается, не создаётся ничего.</p>
+<h3 id="85-выезд-и-гости">8.5. Выезд и гости</h3>
+<ul>
+<li>Вещи гостя возвращаются в хранилище тому, кто их поставил; номер сбрасывается к исходному виду.</li>
+<li>Пока в отеле есть гости, полный сброс здания администратором запрещён, а при отказе управляющего здание целиком не сбрасывается.</li>
+<li>Исходная мебель номера при поломке ничего не даёт (антидюп).</li>
+<li>Выселять гостя может только администратор: <code>/district evict &lt;номер&gt; &lt;причина&gt;</code>.</li>
+</ul>
+<hr />
+<h2 id="9-участки-игроков-на-worldguard"><span class="num">9</span>Участки игроков на WorldGuard</h2>
+<p>Игрок может продавать и сдавать в аренду <strong>свой регион WorldGuard</strong> через плагин. Нужен WorldGuard.</p>
+<h3 id="91-порядок">9.1. Порядок</h3>
+<ol>
+<li><strong>Привязка.</strong> Стоя в мире региона: <code>/district region bind &lt;регион&gt; &lt;house|warehouse|hotel&gt;</code>. Вы должны быть владельцем прямоугольного (cuboid)
+   региона; он не должен пересекаться с участками района, имя – латиница, цифры, <code>_</code>, <code>-</code> до 32 символов.</li>
+<li><strong>Одобрение.</strong> Заявка уходит администратору (меню «Модерация»). Без одобрения участок видите только вы.</li>
+<li><strong>Согласие совладельцев.</strong> Если у региона есть другие владельцы, каждый выполняет <code>/district region consent &lt;участок&gt;</code>.</li>
+<li><strong>Цены.</strong> <code>/district region sale &lt;участок&gt; &lt;цена|off&gt;</code> и <code>/district region rent &lt;участок&gt; &lt;цена за сутки|off&gt;</code>.
+   Цена аренды не выше <strong>предела по размеру региона</strong>.</li>
+<li><strong>Доступ арендодателя.</strong> <code>/district region access &lt;участок&gt; none|shared</code>: сохраняете ли вы доступ на время аренды (только для больших участков).</li>
+<li><strong>Отвязка.</strong> <code>/district region unbind &lt;участок&gt;</code> (только свободный). Права в WorldGuard не меняются.</li>
+<li>Список: <code>/district region list</code>.</li>
+</ol>
+<h3 id="92-что-происходит-с-регионом">9.2. Что происходит с регионом</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Событие</th>
+<th>Владельцы региона</th>
+<th>Участники</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>привязка</td>
+<td>без изменений</td>
+<td>без изменений</td>
+</tr>
+<tr>
+<td>аренда</td>
+<td>арендатор</td>
+<td>вы, если <code>shared</code></td>
+</tr>
+<tr>
+<td>конец аренды, выселение</td>
+<td>вы и совладельцы</td>
+<td>участники, что были при привязке</td>
+</tr>
+<tr>
+<td>продажа</td>
+<td>покупатель</td>
+<td>пусто</td>
+</tr>
+</tbody>
+</table></div>
+<p>Если WorldGuard не принял изменение, аренда или покупка отменяется <strong>без списания денег</strong>.</p>
+<h3 id="93-предел-цены-аренды">9.3. Предел цены аренды</h3>
+<p><code>max-rent-per-1000-blocks × (объём / 1000)</code>, не меньше <code>min-rent-cap</code> (10) и не больше <code>max-rent-cap</code> (500).
+Например, регион 1000 блоков: не больше 20 в сутки.</p>
+<h3 id="94-деньги">9.4. Деньги</h3>
+<ul>
+<li><strong>Аренда:</strong> арендодателю на кошелёк за вычетом налога на аренду (<code>bank.rent-tax-percent</code>, налог в казну).</li>
+<li><strong>Продажа:</strong> продавцу полностью. После продажи участок выходит из района.</li>
+</ul>
+<h3 id="95-защита-вещей-арендодателя">9.5. Защита вещей арендодателя</h3>
+<ul>
+<li>Арендатор ломает только блоки, которые поставил сам (<code>player-plots.tenant-break-own-only</code>).</li>
+<li>Контейнер без записи в книге учёта – контейнер арендодателя, с записью – того, кто поставил. Чужие не открываются.</li>
+<li>В конце аренды убираются <strong>только блоки и контейнеры арендатора</strong> (их предметы – в его хранилище). Здание, контейнеры и вещи арендодателя не трогаются.</li>
+<li>Полный сброс к исходному виду для таких участков не применяется; менять материалы здания нельзя. Налог на имущество не берётся.</li>
+</ul>
+<hr />
+<h2 id="10-работники-и-зарплаты"><span class="num">10</span>Работники и зарплаты</h2>
+<h3 id="101-как-это-работает">10.1. Как это работает</h3>
+<ol>
+<li>Управляющий (меню участка → «Работники» или <code>/district job post</code>) размещает <strong>вакансию</strong>: должность, число мест, ставка, процент.</li>
+<li>Вакансия видна на <strong>доске объявлений</strong> (главное меню или <code>/district job board</code>). Игрок нажимает на неё – уходит <strong>отклик</strong>; повторное нажатие отзывает.</li>
+<li>Управляющий принимает (ЛКМ) или отклоняет (ПКМ) отклик во вкладке «Отклики».</li>
+<li>Зарплата начисляется автоматически и выплачивается со <strong>счёта предприятия</strong>.</li>
+</ol>
+<p>Нанимать можно в магазинах, мастерских, ресторанах, складах и отелях (<code>jobs.categories</code>). На собственном участке работать нельзя.</p>
+<h3 id="102-должности-и-доступ">10.2. Должности и доступ</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Должность</th>
+<th>Ключ</th>
+<th>Контейнеры</th>
+<th>Станки</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Продавец</td>
+<td><code>seller</code></td>
+<td>да</td>
+<td>нет</td>
+</tr>
+<tr>
+<td>Администратор</td>
+<td><code>manager</code></td>
+<td>да</td>
+<td>нет</td>
+</tr>
+<tr>
+<td>Повар</td>
+<td><code>cook</code></td>
+<td>да</td>
+<td>да</td>
+</tr>
+<tr>
+<td>Горничная</td>
+<td><code>cleaner</code></td>
+<td>нет</td>
+<td>нет</td>
+</tr>
+<tr>
+<td>Охранник</td>
+<td><code>guard</code></td>
+<td>нет</td>
+<td>нет</td>
+</tr>
+<tr>
+<td>Кладовщик</td>
+<td><code>keeper</code></td>
+<td>да</td>
+<td>нет</td>
+</tr>
+<tr>
+<td>Мастер</td>
+<td><code>master</code></td>
+<td>да</td>
+<td>да</td>
+</tr>
+</tbody>
+</table></div>
+<p>Права при размещении можно изменить. <strong>Права строительства работники не получают никогда.</strong> При увольнении права снимаются.
+Свободного текста в вакансиях нет, поэтому модерация не нужна.</p>
+<h3 id="103-зарплата">10.3. Зарплата</h3>
+<ul>
+<li><strong>Ставка:</strong> за каждый полный блок (<code>work-block-minutes</code>, 30 минут), проведённый на участке онлайн. Время не идёт на замороженном
+  участке и сверх <code>max-work-minutes-per-day</code> (480 минут в сутки).</li>
+<li><strong>Процент от дохода:</strong> в отелях – оплата номеров (после налога на аренду), в магазинах – покупки через ChestShop.</li>
+<li><strong>Выплата:</strong> раз в минуту со счёта предприятия. Не хватает денег – начисленное копится долгом и выплачивается после пополнения.</li>
+<li><strong>Расчёт при увольнении и освобождении участка:</strong> сначала счёт предприятия, затем кошелёк управляющего. Если не хватает и там, остаток не выплачивается (запись в журнале).</li>
+</ul>
+<h3 id="104-команды">10.4. Команды</h3>
+<pre><code class="language-text">/district job board                                   доска объявлений
+/district job list                                    мои работы и отклики
+/district job apply &lt;№ вакансии&gt;                      откликнуться
+/district job withdraw &lt;№ отклика&gt;                    отозвать отклик
+/district job quit &lt;участок&gt;                          уволиться
+
+/district job post &lt;участок&gt; &lt;должность&gt; &lt;мест&gt; &lt;ставка за блок&gt; [процент] [containers,stations|none]
+/district job open|close|delete &lt;№ вакансии&gt;          набор открыт/закрыт, удалить
+/district job applications &lt;участок&gt;                  отклики
+/district job accept|decline &lt;№ отклика&gt;
+/district job staff &lt;участок&gt;                         работники и вакансии
+/district job fire &lt;участок&gt; &lt;игрок&gt;                  уволить
+</code></pre>
+<h3 id="105-лимиты">10.5. Лимиты</h3>
+<p><code>max-rate</code> 500, <code>max-percent</code> 30, <code>max-total-percent</code> 50 (с учётом числа мест), <code>max-slots-per-vacancy</code> 10, <code>max-vacancies-per-plot</code> 5,
+<code>max-jobs-per-player</code> 2, <code>max-applications-per-player</code> 3.</p>
+<hr />
+<h2 id="11-банк-налоги-и-электросеть"><span class="num">11</span>Банк, налоги и электросеть</h2>
+<p>Банк и электростанция – административные здания, создаются администратором (<code>/district create &lt;номер&gt; bank - -</code>, <code>... power_plant - -</code>).
+Права: <code>buildmaster.bank</code> и <code>buildmaster.grid</code> (входят в <code>buildmaster.admin</code>).</p>
+<h3 id="111-банк">11.1. Банк</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Что</th>
+<th>Как</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Свои счета</td>
+<td>меню «Банк» → «Мои счета»: ЛКМ пополнить, ПКМ снять, Shift+ЛКМ выписка</td>
+</tr>
+<tr>
+<td>Все счета (сотрудники)</td>
+<td>меню «Все счета» или <code>/district bank accounts</code>, <code>/district bank account &lt;номер&gt;</code></td>
+</tr>
+<tr>
+<td>Комиссии</td>
+<td><code>/district bank admin commission deposit|withdraw &lt;процент|reset&gt;</code>; удерживаются в казну</td>
+</tr>
+<tr>
+<td>Штраф при изъятии</td>
+<td><code>/district bank admin penalty &lt;процент|reset&gt;</code>: процент от остатка счёта, остальное возвращается</td>
+</tr>
+<tr>
+<td>Налог на аренду</td>
+<td><code>/district bank admin tax rent &lt;процент|reset&gt;</code></td>
+</tr>
+<tr>
+<td>Налог на имущество</td>
+<td><code>/district bank admin tax property &lt;тип&gt; &lt;сумма|reset&gt;</code> – раз в 7 суток</td>
+</tr>
+<tr>
+<td>Только в банке</td>
+<td><code>/district bank admin only-in-bank &lt;on|off|reset&gt;</code> – операции со счётом только внутри здания банка</td>
+</tr>
+<tr>
+<td>Списание долга</td>
+<td><code>/district bank admin forgive &lt;номер&gt; &lt;причина&gt;</code></td>
+</tr>
+</tbody>
+</table></div>
+<p>Значения из команд и меню важнее <code>config.yml</code>; <code>reset</code> возвращает значение из конфига. Каждое изменение записывается в журнал и приходит
+управляющим в журнал предупреждений.</p>
+<p><strong>Налог на имущество.</strong> Сначала деньги берутся со счёта предприятия, недостающее – с кошелька управляющего; если не хватает, остаётся
+долг, который взыскивается позже. После долгого простоя списывается не больше 4 периодов за раз. Административные здания и участки игроков налогом не облагаются.</p>
+<h3 id="112-электросеть">11.2. Электросеть</h3>
+<ul>
+<li><strong>Единица V.</strong> Станок потребляет свой коэффициент в V в сутки, цена 1 V – <code>electricity.base-rate-per-day</code>.</li>
+<li><strong>Подключение.</strong> Каждая мастерская подключена ровно к одной станции. Новая подключается автоматически к станции с наименьшей нагрузкой.
+  Пока станций нет, сеть не действует.</li>
+<li><strong>Отключение.</strong> <code>/district grid disconnect &lt;участок|area:район&gt; &lt;причина&gt;</code> – станки не работают, тариф не начисляется,
+  управляющий видит причину. <code>restore</code> возвращает подключение.</li>
+<li><strong>Мощность и перегрузка.</strong> Если потребление больше мощности, множитель тарифа растёт на <code>surcharge-step</code> каждые 10 минут
+  (не выше 3.0) и снижается, когда нагрузка в норме.</li>
+<li><strong>Районы и отчёты.</strong> <code>/district area ...</code> объединяют участки; <code>grid report [район|участок]</code> показывает нагрузку и потребление за сутки и 7 суток.</li>
+</ul>
+<pre><code class="language-text">/district grid [info|capacity|price|connect|disconnect|restore|autoconnect|report]
+/district grid capacity &lt;станция&gt; &lt;V в сутки&gt;
+/district grid price &lt;цена за 1 V|reset&gt;
+/district grid connect &lt;участок|area:район&gt; &lt;станция&gt;
+/district area create|delete|add|remove|list|info ...
+</code></pre>
+<hr />
+<h2 id="12-хранилище-арест-вещей-и-общий-аукцион"><span class="num">12</span>Хранилище, арест вещей и общий аукцион</h2>
+<h3 id="121-хранилище-и-книга-учёта">12.1. Хранилище и книга учёта</h3>
+<p>Каждый блок, который поставил игрок, записывается в <strong>книгу учёта</strong>: при сбросе здания, выселении или выезде предмет вернётся именно ему.
+Содержимое контейнеров – тому, кто поставил контейнер; содержимое исходных контейнеров – управляющему. Предметы лежат в хранилище 60 суток.</p>
+<h3 id="122-арест-вещей">12.2. Арест вещей</h3>
+<p>При <strong>изъятии</strong> участка администратором (<code>/district seize</code>) вещи управляющего арестовываются: они видны в хранилище, но не забираются.
+Администратор решает судьбу через меню «Арестованные вещи» (главное меню) или <code>/district arrest</code>:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Решение</th>
+<th>Что происходит</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Вернуть игроку</td>
+<td>вещи становятся доступны в его хранилище</td>
+</tr>
+<tr>
+<td>На аукцион</td>
+<td>вещи уходят на общий аукцион от казны</td>
+</tr>
+<tr>
+<td>Удалить</td>
+<td>вещи удаляются безвозвратно</td>
+</tr>
+</tbody>
+</table></div>
+<p>Решать можно по каждой партии отдельно или по всем вещам игрока. <strong>Причина обязательна</strong>, решение пишется в журнал, игрок получает уведомление.
+Командой: <code>/district arrest list</code> и <code>/district arrest &lt;release|delete|auction&gt; &lt;игрок&gt; &lt;причина&gt;</code>.</p>
+<h3 id="123-общий-аукцион-zauctionhouse">12.3. Общий аукцион (zAuctionHouse)</h3>
+<p>Нужен плагин zAuctionHouse. Вещи, которые игрок не забрал за 60 суток, и вещи, переданные администратором, выставляются на аукцион от имени
+продавца <strong>«Казна»</strong>. Выручка идёт в <strong>казну</strong>.</p>
+<ul>
+<li><strong>Цена лота:</strong> цена за предмет (<code>auction.prices.&lt;МАТЕРИАЛ&gt;</code> или <code>default-price</code>) × количество × <code>price-multiplier</code>, не ниже <code>min-lot-price</code>,
+  затем приводится к пределам экономики аукциона. Каждый стак – отдельный лот.</li>
+<li><strong>Безопасность:</strong> предмет сначала убирается из хранилища и только потом выставляется; при сбое возвращается в очередь.</li>
+<li><strong>Лимиты:</strong> <code>per-run</code> (20 за запуск) и <code>max-listings</code> (500 одновременно). Срок лота – <code>listing-days</code> (0 – без срока).</li>
+<li><strong>Работает только на одном сервере без кластера.</strong></li>
+<li><code>/district auction status</code> – состояние; <code>/district auction run</code> – запустить принудительно.</li>
+<li>Без zAuctionHouse просроченные вещи удаляются, как раньше.</li>
+</ul>
+<hr />
+<h2 id="13-руководство-администратора"><span class="num">13</span>Руководство администратора</h2>
+<h3 id="131-создание-участка">13.1. Создание участка</h3>
+<pre><code class="language-text">/district wand                  топор выделения: ЛКМ – точка 1, ПКМ – точка 2 (или /district pos1, pos2)
+/district create &lt;номер&gt; &lt;тип&gt; &lt;цена|-&gt; &lt;аренда в сутки|-&gt;
+</code></pre>
+<p>Типы: <code>house</code>, <code>shop</code>, <code>workshop</code>, <code>restaurant</code>, <code>warehouse</code>, <code>bank</code>, <code>power_plant</code>, <code>hotel</code>. Номер – латиница, цифры, <code>_</code>, <code>-</code>.
+<code>-</code> отключает покупку или аренду. Здание ограничено <code>max-plot-volume</code> (2 000 000 блоков). Снимок здания делается по чанкам.</p>
+<p>Дополнительно:</p>
+<pre><code class="language-text">/district category &lt;номер&gt; &lt;тип&gt;        сменить тип
+/district setprice|setrent &lt;номер&gt; &lt;цена|-&gt;
+/district setspawn [номер]              точка телепорта
+/district holo [номер]                  перенести голограмму в вашу позицию (сразу)
+/district zone add &lt;номер&gt; &lt;имя&gt; [блок]   зона для замены материалов (фасад, крыша...)
+/district zone remove &lt;номер&gt; &lt;имя&gt;
+/district zone list [номер]
+/district resnapshot &lt;номер&gt;            запомнить текущий вид как исходный
+/district delete &lt;номер&gt;                удалить свободный участок
+</code></pre>
+<blockquote class="callout">
+<p><strong>Снимок.</strong> После постройки или правки здания обязательно делайте <code>resnapshot</code>: именно к этому виду здание вернётся при сбросе.</p>
+</blockquote>
+<h3 id="132-модерация">13.2. Модерация</h3>
+<p><code>/district moderation</code> или кнопка «Модерация» – единая очередь заявок игроков:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Заявка</th>
+<th>Что одобряется</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Название, описание</td>
+<td>текст участка</td>
+</tr>
+<tr>
+<td>Участок игрока</td>
+<td>привязанный регион WorldGuard</td>
+</tr>
+<tr>
+<td>Позиция голограммы</td>
+<td>точка (Shift+ЛКМ – телепорт на неё)</td>
+</tr>
+</tbody>
+</table></div>
+<p>ЛКМ – одобрить, ПКМ – отклонить (<strong>причина обязательна</strong>), Shift+ЛКМ – телепорт. Отказ уходит игроку и в журнал.</p>
+<h3 id="133-решения-по-участкам">13.3. Решения по участкам</h3>
+<pre><code class="language-text">/district evict &lt;номер&gt; &lt;причина&gt;    выселить: участок свободен, вещи – в хранилище
+/district seize &lt;номер&gt; &lt;причина&gt;    изъять: вещи арестованы, удерживается штраф со счёта
+/district reset &lt;номер&gt; &lt;причина&gt;    сбросить здание к исходному виду, управляющий остаётся
+</code></pre>
+<p>Причина записывается в журнал игрока. В отеле с гостями полный сброс запрещён.</p>
+<h3 id="134-казна">13.4. Казна</h3>
+<pre><code class="language-text">/district treasury                                    баланс и последние операции
+/district treasury pay &lt;игрок&gt; &lt;сумма&gt; &lt;причина&gt;      выплата из казны (право buildmaster.bank)
+</code></pre>
+<h3 id="135-электричество-и-тарифы">13.5. Электричество и тарифы</h3>
+<pre><code class="language-text">/district power admin info
+/district power admin base|progression|usage|mode|coef|discount|add|stats ...
+/district power calc smelter:2 anvil:1
+</code></pre>
+<ul>
+<li><code>power admin discount &lt;номер&gt; &lt;процент&gt;</code> – скидка мастерской.</li>
+<li><code>power admin add &lt;номер&gt; &lt;сумма&gt; &lt;причина&gt;</code> – подарок на счёт из казны.</li>
+<li><code>power admin stats</code> – статистика использования станков.</li>
+<li>Переопределения сохраняются в <code>overrides.yml</code> (приоритет над <code>config.yml</code>).</li>
+</ul>
+<h3 id="136-что-делать-если">13.6. Что делать, если</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Ситуация</th>
+<th>Решение</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Игрок застрял в замороженном участке</td>
+<td>дождитесь конца отсрочки или оплатите: <code>/district account deposit</code></td>
+</tr>
+<tr>
+<td>Здание сломали/перестроили</td>
+<td><code>/district reset &lt;номер&gt; &lt;причина&gt;</code></td>
+</tr>
+<tr>
+<td>Участок нужно перестроить на постоянной основе</td>
+<td>постройте, затем <code>/district resnapshot &lt;номер&gt;</code></td>
+</tr>
+<tr>
+<td>Электростанция перегружена</td>
+<td>увеличьте мощность <code>/district grid capacity</code> или подключите мастерские к другой станции</td>
+</tr>
+<tr>
+<td>Лот казны не продаётся</td>
+<td><code>/district auction status</code>, измените цены <code>auction.prices</code></td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="137-перезагрузка">13.7. Перезагрузка</h3>
+<p><code>/district reload</code> перечитывает <code>config.yml</code> и <code>plots.yml</code>. Часть настроек (экономика, станции) применяется сразу, но структуру
+участков лучше менять при остановленном сервере.</p>
+<hr />
+<h2 id="14-справочник-команд"><span class="num">14</span>Справочник команд</h2>
+<p>Все команды: <code>/district &lt;подкоманда&gt;</code> (<code>/dt</code>, <code>/uchastok</code>). <code>[ ]</code> – необязательное, <code>&lt; &gt;</code> – обязательное, <code>|</code> – выбор. Номер участка можно не указывать, если вы стоите на нём.</p>
+<h3 id="141-игроки">14.1. Игроки</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Команда</th>
+<th>Что делает</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/district</code></td>
+<td>главное меню</td>
+</tr>
+<tr>
+<td><code>list</code></td>
+<td>список участков</td>
+</tr>
+<tr>
+<td><code>info [номер]</code></td>
+<td>сведения об участке</td>
+</tr>
+<tr>
+<td><code>buy [номер]</code></td>
+<td>купить</td>
+</tr>
+<tr>
+<td><code>rent &lt;дней&gt; [номер]</code></td>
+<td>арендовать</td>
+</tr>
+<tr>
+<td><code>extend &lt;дней&gt; [номер]</code></td>
+<td>продлить аренду</td>
+</tr>
+<tr>
+<td><code>autorenew &lt;on|off&gt; [номер]</code></td>
+<td>автопродление</td>
+</tr>
+<tr>
+<td><code>autoreset &lt;on|off&gt; [номер]</code></td>
+<td>сбрасывать ли здание при отказе</td>
+</tr>
+<tr>
+<td><code>release [номер] confirm</code></td>
+<td>отказаться от участка</td>
+</tr>
+<tr>
+<td><code>trust|untrust &lt;игрок&gt; [номер]</code></td>
+<td>доверенные игроки</td>
+</tr>
+<tr>
+<td><code>perm &lt;игрок|public&gt; &lt;build|containers|stations&gt; &lt;on|off&gt; [номер]</code></td>
+<td>права</td>
+</tr>
+<tr>
+<td><code>replace &lt;зона|все&gt; &lt;из&gt; &lt;в&gt;</code></td>
+<td>заменить материал</td>
+</tr>
+<tr>
+<td><code>zones [номер]</code></td>
+<td>части здания</td>
+</tr>
+<tr>
+<td><code>tp &lt;номер&gt;</code></td>
+<td>телепорт</td>
+</tr>
+<tr>
+<td><code>storage</code> (<code>claim</code>)</td>
+<td>хранилище</td>
+</tr>
+<tr>
+<td><code>journal</code></td>
+<td>журнал решений</td>
+</tr>
+<tr>
+<td><code>warnings</code></td>
+<td>журнал предупреждений</td>
+</tr>
+<tr>
+<td><code>name|desc [номер] &lt;текст&gt;</code></td>
+<td>название и описание (на проверку)</td>
+</tr>
+<tr>
+<td><code>hologram [номер]</code></td>
+<td>предложить позицию голограммы</td>
+</tr>
+<tr>
+<td><code>account [deposit|withdraw|statement] &lt;сумма&gt; [номер]</code></td>
+<td>счёт предприятия</td>
+</tr>
+<tr>
+<td><code>power [deposit|calc]</code></td>
+<td>электричество мастерской</td>
+</tr>
+<tr>
+<td><code>bank [info|statement]</code></td>
+<td>банк</td>
+</tr>
+<tr>
+<td><code>service ...</code></td>
+<td>услуги и заказы (раздел 7)</td>
+</tr>
+<tr>
+<td><code>factory ...</code></td>
+<td>производство (раздел 6.4)</td>
+</tr>
+<tr>
+<td><code>room list [отель]</code>, <code>room rate &lt;номер&gt; &lt;цена&gt;</code></td>
+<td>номера отеля</td>
+</tr>
+<tr>
+<td><code>region bind|list|consent|sale|rent|access|unbind</code></td>
+<td>участки игроков (раздел 9)</td>
+</tr>
+<tr>
+<td><code>job board|list|apply|withdraw|quit|post|...</code></td>
+<td>работники (раздел 10)</td>
+</tr>
+<tr>
+<td><code>help</code></td>
+<td>краткая справка</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="142-администраторы-buildmasteradmin">14.2. Администраторы (<code>buildmaster.admin</code>)</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Команда</th>
+<th>Что делает</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>wand</code>, <code>pos1</code>, <code>pos2</code></td>
+<td>выделение</td>
+</tr>
+<tr>
+<td><code>create &lt;номер&gt; &lt;тип&gt; &lt;цена|-&gt; &lt;аренда|-&gt;</code></td>
+<td>создать участок</td>
+</tr>
+<tr>
+<td><code>delete &lt;номер&gt;</code></td>
+<td>удалить свободный участок</td>
+</tr>
+<tr>
+<td><code>category &lt;номер&gt; &lt;тип&gt;</code></td>
+<td>сменить тип</td>
+</tr>
+<tr>
+<td><code>setprice|setrent &lt;номер&gt; &lt;цена|-&gt;</code></td>
+<td>цены</td>
+</tr>
+<tr>
+<td><code>setspawn [номер]</code></td>
+<td>точка телепорта</td>
+</tr>
+<tr>
+<td><code>holo [номер]</code></td>
+<td>перенести голограмму в вашу позицию</td>
+</tr>
+<tr>
+<td><code>zone add|remove|list</code></td>
+<td>зоны здания</td>
+</tr>
+<tr>
+<td><code>resnapshot &lt;номер&gt;</code></td>
+<td>новый исходный вид</td>
+</tr>
+<tr>
+<td><code>moderation</code></td>
+<td>заявки</td>
+</tr>
+<tr>
+<td><code>evict|seize|reset &lt;номер&gt; &lt;причина&gt;</code></td>
+<td>решения по участку</td>
+</tr>
+<tr>
+<td><code>arrest [list]</code>, <code>arrest &lt;release|delete|auction&gt; &lt;игрок&gt; &lt;причина&gt;</code></td>
+<td>арестованные вещи</td>
+</tr>
+<tr>
+<td><code>auction [status|run]</code></td>
+<td>общий аукцион</td>
+</tr>
+<tr>
+<td><code>treasury [pay ...]</code></td>
+<td>казна</td>
+</tr>
+<tr>
+<td><code>room create|template|door|delete|maxrate</code></td>
+<td>номера отеля</td>
+</tr>
+<tr>
+<td><code>service admin list|cancel</code></td>
+<td>заказы</td>
+</tr>
+<tr>
+<td><code>power admin ...</code>, <code>power calc</code></td>
+<td>тарифы</td>
+</tr>
+<tr>
+<td><code>bank accounts|account|admin ...</code></td>
+<td>банк (право <code>buildmaster.bank</code>)</td>
+</tr>
+<tr>
+<td><code>grid ...</code>, <code>area ...</code></td>
+<td>электросеть и районы (право <code>buildmaster.grid</code>)</td>
+</tr>
+<tr>
+<td><code>reload</code></td>
+<td>перезагрузка</td>
+</tr>
+</tbody>
+</table></div>
+<hr />
+<h2 id="15-права-доступа"><span class="num">15</span>Права доступа</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Право</th>
+<th>По умолчанию</th>
+<th>Описание</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>buildmaster.use</code></td>
+<td>все</td>
+<td>игровые команды</td>
+</tr>
+<tr>
+<td><code>buildmaster.admin</code></td>
+<td>op</td>
+<td>создание и администрирование участков; включает <code>bank</code> и <code>grid</code></td>
+</tr>
+<tr>
+<td><code>buildmaster.bank</code></td>
+<td>op</td>
+<td>банк: казна, все счета, комиссии, штраф, налоги</td>
+</tr>
+<tr>
+<td><code>buildmaster.grid</code></td>
+<td>op</td>
+<td>электросеть: станции, тарифы, отключения, районы</td>
+</tr>
+<tr>
+<td><code>buildmaster.bypass</code></td>
+<td>op</td>
+<td>обход защиты участков и лимитов владения</td>
+</tr>
+</tbody>
+</table></div>
+<p>Выдача через LuckPerms: <code>lp group &lt;группа&gt; permission set buildmaster.bank true</code>.</p>
+<hr />
+<h2 id="16-настройка-configyml"><span class="num">16</span>Настройка (config.yml)</h2>
+<p>Файл <code>plugins/BuildMaster/config.yml</code> подробно прокомментирован. Ниже – главные разделы.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Раздел</th>
+<th>Что задаёт</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>max-rent-days</code>, <code>rent-day-options</code>, <code>autorenew-days</code>, <code>rent-day-seconds</code></td>
+<td>срок аренды, кнопки 1/7/14, автопродление; <code>rent-day-seconds</code> менять только для тестов</td>
+</tr>
+<tr>
+<td><code>grace-days</code>, <code>storage-days</code></td>
+<td>отсрочка платежа (3), хранение вещей (60)</td>
+</tr>
+<tr>
+<td><code>sell-refund-percent</code></td>
+<td>возврат части цены при отказе от купленного участка</td>
+</tr>
+<tr>
+<td><code>max-plot-volume</code>, <code>allow-visit-teleport</code></td>
+<td>размер участка, телепорт к чужим участкам</td>
+</tr>
+<tr>
+<td><code>protect-containers</code>, <code>fire-protection</code>, <code>explosion-protection</code>, <code>liquid-protection</code></td>
+<td>защита</td>
+</tr>
+<tr>
+<td><code>replace-banned</code>, <code>place-banned</code></td>
+<td>запрещённые блоки при замене и стройке (маски <code>*TORCH*</code>, <code>*_SAPLING</code>)</td>
+</tr>
+<tr>
+<td><code>original-blocks-drop-nothing</code></td>
+<td>антидюп исходных блоков</td>
+</tr>
+<tr>
+<td><code>limits</code></td>
+<td>лимиты владения: общий и по типам</td>
+</tr>
+<tr>
+<td><code>moderation</code></td>
+<td>длина названия (32) и описания (120)</td>
+</tr>
+<tr>
+<td><code>electricity</code></td>
+<td>режим <code>DAILY/USAGE</code>, база тарифа, прогрессия, коэффициенты станков</td>
+</tr>
+<tr>
+<td><code>station-limits</code></td>
+<td>лимиты станков по типам участков (<code>-1</code> без ограничений, <code>0</code> запрещено)</td>
+</tr>
+<tr>
+<td><code>public-permissions</code></td>
+<td>что можно открыть для всех по типам</td>
+</tr>
+<tr>
+<td><code>bank</code></td>
+<td>комиссии, штраф, налог на аренду, налог на имущество, режим «только в банке»</td>
+</tr>
+<tr>
+<td><code>grid</code></td>
+<td>мощность по умолчанию, перегрузка, множитель</td>
+</tr>
+<tr>
+<td><code>services</code></td>
+<td>множитель времени, лимиты заказов, цены и рецепты услуг</td>
+</tr>
+<tr>
+<td><code>production</code>, <code>upgrades</code></td>
+<td>линии, склад, буфер, уровни улучшений</td>
+</tr>
+<tr>
+<td><code>player-plots</code></td>
+<td>участки игроков: типы, лимиты, пределы аренды</td>
+</tr>
+<tr>
+<td><code>jobs</code></td>
+<td>работники: лимиты, ставки, проценты</td>
+</tr>
+<tr>
+<td><code>auction</code></td>
+<td>общий аукцион: цены, лимиты, срок лота</td>
+</tr>
+</tbody>
+</table></div>
+<p>После правки выполните <code>/district reload</code>. Значения банка, тарифов и переопределения, заданные командами, хранятся отдельно
+(<code>bank.yml</code>, <code>overrides.yml</code>) и важнее <code>config.yml</code>.</p>
+<hr />
+<h2 id="17-файлы-данных-и-резервные-копии"><span class="num">17</span>Файлы данных и резервные копии</h2>
+<p>Всё хранится в файлах в <code>plugins/BuildMaster/</code> (базы данных нет):</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Файл / папка</th>
+<th>Что хранит</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>config.yml</code></td>
+<td>настройки</td>
+</tr>
+<tr>
+<td><code>plots.yml</code></td>
+<td>участки, права, счета, привязки регионов, арендодатели</td>
+</tr>
+<tr>
+<td><code>ledgers/</code></td>
+<td>книги учёта блоков по участкам</td>
+</tr>
+<tr>
+<td><code>snapshots/</code></td>
+<td>снимки зданий для сброса (структуры Minecraft)</td>
+</tr>
+<tr>
+<td><code>storage/</code></td>
+<td>хранилища игроков</td>
+</tr>
+<tr>
+<td><code>warnings/</code></td>
+<td>журналы предупреждений</td>
+</tr>
+<tr>
+<td><code>journal.log</code></td>
+<td>журнал решений</td>
+</tr>
+<tr>
+<td><code>requests.yml</code></td>
+<td>заявки на модерацию</td>
+</tr>
+<tr>
+<td><code>treasury.yml</code></td>
+<td>казна и её операции</td>
+</tr>
+<tr>
+<td><code>bank.yml</code>, <code>overrides.yml</code>, <code>billing.yml</code>, <code>consumption.yml</code>, <code>stats.yml</code>, <code>districts.yml</code></td>
+<td>банк, тарифы, биллинговые часы, расход электричества, статистика станков, районы</td>
+</tr>
+<tr>
+<td><code>orders.yml</code>, <code>jobs.yml</code></td>
+<td>заказы услуг, вакансии и работники</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Резервное копирование.</strong> Копируйте папку <code>plugins/BuildMaster/</code> вместе с миром. Особенно важны <code>plots.yml</code>, <code>snapshots/</code>, <code>storage/</code>, <code>treasury.yml</code>.
+Восстанавливайте остановленным сервером.</p>
+<hr />
+<h2 id="18-интеграции-с-другими-плагинами"><span class="num">18</span>Интеграции с другими плагинами</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Плагин</th>
+<th>Зачем</th>
+<th>Что будет без него</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Vault</strong> + экономика</td>
+<td>все платежи</td>
+<td>плагин не запустится (обязательная зависимость)</td>
+</tr>
+<tr>
+<td><strong>WorldGuard</strong></td>
+<td>участки игроков</td>
+<td><code>/district region</code> сообщит, что WorldGuard не найден</td>
+</tr>
+<tr>
+<td><strong>ChestShop</strong></td>
+<td>выручка магазинов для процента работников</td>
+<td>процент от продаж не начисляется</td>
+</tr>
+<tr>
+<td><strong>zAuctionHouse</strong></td>
+<td>общий аукцион</td>
+<td>просроченные вещи удаляются, как раньше</td>
+</tr>
+</tbody>
+</table></div>
+<p>Особенности:</p>
+<ul>
+<li><strong>zAuctionHouse:</strong> BuildMaster регистрирует свою экономику <code>buildmaster_treasury</code> и должен загружаться <strong>раньше</strong> аукциона
+  (в <code>plugin.yml</code> стоит <code>loadbefore: [zAuctionHouse]</code>). Не меняйте порядок загрузки.</li>
+<li><strong>WorldGuard:</strong> связь через рефлексию, не зависит от версии. Ошибки пишутся в консоль.</li>
+<li><strong>ChestShop:</strong> подписка на событие <code>TransactionEvent</code> (через рефлексию).</li>
+</ul>
+<hr />
+<h2 id="19-частые-вопросы-и-устранение-проблем"><span class="num">19</span>Частые вопросы и устранение проблем</h2>
+<p><strong>Участок не покупается: «Недостаточно средств» или «лимит».</strong> Проверьте баланс и лимиты (<code>limits</code>). Администратор в <code>buildmaster.bypass</code> лимитов не имеет.</p>
+<p><strong>Станок нельзя поставить.</strong> Для типа здания действует лимит <code>station-limits</code>. Для станков нужна мастерская.</p>
+<p><strong>Станки в мастерской не работают.</strong> Закончилось электричество (счёт пуст), мастерская отключена от сети (<code>grid disconnect</code>) или перегружена станция. Проверьте <code>/district power</code>.</p>
+<p><strong>Строить нельзя, пишет «Участок заморожен».</strong> Не оплачено продление аренды. Пополните баланс и продлите аренду до конца отсрочки.</p>
+<p><strong>Мой текст не опубликован.</strong> Названия и описания проходят модерацию; смотрите <code>/district journal</code> и журнал предупреждений.</p>
+<p><strong>Не вижу свои вещи после сброса.</strong> Откройте <code>/district storage</code>. Арестованные вещи недоступны до решения администрации.</p>
+<p><strong>Голограммы нет.</strong> Чанк не загружен или позиция не задана (<code>/district holo</code>). Голограммы пересоздаются при загрузке чанка.</p>
+<p><strong>Аукцион пишет «недоступен».</strong> zAuctionHouse не установлен, работает в кластере или не зарегистрирована экономика казны. Смотрите
+<code>/district auction status</code> и лог zAuctionHouse (ищите <code>buildmaster_treasury</code>).</p>
+<p><strong>Аренда региона не проходит: «WorldGuard недоступен».</strong> Проверьте, что WorldGuard загружен и мир региона загружен.</p>
+<p><strong>Как вернуть значение настройки банка?</strong> <code>/district bank admin &lt;параметр&gt; reset</code>.</p>
+<hr />
+<h2 id="20-ограничения-и-что-проверить-на-сервере"><span class="num">20</span>Ограничения и что проверить на сервере</h2>
+<ul>
+<li>Плагин <strong>не запускался на живом сервере</strong>: проверялся тестами MockBukkit. Перед боевым использованием проверьте основные сценарии на тестовом.</li>
+<li>Интеграции с WorldGuard, ChestShop и zAuctionHouse проверены только на подменённом API (имена методов могут отличаться в других версиях).</li>
+<li>Исходные контейнеры здания после сброса пустые (иначе их содержимое можно забрать дважды).</li>
+<li>Вне участков плагин ничего не защищает (улицы защищайте через WorldGuard).</li>
+<li>Общий аукцион работает на одном сервере без кластера.</li>
+<li>Мощность электросети считается по установленным станкам, а не по фактическому использованию.</li>
+<li>Время работы работников считается по присутствию на участке; простой онлайн не отличается от работы.</li>
+</ul>
+<hr />
+<h2 id="21-сборка-тесты-и-релизы"><span class="num">21</span>Сборка, тесты и релизы</h2>
+<pre><code class="language-bash">gradle test      # JUnit + MockBukkit
+gradle build     # сборка jar в build/libs/
+</code></pre>
+<ul>
+<li>Каждый push и pull request собирается и тестируется (<code>.github/workflows/build.yml</code>).</li>
+<li><strong>Автоматический выпуск</strong> (<code>auto-release.yml</code>): каждый коммит в <code>main</code> и <code>claude/**</code> публикуется в Releases. Если релиза текущей версии
+  из <code>build.gradle</code> ещё нет – выходит обычный релиз; иначе пререлиз <code>&lt;версия&gt;-dev.&lt;N&gt;</code> (хранятся последние 10). Пропустить: <code>[skip release]</code>.</li>
+<li><strong>Ручной релиз</strong> (<code>release.yml</code>): тег <code>v1.2.3</code> или запуск из вкладки Actions с указанием версии. Описание берётся из <code>CHANGELOG.md</code>.</li>
+<li>К релизу прикладываются jar и контрольная сумма <code>.sha256</code>.</li>
+</ul>
+<p>Подробные описания отдельных подсистем: <a href="https://github.com/ddimavo/buildmaster/blob/main/docs/DESIGN.md">DESIGN.md</a>, <a href="https://github.com/ddimavo/buildmaster/blob/main/docs/WORKSHOPS.md">WORKSHOPS.md</a>, <a href="https://github.com/ddimavo/buildmaster/blob/main/docs/BANK_GRID.md">BANK_GRID.md</a>,
+<a href="https://github.com/ddimavo/buildmaster/blob/main/docs/HOTELS.md">HOTELS.md</a>, <a href="https://github.com/ddimavo/buildmaster/blob/main/docs/PLAYER_PLOTS.md">PLAYER_PLOTS.md</a>, <a href="https://github.com/ddimavo/buildmaster/blob/main/docs/JOBS.md">JOBS.md</a>, <a href="https://github.com/ddimavo/buildmaster/blob/main/docs/AUCTION.md">AUCTION.md</a>. История версий – <a href="https://github.com/ddimavo/buildmaster/blob/main/docs/CHANGELOG.md">CHANGELOG.md</a>.</p>
+  </div>
+  <footer>Документ собран из docs/MANUAL.md (scripts/build-manual.py). Не правьте HTML вручную.</footer>
+</main>
+</div>
+<div class="tools"><button id="theme" title="Тема">🌓</button><button id="up" title="Наверх">↑</button></div>
+<script>
+const root=document.documentElement;
+if(localStorage.getItem('bm-theme')) root.dataset.theme=localStorage.getItem('bm-theme');
+else if(matchMedia('(prefers-color-scheme: dark)').matches) root.dataset.theme='dark';
+document.getElementById('theme').onclick=()=>{const t=root.dataset.theme==='dark'?'light':'dark';root.dataset.theme=t;localStorage.setItem('bm-theme',t);};
+document.getElementById('up').onclick=()=>scrollTo({top:0});
+const side=document.getElementById('side');
+document.getElementById('menu').onclick=()=>side.classList.toggle('open');
+side.addEventListener('click',e=>{if(e.target.tagName==='A')side.classList.remove('open');});
+// копирование кода
+document.querySelectorAll('pre').forEach(pre=>{const b=document.createElement('button');b.className='copy';b.textContent='Копировать';
+  b.onclick=()=>{navigator.clipboard.writeText(pre.innerText.replace(/Копировать$/,'').trim());b.textContent='Готово';setTimeout(()=>b.textContent='Копировать',1200);};pre.appendChild(b);});
+// поиск по оглавлению
+const links=[...document.querySelectorAll('#nav a')];
+document.getElementById('search').addEventListener('input',e=>{const q=e.target.value.trim().toLowerCase();
+  links.forEach(a=>a.classList.toggle('hide',q&&!a.textContent.toLowerCase().includes(q)));});
+// подсветка текущего раздела
+const heads=[...document.querySelectorAll('.content h2,.content h3')];
+const obs=new IntersectionObserver(es=>{es.forEach(en=>{if(en.isIntersecting){links.forEach(a=>a.classList.toggle('active',a.getAttribute('href')==='#'+en.target.id));}});},{rootMargin:'0px 0px -75% 0px'});
+heads.forEach(h=>obs.observe(h));
+</script>
+</body>
+</html>

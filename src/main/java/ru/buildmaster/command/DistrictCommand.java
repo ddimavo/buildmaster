@@ -250,6 +250,9 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
                 "/district service [orders|offers|order|collect|cancel|price|toggle] - услуги мастерских и заказы",
                 "/district factory [info|install|load|collect|upgrade|levels] - производство и улучшения мастерской",
                 "/district room list [отель] - номера отеля; rate <номер> <цена> - цена номера (управляющий отеля)",
+                "/district region bind|list|consent|sale|rent|access|unbind - свой регион WorldGuard: продажа и аренда",
+                "/district job board|list|apply|post|staff|fire... - доска объявлений, вакансии и работники",
+                "/district hologram [номер] - предложить позицию голограммы (после проверки администратором)",
                 "/district power - электричество мастерской",
                 "/district warnings - журнал предупреждений"};
         for (String l : lines) {
@@ -264,7 +267,8 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
                     "/district holo [номер] - перенести голограмму в вашу позицию",
                     "/district moderation - заявки на названия и описания",
                     "/district evict|seize|reset <номер> <причина> - выселить, изъять (арест вещей), сбросить здание",
-                    "/district arrest list | release|delete|auction <игрок> <причина> - решение по арестованным вещам",
+                    "/district arrest - меню арестованных вещей; arrest list | release|delete|auction <игрок> <причина>",
+                    "/district auction [status|run] - общий аукцион казны (zAuctionHouse)",
                     "/district treasury [pay <игрок> <сумма> <причина>] - казна (право buildmaster.bank)",
                     "/district bank accounts|account <номер>|admin ... - счета, комиссии, штраф, налоги (право buildmaster.bank)",
                     "/district grid info|capacity|price|connect|disconnect|restore|autoconnect|report - электросеть (право buildmaster.grid)",

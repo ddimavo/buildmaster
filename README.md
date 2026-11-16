@@ -48,6 +48,9 @@ gradle build
 * Администратор может выселить, изъять (арест вещей) и сбросить здание в любой момент - всегда с причиной,
   которая попадает в журнал игрока (`/district journal`).
 
+**Полное руководство:** [docs/MANUAL.md](docs/MANUAL.md) (красивая HTML-версия: [docs/manual.html](docs/manual.html),
+собирается командой `python3 scripts/build-manual.py`).
+
 Подробности и план работ: [docs/DESIGN.md](docs/DESIGN.md).
 
 ## Права
