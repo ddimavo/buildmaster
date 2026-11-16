@@ -99,12 +99,28 @@ public final class ModerationService {
         return null;
     }
 
-    private static String holoText(org.bukkit.Location at) {
-        return String.format(java.util.Locale.ROOT, "%.2f %.2f %.2f", at.getX(), at.getY(), at.getZ());
+    private static String holoText(Plot.HoloKind kind, org.bukkit.Location at) {
+        return kind.name() + " " + String.format(java.util.Locale.ROOT, "%.2f %.2f %.2f", at.getX(), at.getY(), at.getZ());
+    }
+
+    /** Вид голограммы из текста заявки: «SERVICES x y z»; старые заявки без вида - общая голограмма. */
+    public static Plot.HoloKind holoKind(String text) {
+        String[] p = text.trim().split(" ");
+        if (p.length == 4) {
+            try {
+                return Plot.HoloKind.valueOf(p[0]);
+            } catch (IllegalArgumentException ignored) {
+                return null;
+            }
+        }
+        return Plot.HoloKind.MAIN;
     }
 
     private org.bukkit.Location holoParse(Plot plot, String text) {
-        String[] p = text.split(" ");
+        String[] p = text.trim().split(" ");
+        if (p.length == 4) {
+            p = java.util.Arrays.copyOfRange(p, 1, 4);
+        }
         org.bukkit.World world = Bukkit.getWorld(plot.world);
         if (p.length != 3 || world == null) {
             return null;
@@ -121,6 +137,14 @@ public final class ModerationService {
      * арендодателю участка игрока и администратору - сразу. Возвращает сообщение об ошибке или null.
      */
     public String submitHolo(Player player, Plot plot, org.bukkit.Location at) {
+        return submitHolo(player, plot, at, Plot.HoloKind.MAIN);
+    }
+
+    /**
+     * Предлагает положение одной из голограмм участка. Панель управляющего двигается свободно (она видна только ему),
+     * общая голограмма и голограмма услуг публичные, поэтому проходят одобрение администратором.
+     */
+    public String submitHolo(Player player, Plot plot, org.bukkit.Location at, Plot.HoloKind kind) {
         boolean admin = player.hasPermission("buildmaster.admin");
         if (!admin && !plot.isOwner(player.getUniqueId()) && !plot.isLandlord(player.getUniqueId())) {
             return "Позицию голограммы предлагает управляющий участка.";
@@ -135,17 +159,17 @@ public final class ModerationService {
         if (error != null) {
             return error;
         }
-        if (admin) {
-            setHolo(plot, at);
-            Text.ok(player, "Голограмма участка " + plot.id + " перенесена.");
+        if (admin || kind == Plot.HoloKind.MANAGER) {
+            setHolo(plot, kind, at);
+            Text.ok(player, kind.title() + " участка " + plot.id + " перенесена.");
             return null;
         }
         requests.removeIf(r -> r.status == Request.Status.PENDING && r.plotId.equals(plot.id)
-                && r.type == Request.Type.HOLO && r.requester.equals(player.getUniqueId()));
+                && r.type == Request.Type.HOLO && r.requester.equals(player.getUniqueId()) && kind == holoKind(r.text));
         requests.add(new Request(UUID.randomUUID(), Request.Type.HOLO, plot.id, player.getUniqueId(), player.getName(),
-                holoText(at), System.currentTimeMillis()));
+                holoText(kind, at), System.currentTimeMillis()));
         save();
-        Text.ok(player, "Позиция голограммы отправлена на проверку администратору. Пока действует прежняя.");
+        Text.ok(player, "Позиция: " + kind.title().toLowerCase() + " отправлена на проверку администратору. Пока действует прежняя.");
         for (Player a : Bukkit.getOnlinePlayers()) {
             if (a.hasPermission("buildmaster.admin")) {
                 Text.send(a, "<yellow>Новая заявка: позиция голограммы участка " + Text.esc(plot.id)
@@ -155,11 +179,17 @@ public final class ModerationService {
         return null;
     }
 
-    private void setHolo(Plot plot, org.bukkit.Location at) {
-        plot.hasHolo = true;
-        plot.holoX = at.getX();
-        plot.holoY = at.getY();
-        plot.holoZ = at.getZ();
+    private void setHolo(Plot plot, Plot.HoloKind kind, org.bukkit.Location at) {
+        switch (kind) {
+            case MAIN -> {
+                plot.hasHolo = true;
+                plot.holoX = at.getX();
+                plot.holoY = at.getY();
+                plot.holoZ = at.getZ();
+            }
+            case SERVICES -> plot.servicesPos = new double[] {at.getX(), at.getY(), at.getZ()};
+            case MANAGER -> plot.managerPos = new double[] {at.getX(), at.getY(), at.getZ()};
+        }
         plugin.plots().save();
         plugin.holograms().update(plot);
     }
@@ -217,7 +247,7 @@ public final class ModerationService {
             }
         } else if (r.type == Request.Type.HOLO) {
             org.bukkit.Location at = plot == null ? null : holoParse(plot, r.text);
-            String stale = plot == null || at == null ? "участок или позиция больше недействительны"
+            String stale = plot == null || at == null || holoKind(r.text) == null ? "участок или позиция больше недействительны"
                     : !plot.isOwner(r.requester) && !plot.isLandlord(r.requester) ? "участок сменил управляющего"
                     : holoError(plot, at);
             if (stale != null) {
@@ -230,7 +260,7 @@ public final class ModerationService {
                 save();
                 return;
             }
-            setHolo(plot, at);
+            setHolo(plot, holoKind(r.text), at);
         } else if (plot != null) {
             apply(plot, r.type, r.text);
         }

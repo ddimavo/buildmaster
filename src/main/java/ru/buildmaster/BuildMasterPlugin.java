@@ -70,6 +70,9 @@ public class BuildMasterPlugin extends JavaPlugin {
     private ru.buildmaster.service.MachineHolograms machineHolograms;
     private ru.buildmaster.service.RoomAutoService roomAuto;
     private ru.buildmaster.service.DoorHolograms doorHolograms;
+    private ru.buildmaster.service.GoodsService goods;
+    private ru.buildmaster.service.LinkService links;
+    private ru.buildmaster.service.ServicesHolograms servicesHolograms;
     private ru.buildmaster.service.SelectionVisualizer visualizer;
     private ru.buildmaster.service.ManagerPanels managerPanels;
     private ChatPrompt chatPrompt;
@@ -118,6 +121,9 @@ public class BuildMasterPlugin extends JavaPlugin {
         machineHolograms = new ru.buildmaster.service.MachineHolograms(this);
         roomAuto = new ru.buildmaster.service.RoomAutoService(this);
         doorHolograms = new ru.buildmaster.service.DoorHolograms(this);
+        goods = new ru.buildmaster.service.GoodsService(this);
+        links = new ru.buildmaster.service.LinkService(this);
+        servicesHolograms = new ru.buildmaster.service.ServicesHolograms(this);
         visualizer = new ru.buildmaster.service.SelectionVisualizer(this);
         managerPanels = new ru.buildmaster.service.ManagerPanels(this);
         jobs.load();
@@ -163,6 +169,7 @@ public class BuildMasterPlugin extends JavaPlugin {
         getServer().getScheduler().runTaskTimer(this, managerPanels::tick, 80L, 40L);
         getServer().getScheduler().runTaskTimer(this, visualizer::tick, 40L, 10L);
         getServer().getScheduler().runTaskTimer(this, doorHolograms::tick, 100L, 40L);
+        getServer().getScheduler().runTaskTimer(this, servicesHolograms::tick, 120L, 40L);
         getServer().getScheduler().runTaskLater(this, () -> {
             stations.rescanAll();
             holograms.updateAll();
@@ -195,6 +202,9 @@ public class BuildMasterPlugin extends JavaPlugin {
         }
         if (doorHolograms != null) {
             doorHolograms.removeAll();
+        }
+        if (servicesHolograms != null) {
+            servicesHolograms.removeAll();
         }
         saveTreasury();
     }
@@ -289,6 +299,18 @@ public class BuildMasterPlugin extends JavaPlugin {
     /** Только для тестов: подмена доступа к WorldGuard. */
     public void setRegions(RegionAccess access) {
         this.regions = access;
+    }
+
+    public ru.buildmaster.service.GoodsService goods() {
+        return goods;
+    }
+
+    public ru.buildmaster.service.LinkService links() {
+        return links;
+    }
+
+    public ru.buildmaster.service.ServicesHolograms servicesHolograms() {
+        return servicesHolograms;
     }
 
     public ru.buildmaster.service.DoorHolograms doorHolograms() {

@@ -30,6 +30,8 @@ final class Ui {
             Map.entry("ServicesMenu", Material.ORANGE_STAINED_GLASS_PANE),
             Map.entry("OffersMenu", Material.ORANGE_STAINED_GLASS_PANE),
             Map.entry("MyOrdersMenu", Material.ORANGE_STAINED_GLASS_PANE),
+            Map.entry("GoodsMenu", Material.ORANGE_STAINED_GLASS_PANE),
+            Map.entry("StorefrontMenu", Material.ORANGE_STAINED_GLASS_PANE),
             // электросеть
             Map.entry("GridMenu", Material.PURPLE_STAINED_GLASS_PANE),
             Map.entry("PlantMenu", Material.PURPLE_STAINED_GLASS_PANE),

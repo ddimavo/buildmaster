@@ -43,7 +43,7 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
 
     private static final List<String> PLAYER_SUBS = List.of("menu", "list", "info", "buy", "rent", "extend",
             "autorenew", "autoreset", "release", "trust", "untrust", "perm", "account", "power", "warnings", "tp", "replace",
-            "zones", "storage", "claim", "journal", "name", "desc", "bank", "service", "factory", "room", "region", "job", "hologram", "machine", "chest", "help");
+            "zones", "storage", "claim", "journal", "name", "desc", "bank", "service", "factory", "room", "region", "job", "hologram", "machine", "chest", "shop", "goods", "storefront", "link", "unlink", "help");
     private static final List<String> ADMIN_SUBS = List.of("wand", "pos1", "pos2", "create", "delete", "evict",
             "setprice", "setrent", "setspawn", "zone", "resnapshot", "reload", "seize", "reset", "holo", "category",
             "moderation", "arrest", "auction", "show");
@@ -107,8 +107,10 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
                 case "reset" -> adminDecision(sender, rest, Journal.Action.RESET);
                 case "holo" -> withPlayer(sender, p -> holo(p, rest));
                 case "hologram" -> withPlayer(sender, p -> {
-                    Plot plot = plotOrHere(p, rest.length > 0 ? rest[0] : null);
-                    String error = plugin.moderation().submitHolo(p, plot, p.getEyeLocation());
+                    Plot.HoloKind kind = rest.length > 0 ? Plot.HoloKind.parse(rest[0]) : null;
+                    int plotArg = kind != null ? 1 : 0;
+                    Plot plot = plotOrHere(p, rest.length > plotArg ? rest[plotArg] : null);
+                    String error = plugin.moderation().submitHolo(p, plot, p.getEyeLocation(), kind == null ? Plot.HoloKind.MAIN : kind);
                     if (error != null) {
                         throw new CommandError(error);
                     }
@@ -124,6 +126,11 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
                 case "bank" -> new BankCommands(plugin).handle(sender, rest);
                 case "service" -> new ServiceCommands(plugin).handle(sender, rest);
                 case "factory" -> new FactoryCommands(plugin).handle(sender, rest);
+                case "shop" -> new GoodsCommands(plugin).shop(sender, rest);
+                case "goods" -> new GoodsCommands(plugin).goods(sender, rest);
+                case "storefront" -> new GoodsCommands(plugin).storefront(sender, rest);
+                case "link" -> new GoodsCommands(plugin).link(sender, rest);
+                case "unlink" -> new GoodsCommands(plugin).unlink(sender, rest);
                 case "machine" -> new FactoryCommands(plugin).machine(sender, rest);
                 case "chest" -> new FactoryCommands(plugin).chest(sender, rest);
                 case "room" -> new RoomCommands(plugin).handle(sender, rest);
@@ -266,7 +273,9 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
                 "/district room list [отель] - номера отеля; rate <номер> <цена> - цена номера (управляющий отеля)",
                 "/district region bind|list|consent|sale|rent|access|unbind - свой регион WorldGuard: продажа и аренда",
                 "/district job board|list|apply|post|staff|fire... - доска объявлений, вакансии и работники",
-                "/district hologram [номер] - предложить позицию голограммы (после проверки администратором)",
+                "/district hologram [main|services|manager] [номер] - позиция голограммы (общая и услуг - после проверки, панель - сразу)",
+                "/district shop <участок> - витрина; /district goods [menu|list|deposit|take|price] - товары предприятия",
+                "/district link <мастерская> <магазин|склад> - связь: продукция уходит туда сама; unlink, storefront on|off",
                 "/district power - электричество мастерской",
                 "/district warnings - журнал предупреждений"};
         for (String l : lines) {
@@ -1230,6 +1239,12 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
         }
         if (sub.equals("room")) {
             return filter(new RoomCommands(plugin).complete(sender, args), args[args.length - 1]);
+        }
+        if (List.of("shop", "goods", "storefront", "link", "unlink").contains(sub)) {
+            return filter(new GoodsCommands(plugin).complete(sub, sender, args), args[args.length - 1]);
+        }
+        if (sub.equals("hologram") && args.length == 2) {
+            return filter(List.of("main", "services", "manager"), args[1]);
         }
         if (sub.equals("machine")) {
             return filter(new FactoryCommands(plugin).completeMachine(sender, args), args[args.length - 1]);

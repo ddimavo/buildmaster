@@ -65,15 +65,19 @@ public final class ManagerPanels {
             return;
         }
         for (Plot plot : plugin.plots().all()) {
-            if (!plot.hasHolo || plot.busy || plot.restorePending || plot.approval != Plot.Approval.APPROVED) {
+            if ((!plot.hasHolo && plot.managerPos == null) || plot.busy || plot.restorePending
+                    || plot.approval != Plot.Approval.APPROVED) {
                 remove(plot.id.toLowerCase());
                 continue;
             }
             World world = Bukkit.getWorld(plot.world);
-            if (world == null || !world.isChunkLoaded((int) Math.floor(plot.holoX) >> 4, (int) Math.floor(plot.holoZ) >> 4)) {
+            double bx = plot.managerPos != null ? plot.managerPos[0] : plot.holoX;
+            double by = plot.managerPos != null ? plot.managerPos[1] : plot.holoY;
+            double bz = plot.managerPos != null ? plot.managerPos[2] : plot.holoZ;
+            if (world == null || !world.isChunkLoaded((int) Math.floor(bx) >> 4, (int) Math.floor(bz) >> 4)) {
                 continue;
             }
-            Location base = new Location(world, plot.holoX, plot.holoY, plot.holoZ);
+            Location base = new Location(world, bx, by, bz);
             Set<Player> nearby = new HashSet<>();
             for (Player p : world.getPlayers()) {
                 if (canSee(plot, p) && p.getLocation().distanceSquared(base) <= VIEW_DISTANCE * VIEW_DISTANCE) {
@@ -91,9 +95,9 @@ public final class ManagerPanels {
 
     private void update(Plot plot, Location base, Set<Player> nearby, String key, World world) {
         List<String> lines = lines(plot);
-        // над общей голограммой: её высота растёт с числом строк, панель ставится выше
-        int publicLines = HologramTextLines.count(plugin, plot);
-        double y = base.getY() + (publicLines + lines.size()) * 0.125 + 0.2;
+        // над общей голограммой: её высота растёт с числом строк, панель ставится выше; своя позиция ставится как есть
+        int publicLines = plot.managerPos != null ? 0 : HologramTextLines.count(plugin, plot);
+        double y = plot.managerPos != null ? base.getY() : base.getY() + (publicLines + lines.size()) * 0.125 + 0.2;
         Location at = new Location(world, base.getX(), y, base.getZ());
         String text = String.join("\n", lines);
         TextDisplay existing = spawned.get(key);

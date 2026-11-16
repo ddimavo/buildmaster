@@ -405,7 +405,8 @@ public final class ProductionService {
 
     /** Продукция станков выкладывается в сундуки продукции; что не поместилось, ждёт в буфере станка. */
     private boolean outbox(Plot plot) {
-        if (plot.productChests.isEmpty()) {
+        Plot linked = plugin.links().target(plot);
+        if (plot.productChests.isEmpty() && linked == null && !plot.storefront) {
             return false;
         }
         boolean changed = false;
@@ -413,6 +414,14 @@ public final class ProductionService {
             Plot.MachineState state = e.getValue();
             RecipeBook.Recipe r = plugin.recipes().get(state.recipe);
             if (r == null || state.output <= 0) {
+                continue;
+            }
+            // связь с магазином или складом (или своя витрина) важнее сундука продукции
+            Plot dest = linked != null ? linked : plot.storefront ? plot : null;
+            if (dest != null) {
+                int put = plugin.goods().add(dest, r.output(), state.output);
+                state.output -= put;
+                changed |= put > 0;
                 continue;
             }
             for (String pos : plot.productChests) {

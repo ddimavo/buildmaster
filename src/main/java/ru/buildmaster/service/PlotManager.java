@@ -231,6 +231,35 @@ public final class PlotManager {
             p.regionMembers.add(UUID.fromString(u));
         }
         p.revenue = s.getDouble("revenue");
+        p.linkedTo = s.getString("link");
+        p.storefront = s.getBoolean("storefront");
+        p.linkRequests.addAll(s.getStringList("link-requests"));
+        if (s.isList("services-pos") && s.getDoubleList("services-pos").size() == 3) {
+            var l = s.getDoubleList("services-pos");
+            p.servicesPos = new double[] {l.get(0), l.get(1), l.get(2)};
+        }
+        if (s.isList("manager-pos") && s.getDoubleList("manager-pos").size() == 3) {
+            var l = s.getDoubleList("manager-pos");
+            p.managerPos = new double[] {l.get(0), l.get(1), l.get(2)};
+        }
+        ConfigurationSection goods = s.getConfigurationSection("goods");
+        if (goods != null) {
+            for (String m : goods.getKeys(false)) {
+                org.bukkit.Material material = org.bukkit.Material.matchMaterial(m);
+                if (material != null && goods.getInt(m) >= 0) {
+                    p.goods.put(material, goods.getInt(m));
+                }
+            }
+        }
+        ConfigurationSection prices = s.getConfigurationSection("prices");
+        if (prices != null) {
+            for (String m : prices.getKeys(false)) {
+                org.bukkit.Material material = org.bukkit.Material.matchMaterial(m);
+                if (material != null) {
+                    p.prices.put(material, prices.getDouble(m));
+                }
+            }
+        }
         p.parentId = s.getString("parent");
         p.maxRoomRate = s.getDouble("max-room-rate");
         for (String d : s.getStringList("doors")) {
@@ -350,6 +379,25 @@ public final class PlotManager {
             yml.set(k + "consents", p.consents.stream().map(UUID::toString).toList());
             yml.set(k + "region-members", p.regionMembers.stream().map(UUID::toString).toList());
             yml.set(k + "revenue", p.revenue);
+            yml.set(k + "link", p.linkedTo);
+            if (p.storefront) {
+                yml.set(k + "storefront", true);
+            }
+            if (!p.linkRequests.isEmpty()) {
+                yml.set(k + "link-requests", new java.util.ArrayList<>(p.linkRequests));
+            }
+            if (p.servicesPos != null) {
+                yml.set(k + "services-pos", java.util.List.of(p.servicesPos[0], p.servicesPos[1], p.servicesPos[2]));
+            }
+            if (p.managerPos != null) {
+                yml.set(k + "manager-pos", java.util.List.of(p.managerPos[0], p.managerPos[1], p.managerPos[2]));
+            }
+            for (var g : p.goods.entrySet()) {
+                yml.set(k + "goods." + g.getKey().name(), g.getValue());
+            }
+            for (var pr : p.prices.entrySet()) {
+                yml.set(k + "prices." + pr.getKey().name(), pr.getValue());
+            }
             yml.set(k + "parent", p.parentId);
             yml.set(k + "max-room-rate", p.maxRoomRate);
             yml.set(k + "doors", p.doors.stream().map(d -> d[0] + "," + d[1] + "," + d[2]).toList());

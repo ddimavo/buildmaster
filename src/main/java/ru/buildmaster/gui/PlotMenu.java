@@ -62,6 +62,18 @@ public final class PlotMenu extends Menu {
                         e -> new ServicesMenu(plugin, player, plot, back).open());
             }
         }
+        if (!plot.isFree() && plugin.goods().holdsGoods(plot) && !plugin.service().isLocked(plot)) {
+            if (owner) {
+                set(26, Text.icon(Material.BARREL, "<gold>Товары и связи",
+                        "<gray>Склад товаров: <white>" + plugin.goods().total(plot) + " из " + plugin.goods().capacity(plot),
+                        "<gray>Цены, витрина, связи с мастерскими и магазинами",
+                        "<yellow>Нажмите, чтобы открыть"), e -> new GoodsMenu(plugin, player, plot, back, 0).open());
+            } else if (plugin.goods().sells(plot)) {
+                set(24, Text.icon(Material.EMERALD, "<green>Витрина",
+                        "<gray>Товаров в продаже: <white>" + plugin.goods().listed(plot).size(),
+                        "<yellow>Нажмите, чтобы посмотреть и купить"), e -> new StorefrontMenu(plugin, player, plot, back, 0).open());
+            }
+        }
         if (plugin.getConfig().getBoolean("allow-visit-teleport", true) || owner || admin) {
             set(39, Text.icon(Material.ENDER_PEARL, "<light_purple>Телепортироваться"),
                     e -> {

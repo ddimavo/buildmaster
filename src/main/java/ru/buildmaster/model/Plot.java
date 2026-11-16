@@ -140,6 +140,46 @@ public final class Plot {
     public double maxRoomRate;
     /** Уровень улучшений мастерской (0 - базовый) и производственные линии. */
     public int level;
+    /** Какую из голограмм участка двигают: общая, услуги и товары, панель управляющего. */
+    public enum HoloKind {
+        MAIN("Общая голограмма"), SERVICES("Голограмма услуг и товаров"), MANAGER("Панель управляющего");
+
+        private final String title;
+
+        HoloKind(String title) {
+            this.title = title;
+        }
+
+        public String title() {
+            return title;
+        }
+
+        public static HoloKind parse(String s) {
+            if (s == null) {
+                return null;
+            }
+            return switch (s.toLowerCase(java.util.Locale.ROOT)) {
+                case "main", "общая", "основная" -> MAIN;
+                case "services", "service", "услуги", "товары" -> SERVICES;
+                case "manager", "панель", "управляющий" -> MANAGER;
+                default -> null;
+            };
+        }
+    }
+
+    /** Положение голограммы услуг и панели управляющего {x, y, z}; null - автоматически рядом с общей. */
+    public double[] servicesPos;
+    public double[] managerPos;
+    /** Товары на продажу (витрина): материал -> количество, цена за штуку. */
+    public final Map<org.bukkit.Material, Integer> goods = new LinkedHashMap<>();
+    public final Map<org.bukkit.Material, Double> prices = new LinkedHashMap<>();
+    /** Мастерская привязана к магазину или складу: продукция уходит туда автоматически. */
+    public String linkedTo;
+    /** У магазина или склада: мастерские, ждущие подтверждения связи. */
+    public final java.util.Set<String> linkRequests = new java.util.LinkedHashSet<>();
+    /** Мастерская складывает продукцию на свою витрину (если нет связи). */
+    public boolean storefront;
+
     /** Станки мастерской с заданием: позиция "x,y,z" -> состояние. */
     public final Map<String, MachineState> machineStates = new LinkedHashMap<>();
     /** Склад сырья мастерской: материал -> количество (общий для всех станков). */
