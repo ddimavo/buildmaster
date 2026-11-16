@@ -241,6 +241,7 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
                     "/district arrest list | release|delete|auction <игрок> <причина> - решение по арестованным вещам",
                     "/district treasury [pay <игрок> <сумма> <причина>] - казна",
                     "/district power calc [smelter:2 anvil:1] - калькулятор тарифа",
+                    "/district power admin info|base|progression|usage|mode|coef|discount|add|stats - тарифы и статистика",
                     "/district delete <номер> - удалить свободный участок",
                     "/district setprice|setrent <номер> <цена|-> - изменить цены",
                     "/district setspawn [номер] - точка телепорта",
@@ -480,11 +481,199 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
             powerCalc(sender, Arrays.copyOfRange(args, 1, args.length));
             return;
         }
+        if (args.length > 0 && args[0].equalsIgnoreCase("admin")) {
+            if (!sender.hasPermission("buildmaster.admin")) {
+                throw new CommandError("Недостаточно прав.");
+            }
+            powerAdmin(sender, Arrays.copyOfRange(args, 1, args.length));
+            return;
+        }
         if (args.length > 0 && args[0].equalsIgnoreCase("deposit")) {
             account(sender, args);
             return;
         }
         account(sender, new String[0]);
+    }
+
+    /** power admin base|progression|usage|mode|coef|discount|add|stats|info ... */
+    private void powerAdmin(CommandSender sender, String[] args) {
+        if (args.length == 0) {
+            throw new CommandError("Использование: /district power admin <info|base|progression|usage|mode|coef|discount|add|stats> ...");
+        }
+        var power = plugin.power();
+        var o = power.overrides();
+        String sub = args[0].toLowerCase(Locale.ROOT);
+        switch (sub) {
+            case "info" -> {
+                Text.send(sender, "<yellow>Электричество (значение / источник):");
+                sender.sendMessage(Text.mm("<gray> режим: <white>" + power.mode() + source(o.mode() != null)));
+                sender.sendMessage(Text.mm("<gray> база: <white>" + power.base() + source(o.base() != null)));
+                sender.sendMessage(Text.mm("<gray> прогрессия: <white>" + power.progression() + source(o.progression() != null)));
+                sender.sendMessage(Text.mm("<gray> цена операции (USAGE): <white>" + power.usageBase() + source(o.usageBase() != null)));
+                for (String type : List.of("smelter", "anvil", "alchemy", "enchanting")) {
+                    sender.sendMessage(Text.mm("<gray> " + type + ": <white>" + power.coefficient(type)
+                            + source(o.coefficient(type) != null)));
+                }
+            }
+            case "base", "progression", "usage" -> {
+                if (args.length < 2) {
+                    throw new CommandError("Использование: /district power admin " + sub + " <число|reset>");
+                }
+                Double value = args[1].equalsIgnoreCase("reset") ? null : parseNonNegative(args[1]);
+                switch (sub) {
+                    case "base" -> o.setBase(value);
+                    case "progression" -> o.setProgression(value);
+                    default -> o.setUsageBase(value);
+                }
+                power.saveOverrides();
+                power.reloadTariffs(sender.getName(), sub + (value == null ? " сброшено к config.yml" : " = " + value));
+                Text.ok(sender, "Готово: " + sub + (value == null ? " сброшено к значению из config.yml." : " = " + value + "."));
+            }
+            case "mode" -> {
+                if (args.length < 2) {
+                    throw new CommandError("Использование: /district power admin mode <DAILY|USAGE|reset>");
+                }
+                String v = args[1].toUpperCase(Locale.ROOT);
+                if (v.equals("RESET")) {
+                    o.setMode(null);
+                } else if (v.equals("DAILY") || v.equals("USAGE")) {
+                    o.setMode(v);
+                } else {
+                    throw new CommandError("Режим: DAILY (суточный тариф) или USAGE (по факту использования).");
+                }
+                power.saveOverrides();
+                power.reloadTariffs(sender.getName(), "режим " + power.mode());
+                Text.ok(sender, "Режим тарифа: " + power.mode() + ".");
+            }
+            case "coef" -> coef(sender, Arrays.copyOfRange(args, 1, args.length));
+            case "discount" -> {
+                if (args.length < 3) {
+                    throw new CommandError("Использование: /district power admin discount <номер> <процент>");
+                }
+                Plot plot = requirePlot(args[1]);
+                double percent;
+                try {
+                    percent = Double.parseDouble(args[2].replace(',', '.').replace("%", ""));
+                } catch (NumberFormatException e) {
+                    throw new CommandError("Скидка должна быть числом.");
+                }
+                String error = power.setDiscount(sender.getName(), plot, percent);
+                if (error != null) {
+                    throw new CommandError(error);
+                }
+                Text.ok(sender, "Скидка участка " + plot.id + ": " + percent + "%.");
+            }
+            case "add" -> {
+                if (args.length < 4) {
+                    throw new CommandError("Использование: /district power admin add <номер> <сумма> <причина>");
+                }
+                Plot plot = requirePlot(args[1]);
+                double amount;
+                try {
+                    amount = Double.parseDouble(args[2].replace(',', '.'));
+                } catch (NumberFormatException e) {
+                    throw new CommandError("Сумма должна быть числом.");
+                }
+                String error = power.gift(sender.getName(), plot, amount,
+                        String.join(" ", Arrays.copyOfRange(args, 3, args.length)));
+                if (error != null) {
+                    throw new CommandError(error);
+                }
+                Text.ok(sender, "На счёт участка " + plot.id + " зачислено " + plugin.economy().format(amount) + " из казны.");
+            }
+            case "stats" -> stats(sender, args.length > 1 ? args[1] : null);
+            default -> throw new CommandError("Неизвестная подкоманда. /district power admin info");
+        }
+    }
+
+    private static String source(boolean overridden) {
+        return overridden ? " <gold>(команда админа)" : " <dark_gray>(config.yml)";
+    }
+
+    private static Double parseNonNegative(String s) {
+        try {
+            double v = Double.parseDouble(s.replace(',', '.'));
+            if (v < 0 || Double.isNaN(v) || Double.isInfinite(v)) {
+                throw new NumberFormatException();
+            }
+            return v;
+        } catch (NumberFormatException e) {
+            throw new CommandError("Нужно число не меньше нуля или reset.");
+        }
+    }
+
+    /** coef list | set <тип> <число> | reset <тип> */
+    private void coef(CommandSender sender, String[] args) {
+        var power = plugin.power();
+        String sub = args.length == 0 ? "list" : args[0].toLowerCase(Locale.ROOT);
+        switch (sub) {
+            case "list" -> {
+                for (String type : List.of("smelter", "anvil", "alchemy", "enchanting")) {
+                    sender.sendMessage(Text.mm("<gray> " + type + ": <white>" + power.coefficient(type)
+                            + source(power.overrides().coefficient(type) != null)));
+                }
+            }
+            case "set" -> {
+                if (args.length < 3) {
+                    throw new CommandError("Использование: /district power admin coef set <тип> <число>");
+                }
+                String type = args[1].toLowerCase(Locale.ROOT);
+                if (!power.knownType(type)) {
+                    throw new CommandError("Неизвестный станок «" + type + "». Доступно: smelter, anvil, alchemy, enchanting.");
+                }
+                double value = parseNonNegative(args[2]);
+                power.overrides().setCoefficient(type, value);
+                power.saveOverrides();
+                power.reloadTariffs(sender.getName(), "коэффициент " + type + " = " + value);
+                Text.ok(sender, "Коэффициент «" + type + "»: " + value + ".");
+            }
+            case "reset" -> {
+                if (args.length < 2) {
+                    throw new CommandError("Использование: /district power admin coef reset <тип>");
+                }
+                String type = args[1].toLowerCase(Locale.ROOT);
+                if (!power.overrides().resetCoefficient(type)) {
+                    throw new CommandError("Для «" + type + "» нет переопределения.");
+                }
+                power.saveOverrides();
+                power.reloadTariffs(sender.getName(), "коэффициент " + type + " сброшен к config.yml");
+                Text.ok(sender, "Коэффициент «" + type + "» снова из config.yml: " + power.coefficient(type) + ".");
+            }
+            default -> throw new CommandError("Использование: /district power admin coef <list|set|reset> ...");
+        }
+    }
+
+    /** stats [номер]: использование станков. */
+    private void stats(CommandSender sender, String plotId) {
+        var stats = plugin.power().stats();
+        if (plotId != null) {
+            Plot plot = requirePlot(plotId);
+            var byType = stats.byType(plot.id);
+            if (byType.isEmpty()) {
+                Text.send(sender, "<gray>По участку " + Text.esc(plot.id) + " операций пока нет.");
+                return;
+            }
+            Text.send(sender, "<yellow>Станки участка <white>" + Text.esc(plot.id) + "</white>:");
+            for (var e : byType.entrySet()) {
+                sender.sendMessage(Text.mm("<gray> " + e.getKey() + ": <white>" + e.getValue().operations()
+                        + " опер., израсходовано " + plugin.economy().format(e.getValue().spent())));
+            }
+            return;
+        }
+        var totals = stats.totalsByType();
+        if (totals.isEmpty()) {
+            Text.send(sender, "<gray>Операций на станках пока не было.");
+            return;
+        }
+        Text.send(sender, "<yellow>Использование станков (все мастерские):");
+        for (var e : totals.entrySet()) {
+            sender.sendMessage(Text.mm("<gray> " + e.getKey() + ": <white>" + e.getValue().operations()
+                    + " опер., " + plugin.economy().format(e.getValue().spent())));
+        }
+        Text.send(sender, "<yellow>Самые загруженные мастерские:");
+        for (var e : stats.top(5)) {
+            sender.sendMessage(Text.mm("<gray> " + Text.esc(e.getKey()) + ": <white>" + e.getValue().operations() + " опер."));
+        }
     }
 
     /** power calc smelter:2 anvil:1 - тариф для набора станков (без аргументов - станки участка, где стоит админ). */
@@ -500,7 +689,7 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
             for (String a : args) {
                 String[] kv = a.split(":");
                 String type = kv[0].toLowerCase(Locale.ROOT);
-                if (plugin.getConfig().get("electricity.stations." + type) == null) {
+                if (!plugin.power().knownType(type)) {
                     throw new CommandError("Неизвестный станок «" + type + "». Доступно: smelter, anvil, alchemy, enchanting.");
                 }
                 int n = 1;
@@ -515,8 +704,8 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
             return;
         }
         Text.send(sender, "<yellow>Расчёт тарифа (база "
-                + plugin.economy().format(plugin.getConfig().getDouble("electricity.base-rate-per-day", 100))
-                + ", прогрессия " + plugin.getConfig().getDouble("electricity.progression-per-extra-same-type", 0.1) + "):");
+                + plugin.economy().format(plugin.power().base())
+                + ", прогрессия " + plugin.power().progression() + "):");
         for (var e : plugin.power().breakdown(counts).entrySet()) {
             sender.sendMessage(Text.mm("<gray> " + Text.esc(e.getKey()) + " × " + counts.get(e.getKey())
                     + " (коэф. " + plugin.power().coefficient(e.getKey()) + "): <white>"
@@ -1042,9 +1231,21 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
             }
             case "power" -> {
                 if (n == 2) {
-                    result.addAll(List.of("deposit", "calc"));
+                    result.addAll(List.of("deposit", "calc", "admin"));
                 } else if (n >= 3 && args[1].equalsIgnoreCase("calc")) {
                     result.addAll(List.of("smelter:", "anvil:", "alchemy:", "enchanting:"));
+                } else if (args[1].equalsIgnoreCase("admin")) {
+                    if (n == 3) {
+                        result.addAll(List.of("info", "base", "progression", "usage", "mode", "coef", "discount", "add", "stats"));
+                    } else if (n == 4 && args[2].equalsIgnoreCase("mode")) {
+                        result.addAll(List.of("DAILY", "USAGE", "reset"));
+                    } else if (n == 4 && args[2].equalsIgnoreCase("coef")) {
+                        result.addAll(List.of("list", "set", "reset"));
+                    } else if (n == 4 && List.of("discount", "add", "stats").contains(args[2].toLowerCase(Locale.ROOT))) {
+                        result.addAll(plotIds(null));
+                    } else if (n == 5 && args[2].equalsIgnoreCase("coef")) {
+                        result.addAll(List.of("smelter", "anvil", "alchemy", "enchanting"));
+                    }
                 }
             }
             case "autoreset" -> {

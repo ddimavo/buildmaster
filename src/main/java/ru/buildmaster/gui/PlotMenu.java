@@ -154,11 +154,19 @@ public final class PlotMenu extends Menu {
         List<String> accountLore = new ArrayList<>();
         accountLore.add("<gray>Баланс: <white>" + plugin.economy().format(plugin.power().balance(plot)));
         if (plugin.power().isBilled(plot)) {
-            accountLore.add("<gray>Тариф электричества: <white>" + plugin.economy().format(plot.account.ratePerDay()) + " / сутки");
-            long left = plot.account.secondsLeft(plugin.power().nowSec());
-            accountLore.add(plugin.power().isPowered(plot)
-                    ? "<gray>Хватит на: <white>" + (left == Long.MAX_VALUE ? "без ограничения" : Text.duration(left * 1000L))
-                    : "<red>Обесточено: станки не работают");
+            if (plugin.power().mode() == ru.buildmaster.service.PowerService.Mode.USAGE) {
+                accountLore.add("<gray>Электричество: <white>оплата по использованию станков");
+                accountLore.add(plugin.power().isPowered(plot) ? "<gray>Станки работают" : "<red>На счёте нет средств");
+            } else {
+                accountLore.add("<gray>Тариф электричества: <white>" + plugin.economy().format(plot.account.ratePerDay()) + " / сутки");
+                long left = plot.account.secondsLeft(plugin.power().nowSec());
+                accountLore.add(plugin.power().isPowered(plot)
+                        ? "<gray>Хватит на: <white>" + (left == Long.MAX_VALUE ? "без ограничения" : Text.duration(left * 1000L))
+                        : "<red>Обесточено: станки не работают");
+            }
+            if (plot.discountPercent > 0) {
+                accountLore.add("<green>Скидка: " + plot.discountPercent + "%");
+            }
         }
         accountLore.add("<yellow>ЛКМ - пополнить, ПКМ - снять");
         set(24, Text.icon(Material.GOLD_NUGGET, "<gold>Счёт предприятия", accountLore.toArray(new String[0])), e -> {

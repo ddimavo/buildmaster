@@ -180,6 +180,7 @@ public final class PlotManager {
                 p.publicPerms.add(perm);
             }
         }
+        p.discountPercent = s.getDouble("discount-percent");
         p.account.restore(s.getDouble("account.balance"), s.getDouble("account.rate"), s.getLong("account.updated"));
         ConfigurationSection zones = s.getConfigurationSection("zones");
         if (zones != null) {
@@ -240,6 +241,7 @@ public final class PlotManager {
                 yml.set(k + "grants." + e.getKey(), e.getValue().stream().map(Enum::name).toList());
             }
             yml.set(k + "public-perms", p.publicPerms.stream().map(Enum::name).toList());
+            yml.set(k + "discount-percent", p.discountPercent);
             yml.set(k + "account.balance", p.account.rawBalance());
             yml.set(k + "account.rate", p.account.ratePerDay());
             yml.set(k + "account.updated", p.account.updatedAtSec());

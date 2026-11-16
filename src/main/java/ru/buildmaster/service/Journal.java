@@ -39,6 +39,8 @@ public final class Journal {
         ACCOUNT_WITHDRAW("Снятие со счёта"),
         ACCOUNT_REFUND("Возврат остатка счёта"),
         ACCOUNT_PENALTY("Штраф при изъятии"),
+        ACCOUNT_GIFT("Подарок на счёт"),
+        TARIFF("Изменение тарифа"),
         RIGHTS("Изменение прав");
 
         private final String title;

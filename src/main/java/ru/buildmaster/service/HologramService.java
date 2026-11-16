@@ -30,7 +30,8 @@ public final class HologramService {
     }
 
     private Component render(Plot plot) {
-        List<String> lines = HologramText.lines(plot, plugin.economy()::format, plugin.power().nowSec());
+        List<String> lines = HologramText.lines(plot, plugin.economy()::format, plugin.power().nowSec(),
+                plugin.power().mode() == PowerService.Mode.USAGE);
         return Text.mm(String.join("\n", lines));
     }
 

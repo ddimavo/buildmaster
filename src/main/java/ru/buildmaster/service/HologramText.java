@@ -15,8 +15,15 @@ public final class HologramText {
         return lines(plot, money, null);
     }
 
-    /** @param billingNowSec текущее биллинговое время или null (строка электричества не показывается) */
     public static List<String> lines(Plot plot, DoubleFunction<String> money, Long billingNowSec) {
+        return lines(plot, money, billingNowSec, false);
+    }
+
+    /**
+     * @param billingNowSec текущее биллинговое время или null (строка электричества не показывается)
+     * @param usageMode     тариф по факту использования: вместо остатка времени показывается способ оплаты
+     */
+    public static List<String> lines(Plot plot, DoubleFunction<String> money, Long billingNowSec, boolean usageMode) {
         List<String> lines = new ArrayList<>();
         lines.add("<gold><bold>" + Text.esc(plot.displayName()));
         lines.add("<gray>" + plot.category.title() + " · № " + Text.esc(plot.id)
@@ -34,7 +41,11 @@ public final class HologramText {
             if (plot.isFrozen()) {
                 lines.add("<red>Платёж просрочен");
             }
-            if (billingNowSec != null && plot.category == ru.buildmaster.model.Category.WORKSHOP) {
+            if (billingNowSec != null && plot.category == ru.buildmaster.model.Category.WORKSHOP && usageMode) {
+                lines.add(plot.account.rawBalance() > 1e-9
+                        ? "<yellow>Электричество: <white>оплата по использованию"
+                        : "<red>Обесточено: на счёте нет средств");
+            } else if (billingNowSec != null && plot.category == ru.buildmaster.model.Category.WORKSHOP) {
                 if (!plot.account.powered(billingNowSec)) {
                     lines.add("<red>Обесточено");
                 } else if (plot.account.ratePerDay() > 0) {

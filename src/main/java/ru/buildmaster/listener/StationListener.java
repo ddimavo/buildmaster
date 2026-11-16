@@ -12,12 +12,20 @@ import org.bukkit.event.inventory.BrewEvent;
 import org.bukkit.event.inventory.BrewingStandFuelEvent;
 import org.bukkit.event.inventory.FurnaceBurnEvent;
 import org.bukkit.event.inventory.FurnaceSmeltEvent;
+import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.event.inventory.PrepareAnvilEvent;
+import org.bukkit.inventory.AnvilInventory;
 import ru.buildmaster.BuildMasterPlugin;
 import ru.buildmaster.model.Plot;
+import ru.buildmaster.service.PowerService;
 import ru.buildmaster.util.Text;
 
-/** Обесточенная мастерская: станки не работают. Вне мастерских станки обычные. */
+/**
+ * Станки мастерских и электричество.
+ * DAILY: без электричества станки не работают. USAGE: каждая операция списывает деньги со счёта.
+ * Вне мастерских станки обычные.
+ */
 public final class StationListener implements Listener {
 
     private final BuildMasterPlugin plugin;
@@ -26,16 +34,35 @@ public final class StationListener implements Listener {
         this.plugin = plugin;
     }
 
-    /** true - станок в этом блоке сейчас работать не должен. */
+    private Plot plotAt(Block block) {
+        return block == null ? null : plugin.plots().at(block.getLocation());
+    }
+
+    private boolean usage() {
+        return plugin.power().mode() == PowerService.Mode.USAGE;
+    }
+
+    /** DAILY: станок обесточен. В режиме USAGE работа проверяется операцией, а не состоянием. */
     private boolean off(Block block) {
-        Plot plot = plugin.plots().at(block.getLocation());
+        if (usage()) {
+            return false;
+        }
+        Plot plot = plotAt(block);
         return plot != null && !plugin.power().isPowered(plot);
     }
 
     private void tell(HumanEntity who) {
         if (who instanceof Player p) {
-            p.sendActionBar(Text.mm("<red>Мастерская обесточена: станки не работают."));
+            p.sendActionBar(Text.mm(usage()
+                    ? "<red>На счёте мастерской недостаточно средств для этой операции."
+                    : "<red>Мастерская обесточена: станки не работают."));
         }
+    }
+
+    /** Операция на станке: false - не разрешена (нет электричества или денег). */
+    private boolean operation(Block block, String tariffKey) {
+        Plot plot = plotAt(block);
+        return plot == null || plugin.power().useStation(plot, tariffKey);
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
@@ -47,7 +74,7 @@ public final class StationListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onFurnaceSmelt(FurnaceSmeltEvent event) {
-        if (off(event.getBlock())) {
+        if (!operation(event.getBlock(), "smelter")) {
             event.setCancelled(true);
         }
     }
@@ -61,17 +88,35 @@ public final class StationListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onBrew(BrewEvent event) {
-        if (off(event.getBlock())) {
+        if (!operation(event.getBlock(), "alchemy")) {
             event.setCancelled(true);
         }
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
-    public void onAnvil(PrepareAnvilEvent event) {
+    public void onAnvilPrepare(PrepareAnvilEvent event) {
         var loc = event.getInventory().getLocation();
         if (loc != null && off(loc.getBlock())) {
             event.setResult(null);
             event.getViewers().forEach(this::tell);
+        }
+    }
+
+    /** Ремонт на наковальне: операция считается, когда игрок забирает результат. */
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onAnvilTake(InventoryClickEvent event) {
+        if (event.getInventory().getType() != InventoryType.ANVIL || !(event.getInventory() instanceof AnvilInventory anvil)
+                || event.getSlot() != 2 || event.getClickedInventory() != anvil) {
+            return;
+        }
+        var result = event.getCurrentItem();
+        var loc = anvil.getLocation();
+        if (result == null || result.getType().isAir() || loc == null) {
+            return;
+        }
+        if (!operation(loc.getBlock(), "anvil")) {
+            event.setCancelled(true);
+            tell(event.getWhoClicked());
         }
     }
 
@@ -85,7 +130,7 @@ public final class StationListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onEnchant(EnchantItemEvent event) {
-        if (off(event.getEnchantBlock())) {
+        if (!operation(event.getEnchantBlock(), "enchanting")) {
             event.setCancelled(true);
             tell(event.getEnchanter());
         }

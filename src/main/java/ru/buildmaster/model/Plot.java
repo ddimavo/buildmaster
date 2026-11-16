@@ -82,6 +82,8 @@ public final class Plot {
     public final EnumSet<Perm> publicPerms = EnumSet.noneOf(Perm.class);
     /** Денежный счёт предприятия; в мастерских с него списывается электричество. */
     public final PowerAccount account = new PowerAccount();
+    /** Индивидуальная скидка на электричество (0-100 %), назначается администратором. */
+    public double discountPercent;
     public final Map<String, Zone> zones = new LinkedHashMap<>();
 
     public boolean hasSpawn;

@@ -93,6 +93,22 @@ class HologramTextTest {
     }
 
     @Test
+    void usageModeHologramShowsPaymentMethodOrEmptyAccount() {
+        Plot p = plot();
+        p.category = Category.WORKSHOP;
+        p.status = Plot.Status.RENTED;
+        p.ownerName = "Steve";
+        p.account.restore(50, 0, 0);
+        String paid = String.join("\n", HologramText.lines(p, HologramTextTest::money, 0L, true));
+        assertTrue(paid.contains("оплата по использованию"), paid);
+        assertFalse(paid.contains("Обесточено"), paid);
+
+        p.account.restore(0, 0, 0);
+        String empty = String.join("\n", HologramText.lines(p, HologramTextTest::money, 0L, true));
+        assertTrue(empty.contains("Обесточено"), empty);
+    }
+
+    @Test
     void nonWorkshopHasNoElectricityLine() {
         Plot p = plot();
         p.status = Plot.Status.RENTED;

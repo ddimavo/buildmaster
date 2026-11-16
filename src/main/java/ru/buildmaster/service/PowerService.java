@@ -2,7 +2,9 @@ package ru.buildmaster.service;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import java.util.logging.Level;
@@ -16,25 +18,39 @@ import ru.buildmaster.model.Plot;
 import ru.buildmaster.util.Text;
 
 /**
- * Счёт предприятия и электричество мастерских. Расход вычисляется лениво по биллинговым часам.
+ * Счёт предприятия и электричество мастерских.
+ * <ul>
+ *   <li>DAILY - суточный тариф списывается непрерывно (ленивый расчёт по биллинговым часам);</li>
+ *   <li>USAGE - плата за каждую операцию на станке.</li>
+ * </ul>
  * Потраченные деньги поступают в казну.
  */
 public final class PowerService {
 
+    public enum Mode { DAILY, USAGE }
+
     private final BuildMasterPlugin plugin;
     private final File billingFile;
+    private final File overridesFile;
+    private final File statsFile;
     private BillingClock clock;
     private java.util.function.LongSupplier wallClock = System::currentTimeMillis;
     private boolean treasuryDirty;
+    private PowerOverrides overrides = new PowerOverrides();
+    private StationStats stats = new StationStats();
 
     public PowerService(BuildMasterPlugin plugin) {
         this.plugin = plugin;
         this.billingFile = new File(plugin.getDataFolder(), "billing.yml");
+        this.overridesFile = new File(plugin.getDataFolder(), "overrides.yml");
+        this.statsFile = new File(plugin.getDataFolder(), "stats.yml");
     }
 
     public void load() {
         long saved = billingFile.exists() ? YamlConfiguration.loadConfiguration(billingFile).getLong("millis") : 0;
         clock = new BillingClock(saved, wallClock.getAsLong(), maxStepSeconds() * 1000L);
+        overrides = PowerOverrides.load(overridesFile);
+        stats = StationStats.load(statsFile);
     }
 
     /** Только для тестов: подмена источника времени (биллинговые часы сохраняют накопленное). */
@@ -64,6 +80,59 @@ public final class PowerService {
         }
     }
 
+    // ------------------------------------------------------------ настройки: config + переопределения
+
+    public PowerOverrides overrides() {
+        return overrides;
+    }
+
+    public void saveOverrides() {
+        try {
+            overrides.save(overridesFile);
+        } catch (IOException e) {
+            plugin.getLogger().log(Level.SEVERE, "Не удалось сохранить overrides.yml", e);
+        }
+    }
+
+    public StationStats stats() {
+        return stats;
+    }
+
+    public Mode mode() {
+        String value = overrides.mode() != null ? overrides.mode()
+                : plugin.getConfig().getString("electricity.mode", "DAILY");
+        try {
+            return Mode.valueOf(value.toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException e) {
+            return Mode.DAILY;
+        }
+    }
+
+    public double base() {
+        Double o = overrides.base();
+        return o != null ? o : plugin.getConfig().getDouble("electricity.base-rate-per-day", 100);
+    }
+
+    public double progression() {
+        Double o = overrides.progression();
+        return o != null ? o : plugin.getConfig().getDouble("electricity.progression-per-extra-same-type", 0.10);
+    }
+
+    public double usageBase() {
+        Double o = overrides.usageBase();
+        return o != null ? o : plugin.getConfig().getDouble("electricity.usage-base", 1.0);
+    }
+
+    /** Коэффициент станка: переопределение администратора, иначе значение из config.yml. */
+    public double coefficient(String type) {
+        Double o = overrides.coefficient(type);
+        return o != null ? o : plugin.getConfig().getDouble("electricity.stations." + type, 0);
+    }
+
+    public boolean knownType(String type) {
+        return overrides.coefficient(type) != null || plugin.getConfig().get("electricity.stations." + type) != null;
+    }
+
     // ------------------------------------------------------------ тариф
 
     /** Платит ли участок за электричество: мастерская с управляющим. */
@@ -71,19 +140,23 @@ public final class PowerService {
         return plot.category == Category.WORKSHOP && !plot.isFree();
     }
 
-    public double coefficient(String type) {
-        return plugin.getConfig().getDouble("electricity.stations." + type, 0);
-    }
-
     /** Суточный тариф для набора станков (по ключам тарифа). */
     public double dailyRate(Map<String, Integer> counts, double discountPercent) {
-        return PowerTariff.dailyRate(plugin.getConfig().getDouble("electricity.base-rate-per-day", 100),
-                plugin.getConfig().getDouble("electricity.progression-per-extra-same-type", 0.10),
-                counts, this::coefficient, discountPercent);
+        return PowerTariff.dailyRate(base(), progression(), counts, this::coefficient, discountPercent);
     }
 
+    /** Суточный тариф участка; в режиме USAGE непрерывного расхода нет. */
     public double rateFor(Plot plot) {
-        return isBilled(plot) ? dailyRate(plugin.stations().tariffCounts(plot), 0) : 0;
+        if (!isBilled(plot) || mode() == Mode.USAGE) {
+            return 0;
+        }
+        return dailyRate(plugin.stations().tariffCounts(plot), plot.discountPercent);
+    }
+
+    /** Цена одной операции на станке (режим USAGE) с учётом скидки участка. */
+    public double operationPrice(Plot plot, String tariffKey) {
+        double discount = Math.min(100, Math.max(0, plot.discountPercent));
+        return usageBase() * coefficient(tariffKey) * (1 - discount / 100.0);
     }
 
     // ------------------------------------------------------------ счёт
@@ -99,19 +172,61 @@ public final class PowerService {
 
     /** Пересчитывает тариф (после изменения набора станков, смены управляющего и т.п.). */
     public void recalc(Plot plot) {
+        recalc(plot, true);
+    }
+
+    private void recalc(Plot plot, boolean save) {
         touch(plot);
         plot.account.setRate(rateFor(plot));
-        plugin.plots().save();
+        if (save) {
+            plugin.plots().save();
+        }
         plugin.holograms().update(plot);
     }
 
     /** Работают ли станки участка. Вне мастерских всегда да (обычные блоки). */
     public boolean isPowered(Plot plot) {
-        return !isBilled(plot) || plot.account.powered(nowSec());
+        if (!isBilled(plot)) {
+            return true;
+        }
+        if (mode() == Mode.USAGE) {
+            return plot.account.balanceAt(nowSec()) > 1e-9;
+        }
+        return plot.account.powered(nowSec());
     }
 
     public double balance(Plot plot) {
         return plot.account.balanceAt(nowSec());
+    }
+
+    /**
+     * Станок собирается выполнить операцию (плавка, варка, ремонт, зачарование).
+     * Вне мастерских всегда разрешено. DAILY: только если есть электричество. USAGE: списывает цену операции.
+     * Разрешённые операции попадают в статистику.
+     */
+    public boolean useStation(Plot plot, String tariffKey) {
+        if (!isBilled(plot)) {
+            return true;
+        }
+        if (mode() == Mode.DAILY) {
+            if (!plot.account.powered(nowSec())) {
+                return false;
+            }
+            stats.record(plot.id, tariffKey, 0);
+            return true;
+        }
+        double price = operationPrice(plot, tariffKey);
+        touch(plot);
+        if (plot.account.rawBalance() + 1e-9 < price || (price > 0 && plot.account.rawBalance() <= 1e-9)) {
+            return false;
+        }
+        if (price > 0) {
+            plot.account.withdraw(Math.min(price, plot.account.rawBalance()));
+            plugin.treasury().deposit(price, "Электричество (операция) участка " + plot.id);
+            treasuryDirty = true;
+        }
+        stats.record(plot.id, tariffKey, price);
+        return true;
     }
 
     /** Любой игрок может пополнить счёт предприятия. */
@@ -174,6 +289,69 @@ public final class PowerService {
     }
 
     /**
+     * Подарок или компенсация от администрации: деньги берутся из казны (новые деньги в экономике не создаются).
+     * Возвращает текст ошибки или null.
+     */
+    public String gift(String adminName, Plot plot, double amount, String reason) {
+        if (plot.isFree()) {
+            return "У свободного участка нет счёта.";
+        }
+        if (!(amount > 0)) {
+            return "Сумма должна быть больше нуля.";
+        }
+        if (!plugin.treasury().withdraw(amount, adminName, "Подарок на счёт участка " + plot.id + ": " + reason)) {
+            return "В казне недостаточно средств (" + plugin.economy().format(plugin.treasury().balance()) + ").";
+        }
+        plugin.saveTreasury();
+        touch(plot);
+        plot.account.deposit(amount);
+        plot.powerWarnLevel = 0;
+        plugin.plots().save();
+        plugin.holograms().update(plot);
+        plugin.journal().add(plot.id, plot.owner, adminName, Journal.Action.ACCOUNT_GIFT,
+                plugin.economy().format(amount) + ": " + reason);
+        plugin.service().warn(plot.owner, plot.id, "<green>Администрация зачислила на счёт участка <white>"
+                + Text.esc(plot.id) + "</white> " + plugin.economy().format(amount) + ". Причина: " + Text.esc(reason));
+        return null;
+    }
+
+    /** Индивидуальная скидка участка (0-100 %). Возвращает текст ошибки или null. */
+    public String setDiscount(String adminName, Plot plot, double percent) {
+        if (percent < 0 || percent > 100 || Double.isNaN(percent)) {
+            return "Скидка должна быть от 0 до 100 процентов.";
+        }
+        touch(plot);
+        plot.discountPercent = percent;
+        recalc(plot);
+        plugin.journal().add(plot.id, plot.owner, adminName, Journal.Action.TARIFF, "Скидка " + percent + "%");
+        plugin.service().warn(plot.owner, plot.id, "<green>Для участка <white>" + Text.esc(plot.id)
+                + "</white> установлена скидка на электричество: " + percent + "%.");
+        return null;
+    }
+
+    /**
+     * Тарифы изменены администратором: расход по старым тарифам закрывается, включаются новые,
+     * владельцы мастерских получают уведомление.
+     */
+    public void reloadTariffs(String adminName, String what) {
+        for (Plot plot : new ArrayList<>(plugin.plots().all())) {
+            if (!isBilled(plot)) {
+                continue;
+            }
+            double oldRate = plot.account.ratePerDay();
+            recalc(plot, false);
+            plot.powerWarnLevel = 0;
+            String tariff = mode() == Mode.USAGE ? "оплата по факту использования станков"
+                    : plugin.economy().format(plot.account.ratePerDay()) + " в сутки";
+            plugin.journal().add(plot.id, plot.owner, adminName, Journal.Action.TARIFF, what);
+            plugin.service().warn(plot.owner, plot.id, "<yellow>Тарифы на электричество изменены (" + Text.esc(what)
+                    + "). Тариф участка <white>" + Text.esc(plot.id) + "</white>: " + tariff
+                    + (oldRate != plot.account.ratePerDay() ? "." : " (без изменений)."));
+        }
+        plugin.plots().save();
+    }
+
+    /**
      * Участок освобождается: остаток счёта возвращается прежнему управляющему.
      * При изъятии за нарушение удерживается штраф (по умолчанию 10%) в пользу казны.
      */
@@ -181,6 +359,7 @@ public final class PowerService {
         touch(plot);
         double balance = plot.account.rawBalance();
         plot.account.restore(0, 0, plot.account.updatedAtSec());
+        plot.discountPercent = 0;
         if (previous == null || balance <= 1e-9) {
             return;
         }
@@ -220,35 +399,78 @@ public final class PowerService {
     public void tick() {
         nowSec();
         saveClock();
-        for (Plot plot : new java.util.ArrayList<>(plugin.plots().all())) {
+        for (Plot plot : new ArrayList<>(plugin.plots().all())) {
             if (!isBilled(plot) || plot.restorePending || plot.owner == null) {
                 continue;
             }
             touch(plot);
-            long now = nowSec();
-            double hours = plot.account.secondsLeft(now) / 3600.0;
-            if (!plot.account.powered(now)) {
-                if (plot.powerWarnLevel < 3) {
-                    plot.powerWarnLevel = 3;
-                    plugin.service().warn(plot.owner, plot.id,
-                            "<red>Электричество на участке <white>" + Text.esc(plot.id)
-                                    + "</white> закончилось: станки не работают. Пополните счёт: /district account deposit <сумма>");
-                }
-            } else if (hours <= 6 && plot.powerWarnLevel < 2) {
-                plot.powerWarnLevel = 2;
-                plugin.service().warn(plot.owner, plot.id, "<red>Электричества на участке <white>" + Text.esc(plot.id)
-                        + "</white> хватит меньше чем на 6 часов.");
-            } else if (hours <= 24 && plot.powerWarnLevel < 1) {
-                plot.powerWarnLevel = 1;
-                plugin.service().warn(plot.owner, plot.id, "<yellow>Электричества на участке <white>" + Text.esc(plot.id)
-                        + "</white> хватит меньше чем на сутки.");
-            } else if (hours > 24) {
-                plot.powerWarnLevel = 0;
+            if (mode() == Mode.USAGE) {
+                warnUsage(plot);
+            } else {
+                warnDaily(plot);
             }
         }
         if (treasuryDirty) {
             plugin.saveTreasury();
             treasuryDirty = false;
+        }
+        if (stats.isDirty()) {
+            try {
+                stats.save(statsFile);
+            } catch (IOException e) {
+                plugin.getLogger().log(Level.WARNING, "Не удалось сохранить stats.yml", e);
+            }
+        }
+    }
+
+    private void warnDaily(Plot plot) {
+        long now = nowSec();
+        double hours = plot.account.secondsLeft(now) / 3600.0;
+        if (!plot.account.powered(now)) {
+            if (plot.powerWarnLevel < 3) {
+                plot.powerWarnLevel = 3;
+                plugin.service().warn(plot.owner, plot.id,
+                        "<red>Электричество на участке <white>" + Text.esc(plot.id)
+                                + "</white> закончилось: станки не работают. Пополните счёт: /district account deposit <сумма>");
+            }
+        } else if (hours <= 6 && plot.powerWarnLevel < 2) {
+            plot.powerWarnLevel = 2;
+            plugin.service().warn(plot.owner, plot.id, "<red>Электричества на участке <white>" + Text.esc(plot.id)
+                    + "</white> хватит меньше чем на 6 часов.");
+        } else if (hours <= 24 && plot.powerWarnLevel < 1) {
+            plot.powerWarnLevel = 1;
+            plugin.service().warn(plot.owner, plot.id, "<yellow>Электричества на участке <white>" + Text.esc(plot.id)
+                    + "</white> хватит меньше чем на сутки.");
+        } else if (hours > 24) {
+            plot.powerWarnLevel = 0;
+        }
+    }
+
+    /** USAGE: предупреждаем, когда на счёте остаётся меньше, чем на 20 самых дорогих операций, и когда не хватает на операцию. */
+    private void warnUsage(Plot plot) {
+        double maxPrice = 0;
+        for (String type : plugin.stations().tariffCounts(plot).keySet()) {
+            maxPrice = Math.max(maxPrice, operationPrice(plot, type));
+        }
+        if (maxPrice <= 0) {
+            plot.powerWarnLevel = 0;
+            return;
+        }
+        double balance = plot.account.rawBalance();
+        if (balance < maxPrice) {
+            if (plot.powerWarnLevel < 3) {
+                plot.powerWarnLevel = 3;
+                plugin.service().warn(plot.owner, plot.id, "<red>На счёте участка <white>" + Text.esc(plot.id)
+                        + "</white> не хватает денег на операции станков. Пополните счёт: /district account deposit <сумма>");
+            }
+        } else if (balance < maxPrice * 20) {
+            if (plot.powerWarnLevel < 1) {
+                plot.powerWarnLevel = 1;
+                plugin.service().warn(plot.owner, plot.id, "<yellow>На счёте участка <white>" + Text.esc(plot.id)
+                        + "</white> осталось мало денег на операции станков.");
+            }
+        } else {
+            plot.powerWarnLevel = 0;
         }
     }
 
