@@ -367,3 +367,33 @@ jobs:
   max-work-minutes-per-day: 480
   max-jobs-per-player: 2
   max-applications-per-player: 3
+
+# ---- Общий аукцион (zAuctionHouse) ----
+# Вещи, которые игрок не забрал из хранилища за storage-days суток (и вещи, переданные администратором командой
+# /district arrest auction <игрок>), выставляются на аукцион zAuctionHouse от имени казны. Деньги от продажи идут в казну.
+# Работает на одном сервере без кластера. Без zAuctionHouse просроченное удаляется, как раньше.
+auction:
+  enabled: true
+  # передавать просроченные вещи хранилищ на аукцион (иначе они удаляются)
+  list-expired: true
+  # имя продавца на аукционе
+  seller-name: Казна
+  # экономика zAuctionHouse, чью валюту использует казна (пусто - экономика по умолчанию)
+  economy: ""
+  # срок лота в сутках (0 - без срока: лот висит, пока его не купят)
+  listing-days: 0
+  # одновременно выставленных лотов казны не больше (0 - без ограничений) и лотов за один запуск
+  max-listings: 500
+  per-run: 20
+  # цена: за предмет (по материалу или общая) × количество × множитель, не ниже min-lot-price
+  default-price: 10
+  min-lot-price: 1
+  price-multiplier: 1.0
+  prices:
+    DIAMOND: 100
+    EMERALD: 50
+    GOLD_INGOT: 20
+    IRON_INGOT: 8
+    NETHERITE_INGOT: 800
+    COBBLESTONE: 0.2
+    DIRT: 0.1

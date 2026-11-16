@@ -829,6 +829,7 @@ public final class PlotService {
             }
         }
         plugin.power().tick();
+        plugin.treasuryAuction().tick();
         plugin.orders().tick();
         plugin.factory().tick();
         plugin.grid().tick();
@@ -839,9 +840,12 @@ public final class PlotService {
             plugin.stations().rescanAll();
         }
         if (++tickCounter % 180 == 0) { // примерно раз в час
-            int removed = plugin.storage().sweepExpired(now, plugin.getConfig().getInt("storage-days", 60));
+            boolean toAuction = plugin.getConfig().getBoolean("auction.list-expired", true)
+                    && plugin.treasuryAuction().ready();
+            int removed = plugin.storage().sweepExpired(now, plugin.getConfig().getInt("storage-days", 60), toAuction);
             if (removed > 0) {
-                plugin.getLogger().info("Из хранилищ удалено просроченных записей: " + removed);
+                plugin.getLogger().info("Из хранилищ " + (toAuction ? "передано на аукцион" : "удалено")
+                        + " просроченных записей: " + removed);
             }
         }
     }

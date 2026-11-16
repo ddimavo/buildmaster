@@ -3,7 +3,7 @@ plugins {
 }
 
 group = 'ru.buildmaster'
-version = project.hasProperty('pluginVersion') ? project.property('pluginVersion') : '1.9.0-SNAPSHOT'
+version = project.hasProperty('pluginVersion') ? project.property('pluginVersion') : '1.10.0-SNAPSHOT'
 
 repositories {
     mavenCentral()
@@ -14,15 +14,20 @@ sourceSets {
     // Заглушки Vault API: нужны только для компиляции, в jar не попадают.
     // Во время работы используется настоящий Vault с сервера.
     vaultStub
+    // Заглушки API zAuctionHouse (подмножество, см. src/zahStub/README.md): только для компиляции и тестов.
+    zahStub
 }
 
 dependencies {
     vaultStubCompileOnly 'io.papermc.paper:paper-api:1.21.6-R0.1-SNAPSHOT'
     compileOnly 'io.papermc.paper:paper-api:1.21.6-R0.1-SNAPSHOT'
     compileOnly sourceSets.vaultStub.output
+    zahStubCompileOnly 'io.papermc.paper:paper-api:1.21.6-R0.1-SNAPSHOT'
+    compileOnly sourceSets.zahStub.output
 
     testImplementation 'io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT'
     testImplementation sourceSets.vaultStub.output
+    testImplementation sourceSets.zahStub.output
     testImplementation 'org.mockbukkit.mockbukkit:mockbukkit-v1.21:4.116.3'
     testImplementation platform('org.junit:junit-bom:5.11.4')
     testImplementation 'org.junit.jupiter:junit-jupiter'

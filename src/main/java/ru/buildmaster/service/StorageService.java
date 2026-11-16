@@ -149,6 +149,25 @@ public final class StorageService {
         return null;
     }
 
+    /** Забирает предмет, ожидающий аукциона. Возвращает его или null, если записи уже нет. */
+    public ItemStack takeForAuction(UUID owner, UUID entryId, byte[] ref) {
+        for (StorageEntry e : entries(owner)) {
+            if (e.id.equals(entryId) && e.state == StorageEntry.State.AUCTION) {
+                for (int i = 0; i < e.stacks.size(); i++) {
+                    if (e.stacks.get(i) == ref) {
+                        e.stacks.remove(i);
+                        if (e.stacks.isEmpty()) {
+                            entries(owner).remove(e);
+                        }
+                        save(owner);
+                        return ItemStack.deserializeBytes(ref);
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
     /** Возвращает предмет обратно (если в инвентаре не нашлось места). */
     public void putBack(UUID owner, String plotId, ItemStack item) {
         add(owner, plotId, List.of(item), StorageEntry.State.AVAILABLE, null, "putback");
@@ -156,6 +175,11 @@ public final class StorageService {
 
     /** Удаляет просроченные записи. Возвращает число удалённых записей. */
     public int sweepExpired(long now, int storageDays) {
+        return sweepExpired(now, storageDays, false);
+    }
+
+    /** Просроченные записи удаляются либо (toAuction) передаются на аукцион. Возвращает число затронутых записей. */
+    public int sweepExpired(long now, int storageDays, boolean toAuction) {
         int removed = 0;
         File[] files = dir.listFiles((d, n) -> n.endsWith(".yml"));
         if (files == null) {
@@ -170,6 +194,20 @@ public final class StorageService {
             }
             List<StorageEntry> list = entries(owner);
             int before = list.size();
+            if (toAuction) {
+                int moved = 0;
+                for (StorageEntry e : list) {
+                    if (e.expired(now, storageDays)) {
+                        e.state = StorageEntry.State.AUCTION;
+                        moved++;
+                    }
+                }
+                if (moved > 0) {
+                    removed += moved;
+                    save(owner);
+                }
+                continue;
+            }
             list.removeIf(e -> e.expired(now, storageDays));
             if (list.size() != before) {
                 removed += before - list.size();

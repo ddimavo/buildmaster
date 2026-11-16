@@ -19,15 +19,15 @@ public final class Treasury {
     private double balance;
     private final List<Tx> log = new ArrayList<>();
 
-    public double balance() {
+    public synchronized double balance() {
         return balance;
     }
 
-    public List<Tx> log() {
+    public synchronized List<Tx> log() {
         return List.copyOf(log);
     }
 
-    public void deposit(double amount, String reason) {
+    public synchronized void deposit(double amount, String reason) {
         if (amount <= 0) {
             return;
         }
@@ -36,7 +36,7 @@ public final class Treasury {
     }
 
     /** false - в казне не хватает средств. */
-    public boolean withdraw(double amount, String actor, String reason) {
+    public synchronized boolean withdraw(double amount, String actor, String reason) {
         if (amount <= 0 || amount > balance + 1e-9) {
             return false;
         }
@@ -52,7 +52,7 @@ public final class Treasury {
         }
     }
 
-    public void save(File file) throws IOException {
+    public synchronized void save(File file) throws IOException {
         YamlConfiguration yml = new YamlConfiguration();
         yml.set("balance", balance);
         List<String> lines = new ArrayList<>();

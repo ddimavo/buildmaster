@@ -6,6 +6,8 @@ description: Район коммерции - участки, покупка, а�
 authors: [BuildMaster]
 depend: [Vault]
 softdepend: [WorldGuard, ChestShop]
+# загружаться раньше аукциона: экономика казны должна быть зарегистрирована до чтения лотов из базы
+loadbefore: [zAuctionHouse]
 commands:
   district:
     description: Управление участками

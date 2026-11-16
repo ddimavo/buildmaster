@@ -45,7 +45,7 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
             "zones", "storage", "claim", "journal", "name", "desc", "bank", "service", "factory", "room", "region", "job", "help");
     private static final List<String> ADMIN_SUBS = List.of("wand", "pos1", "pos2", "create", "delete", "evict",
             "setprice", "setrent", "setspawn", "zone", "resnapshot", "reload", "seize", "reset", "holo", "category",
-            "moderation", "arrest");
+            "moderation", "arrest", "auction");
     /** Команды банка и электросети: отдельные права buildmaster.bank и buildmaster.grid. */
     private static final List<String> GRID_SUBS = List.of("grid", "area");
 
@@ -119,6 +119,7 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
                 case "room" -> new RoomCommands(plugin).handle(sender, rest);
                 case "region" -> new RegionCommands(plugin).handle(sender, rest);
                 case "job" -> new JobCommands(plugin).handle(sender, rest);
+                case "auction" -> auction(sender, rest);
                 case "grid" -> new GridCommands(plugin).grid(sender, rest);
                 case "area" -> new GridCommands(plugin).area(sender, rest);
                 case "wand" -> withPlayer(sender, p -> {
@@ -893,6 +894,28 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
             throw new CommandError("Участок «" + id + "» не найден.");
         }
         return plot;
+    }
+
+    /** /district auction [status|run]: состояние общего аукциона казны. */
+    private void auction(CommandSender sender, String[] args) {
+        var auction = plugin.treasuryAuction();
+        String sub = args.length == 0 ? "status" : args[0].toLowerCase(Locale.ROOT);
+        switch (sub) {
+            case "status" -> {
+                Text.send(sender, "<gold>Общий аукцион</gold> <gray>- zAuctionHouse: "
+                        + (auction.port() == null ? "<red>не найден" : auction.ready() ? "<green>подключён" : "<yellow>недоступен")
+                        + "<gray>, вещей в очереди: <white>" + auction.waiting()
+                        + (auction.port() == null ? "" : "<gray>, лотов казны: <white>" + auction.port().listedByTreasury())
+                        + "<gray>, казна: <white>" + plugin.economy().format(plugin.treasury().balance()));
+            }
+            case "run" -> {
+                if (!auction.ready()) {
+                    throw new CommandError("Аукцион недоступен: проверьте zAuctionHouse (один сервер, без кластера).");
+                }
+                Text.ok(sender, "Начато выставление лотов: " + auction.tick());
+            }
+            default -> throw new CommandError("Использование: /district auction [status|run]");
+        }
     }
 
     private void delete(CommandSender sender, String[] args) {

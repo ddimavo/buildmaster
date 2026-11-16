@@ -65,6 +65,7 @@ public class BuildMasterPlugin extends JavaPlugin {
     private RegionAccess regions;
     private PlayerPlotService playerPlots;
     private ru.buildmaster.service.JobService jobs;
+    private ru.buildmaster.auction.TreasuryAuction treasuryAuction;
     private ChatPrompt chatPrompt;
     private SelectionListener selection;
 
@@ -106,6 +107,7 @@ public class BuildMasterPlugin extends JavaPlugin {
         regions = new WorldGuardRegions(getLogger());
         playerPlots = new PlayerPlotService(this);
         jobs = new ru.buildmaster.service.JobService(this);
+        treasuryAuction = new ru.buildmaster.auction.TreasuryAuction(this);
         jobs.load();
         plots = new PlotManager(this);
         plots.load();
@@ -124,6 +126,16 @@ public class BuildMasterPlugin extends JavaPlugin {
         pm.registerEvents(new ru.buildmaster.listener.StationListener(this), this);
 
         new ru.buildmaster.service.ChestShopHook(this).register();
+        if (getServer().getPluginManager().getPlugin("zAuctionHouse") != null) {
+            try {
+                ru.buildmaster.auction.ZahBridge bridge = new ru.buildmaster.auction.ZahBridge(this);
+                bridge.register();
+                treasuryAuction.setPort(bridge);
+                getLogger().info("zAuctionHouse найден: невостребованные вещи пойдут на общий аукцион от казны.");
+            } catch (LinkageError e) {
+                getLogger().warning("zAuctionHouse найден, но его API не подошёл: " + e);
+            }
+        }
 
         DistrictCommand command = new DistrictCommand(this);
         var district = Objects.requireNonNull(getCommand("district"));
@@ -250,6 +262,10 @@ public class BuildMasterPlugin extends JavaPlugin {
     /** Только для тестов: подмена доступа к WorldGuard. */
     public void setRegions(RegionAccess access) {
         this.regions = access;
+    }
+
+    public ru.buildmaster.auction.TreasuryAuction treasuryAuction() {
+        return treasuryAuction;
     }
 
     public ru.buildmaster.service.JobService jobs() {

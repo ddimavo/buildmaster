@@ -54,7 +54,8 @@ public final class Journal {
         UPGRADE("Улучшение мастерской"),
         HOTEL("Отель"),
         PLAYER_PLOT("Участок игрока"),
-        JOB("Работа");
+        JOB("Работа"),
+        AUCTION("Передано на аукцион");
 
         private final String title;
 
