@@ -16,6 +16,7 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 import ru.buildmaster.BuildMasterPlugin;
+import ru.buildmaster.gui.TreasuryMenu;
 import ru.buildmaster.gui.JournalMenu;
 import ru.buildmaster.gui.MainMenu;
 import ru.buildmaster.gui.ModerationMenu;
@@ -1079,7 +1080,7 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
         Text.ok(sender, decision.action().title() + ": вещей " + before + ".");
     }
 
-    /** treasury | treasury pay <игрок> <сумма> <причина...> */
+    /** treasury | menu | report [дни] | subsidy <участок> <сумма> <причина> | prize <игрок> <сумма> <мероприятие> | pay ... */
     private void treasury(CommandSender sender, String[] args) {
         if (args.length == 0) {
             Text.send(sender, "<yellow>Казна: <white>" + plugin.economy().format(plugin.treasury().balance()));
@@ -1091,32 +1092,72 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
             }
             return;
         }
-        if (!args[0].equalsIgnoreCase("pay") || args.length < 4) {
-            throw new CommandError("Использование: /district treasury | treasury pay <игрок> <сумма> <причина>");
+        String sub = args[0].toLowerCase(Locale.ROOT);
+        switch (sub) {
+            case "menu" -> {
+                if (!(sender instanceof Player p)) {
+                    throw new CommandError("Меню доступно только игроку.");
+                }
+                new TreasuryMenu(plugin, p).open();
+            }
+            case "report" -> {
+                int days = 7;
+                if (args.length > 1) {
+                    try {
+                        days = Math.max(1, Math.min(365, Integer.parseInt(args[1])));
+                    } catch (NumberFormatException e) {
+                        throw new CommandError("Число суток должно быть целым.");
+                    }
+                }
+                var report = plugin.payouts().report(days);
+                Text.send(sender, "<yellow>Отчёт казны за " + days + " сут.: <green>приход " + plugin.economy().format(report.totalIncome())
+                        + "<yellow>, <red>расход " + plugin.economy().format(report.totalExpense())
+                        + "<yellow>, баланс <white>" + plugin.economy().format(plugin.treasury().balance()));
+                report.income().forEach((k, v) -> sender.sendMessage(Text.mm("<green> + <white>" + k + "<gray>: " + plugin.economy().format(v))));
+                report.expense().forEach((k, v) -> sender.sendMessage(Text.mm("<red> - <white>" + k + "<gray>: " + plugin.economy().format(v))));
+            }
+            case "subsidy" -> {
+                if (args.length < 4) {
+                    throw new CommandError("Использование: /district treasury subsidy <участок> <сумма> <причина>");
+                }
+                Plot plot = requirePlot(args[1]);
+                double amount = treasuryAmount(args[2]);
+                String reason = String.join(" ", Arrays.copyOfRange(args, 3, args.length));
+                String error = plugin.payouts().subsidy(sender.getName(), plot, amount, reason);
+                if (error != null) {
+                    throw new CommandError(error);
+                }
+                Text.ok(sender, "Субсидия " + plugin.economy().format(amount) + " выделена участку " + plot.id + " из казны.");
+            }
+            case "prize", "pay" -> {
+                if (args.length < 4) {
+                    throw new CommandError("Использование: /district treasury " + sub + " <игрок> <сумма> <"
+                            + (sub.equals("prize") ? "мероприятие" : "причина") + ">");
+                }
+                OfflinePlayer target = Bukkit.getOfflinePlayerIfCached(args[1]);
+                if (target == null) {
+                    throw new CommandError("Игрок «" + args[1] + "» не найден.");
+                }
+                double amount = treasuryAmount(args[2]);
+                String reason = String.join(" ", Arrays.copyOfRange(args, 3, args.length));
+                String error = sub.equals("prize") ? plugin.payouts().prize(sender.getName(), target, amount, reason)
+                        : plugin.payouts().payout(sender.getName(), target, amount, reason);
+                if (error != null) {
+                    throw new CommandError(error);
+                }
+                Text.ok(sender, "Выплачено " + plugin.economy().format(amount) + " игроку " + target.getName() + " из казны.");
+            }
+            default -> throw new CommandError("Использование: /district treasury [menu|report [дни]|subsidy <участок> <сумма> <причина>"
+                    + "|prize <игрок> <сумма> <мероприятие>|pay <игрок> <сумма> <причина>]");
         }
-        OfflinePlayer target = Bukkit.getOfflinePlayerIfCached(args[1]);
-        if (target == null) {
-            throw new CommandError("Игрок «" + args[1] + "» не найден.");
-        }
-        double amount;
+    }
+
+    private static double treasuryAmount(String text) {
         try {
-            amount = Double.parseDouble(args[2].replace(',', '.'));
+            return Double.parseDouble(text.replace(',', '.'));
         } catch (NumberFormatException e) {
             throw new CommandError("Сумма должна быть числом.");
         }
-        String reason = String.join(" ", Arrays.copyOfRange(args, 3, args.length));
-        if (amount <= 0 || !plugin.treasury().withdraw(amount, sender.getName(), "Выплата " + target.getName() + ": " + reason)) {
-            throw new CommandError("В казне недостаточно средств или сумма неверна.");
-        }
-        if (!plugin.economy().deposit(target, amount)) {
-            plugin.treasury().deposit(amount, "Возврат: выплата не прошла");
-            plugin.saveTreasury();
-            throw new CommandError("Не удалось зачислить деньги игроку.");
-        }
-        plugin.saveTreasury();
-        plugin.journal().add("-", target.getUniqueId(), sender.getName(), Journal.Action.TREASURY,
-                plugin.economy().format(amount) + ": " + reason);
-        Text.ok(sender, "Выплачено " + plugin.economy().format(amount) + " игроку " + target.getName() + " из казны.");
     }
 
     private void setPrice(CommandSender sender, String[] args, boolean buy) {
@@ -1391,8 +1432,10 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
             }
             case "treasury" -> {
                 if (n == 2) {
-                    result.add("pay");
-                } else if (n == 3) {
+                    result.addAll(List.of("menu", "report", "subsidy", "prize", "pay"));
+                } else if (n == 3 && args[1].equalsIgnoreCase("subsidy")) {
+                    result.addAll(plotIds(null));
+                } else if (n == 3 && !args[1].equalsIgnoreCase("report") && !args[1].equalsIgnoreCase("menu")) {
                     Bukkit.getOnlinePlayers().forEach(pl -> result.add(pl.getName()));
                 }
             }

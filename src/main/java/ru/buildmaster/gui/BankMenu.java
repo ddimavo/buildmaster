@@ -43,8 +43,9 @@ public final class BankMenu extends Menu {
                         + " <gray>" + Text.esc(log.get(i).reason()));
             }
             lore.add("");
-            lore.add("<gray>Выплаты: /district treasury pay");
-            set(14, Text.icon(Material.EMERALD_BLOCK, "<green>Казна", lore.toArray(new String[0])));
+            lore.add("<yellow>Нажмите: субсидии, призы, отчёт");
+            set(14, Text.icon(Material.EMERALD_BLOCK, "<green>Казна", lore.toArray(new String[0])),
+                    e -> new TreasuryMenu(plugin, player).open());
             set(21, Text.icon(Material.WRITABLE_BOOK, "<red>Все счета предприятий",
                     "<gray>Баланс, долги, история операций"), e -> new AccountsMenu(plugin, player, true, 0).open());
             set(23, Text.icon(Material.COMPARATOR, "<red>Настройки банка",

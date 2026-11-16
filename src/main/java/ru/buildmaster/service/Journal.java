@@ -35,6 +35,8 @@ public final class Journal {
         STORAGE_DELETED("Арестованные вещи удалены"),
         STORAGE_AUCTION("Вещи переданы на аукцион"),
         TREASURY("Операция с казной"),
+        SUBSIDY("Субсидия из казны"),
+        PRIZE("Приз из казны"),
         ACCOUNT_DEPOSIT("Пополнение счёта"),
         ACCOUNT_WITHDRAW("Снятие со счёта"),
         ACCOUNT_REFUND("Возврат остатка счёта"),
