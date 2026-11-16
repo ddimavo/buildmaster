@@ -43,7 +43,7 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
 
     private static final List<String> PLAYER_SUBS = List.of("menu", "list", "info", "buy", "rent", "extend",
             "autorenew", "autoreset", "release", "trust", "untrust", "perm", "account", "power", "warnings", "tp", "replace",
-            "zones", "storage", "claim", "journal", "name", "desc", "bank", "service", "factory", "room", "region", "job", "help");
+            "zones", "storage", "claim", "journal", "name", "desc", "bank", "service", "factory", "room", "region", "job", "hologram", "help");
     private static final List<String> ADMIN_SUBS = List.of("wand", "pos1", "pos2", "create", "delete", "evict",
             "setprice", "setrent", "setspawn", "zone", "resnapshot", "reload", "seize", "reset", "holo", "category",
             "moderation", "arrest", "auction");
@@ -106,6 +106,13 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
                 case "seize" -> adminDecision(sender, rest, Journal.Action.SEIZED);
                 case "reset" -> adminDecision(sender, rest, Journal.Action.RESET);
                 case "holo" -> withPlayer(sender, p -> holo(p, rest));
+                case "hologram" -> withPlayer(sender, p -> {
+                    Plot plot = plotOrHere(p, rest.length > 0 ? rest[0] : null);
+                    String error = plugin.moderation().submitHolo(p, plot, p.getEyeLocation());
+                    if (error != null) {
+                        throw new CommandError(error);
+                    }
+                });
                 case "category" -> category(sender, rest);
                 case "arrest" -> arrest(sender, rest);
                 case "treasury" -> {

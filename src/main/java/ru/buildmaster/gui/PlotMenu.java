@@ -168,6 +168,16 @@ public final class PlotMenu extends Menu {
                     });
         }
 
+        set(17, Text.icon(Material.ENDER_EYE, "<aqua>Позиция голограммы",
+                "<gray>Голограмма появится там, где вы стоите", "<gray>Публикуется после проверки",
+                "<yellow>Встаньте на место и нажмите"), e -> {
+            player.closeInventory();
+            String error = plugin.moderation().submitHolo(player, plot, player.getEyeLocation());
+            if (error != null) {
+                Text.err(player, error);
+            }
+        });
+
         if (plugin.jobs().enabled() && plugin.jobs().categoryAllowed(plot.category)) {
             set(16, Text.icon(Material.VILLAGER_SPAWN_EGG, "<gold>Работники",
                     "<gray>Работают: <white>" + plugin.jobs().employeesOf(plot.id).size(),

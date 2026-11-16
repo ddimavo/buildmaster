@@ -38,11 +38,20 @@ public final class ModerationMenu extends Menu {
             lore.add("<green>ЛКМ - одобрить");
             lore.add("<red>ПКМ - отклонить (потребуется причина)");
             lore.add("<aqua>Shift+ЛКМ - телепорт к участку");
-            set(i, Text.icon(r.type == Request.Type.NAME ? Material.NAME_TAG : Material.WRITABLE_BOOK,
+            if (r.type == Request.Type.HOLO) {
+                lore.add("<aqua>Shift+ЛКМ - телепорт на предложенную позицию");
+            }
+            set(i, Text.icon(r.type == Request.Type.NAME ? Material.NAME_TAG
+                            : r.type == Request.Type.HOLO ? Material.ENDER_EYE : Material.WRITABLE_BOOK,
                     "<gold>" + r.type.title(), lore.toArray(new String[0])), e -> {
                         if (e.isShiftClick()) {
                             Plot plot = plugin.plots().get(r.plotId);
-                            if (plot != null) {
+                            org.bukkit.Location proposed = r.type == Request.Type.HOLO
+                                    ? plugin.moderation().holoLocation(r) : null;
+                            if (proposed != null) {
+                                player.closeInventory();
+                                player.teleport(proposed);
+                            } else if (plot != null) {
                                 player.closeInventory();
                                 plugin.service().teleport(player, plot);
                             }

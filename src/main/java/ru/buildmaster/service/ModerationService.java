@@ -80,6 +80,96 @@ public final class ModerationService {
         }
     }
 
+    // ------------------------------------------------------------ позиция голограммы
+
+    /** Почему точка не годится для голограммы участка, либо null. */
+    public String holoError(Plot plot, org.bukkit.Location at) {
+        if (at.getWorld() == null || !at.getWorld().getName().equals(plot.world)) {
+            return "Позиция должна быть в мире участка.";
+        }
+        int bx = at.getBlockX();
+        int by = at.getBlockY();
+        int bz = at.getBlockZ();
+        if (!plot.box.contains(bx, by, bz)) {
+            return "Голограмма должна находиться внутри вашего участка.";
+        }
+        if (plugin.plots().at(plot.world, bx, by, bz) != plot) {
+            return "Эта точка принадлежит другому участку (например, номеру отеля).";
+        }
+        return null;
+    }
+
+    private static String holoText(org.bukkit.Location at) {
+        return String.format(java.util.Locale.ROOT, "%.2f %.2f %.2f", at.getX(), at.getY(), at.getZ());
+    }
+
+    private org.bukkit.Location holoParse(Plot plot, String text) {
+        String[] p = text.split(" ");
+        org.bukkit.World world = Bukkit.getWorld(plot.world);
+        if (p.length != 3 || world == null) {
+            return null;
+        }
+        try {
+            return new org.bukkit.Location(world, Double.parseDouble(p[0]), Double.parseDouble(p[1]), Double.parseDouble(p[2]));
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    /**
+     * Предлагает позицию голограммы (текущее положение игрока). Управляющему - на одобрение администратором,
+     * арендодателю участка игрока и администратору - сразу. Возвращает сообщение об ошибке или null.
+     */
+    public String submitHolo(Player player, Plot plot, org.bukkit.Location at) {
+        boolean admin = player.hasPermission("buildmaster.admin");
+        if (!admin && !plot.isOwner(player.getUniqueId()) && !plot.isLandlord(player.getUniqueId())) {
+            return "Позицию голограммы предлагает управляющий участка.";
+        }
+        if (plot.isFree() && !admin && !plot.isLandlord(player.getUniqueId())) {
+            return "Участок свободен: голограмму задаёт администрация.";
+        }
+        if (plugin.service().isLocked(plot)) {
+            return "Участок сейчас обрабатывается.";
+        }
+        String error = holoError(plot, at);
+        if (error != null) {
+            return error;
+        }
+        if (admin) {
+            setHolo(plot, at);
+            Text.ok(player, "Голограмма участка " + plot.id + " перенесена.");
+            return null;
+        }
+        requests.removeIf(r -> r.status == Request.Status.PENDING && r.plotId.equals(plot.id)
+                && r.type == Request.Type.HOLO && r.requester.equals(player.getUniqueId()));
+        requests.add(new Request(UUID.randomUUID(), Request.Type.HOLO, plot.id, player.getUniqueId(), player.getName(),
+                holoText(at), System.currentTimeMillis()));
+        save();
+        Text.ok(player, "Позиция голограммы отправлена на проверку администратору. Пока действует прежняя.");
+        for (Player a : Bukkit.getOnlinePlayers()) {
+            if (a.hasPermission("buildmaster.admin")) {
+                Text.send(a, "<yellow>Новая заявка: позиция голограммы участка " + Text.esc(plot.id)
+                        + ". Откройте /district moderation");
+            }
+        }
+        return null;
+    }
+
+    private void setHolo(Plot plot, org.bukkit.Location at) {
+        plot.hasHolo = true;
+        plot.holoX = at.getX();
+        plot.holoY = at.getY();
+        plot.holoZ = at.getZ();
+        plugin.plots().save();
+        plugin.holograms().update(plot);
+    }
+
+    /** Координаты позиции из заявки (для меню модерации) или null. */
+    public org.bukkit.Location holoLocation(Request r) {
+        Plot plot = plugin.plots().get(r.plotId);
+        return plot == null ? null : holoParse(plot, r.text);
+    }
+
     private void apply(Plot plot, Request.Type type, String text) {
         if (type == Request.Type.NAME) {
             plot.name = text;
@@ -125,7 +215,23 @@ public final class ModerationService {
             if (plot != null) {
                 plugin.playerPlots().approve(plot);
             }
-        } else if (plot != null && r.type != Request.Type.HOLO) {
+        } else if (r.type == Request.Type.HOLO) {
+            org.bukkit.Location at = plot == null ? null : holoParse(plot, r.text);
+            String stale = plot == null || at == null ? "участок или позиция больше недействительны"
+                    : !plot.isOwner(r.requester) && !plot.isLandlord(r.requester) ? "участок сменил управляющего"
+                    : holoError(plot, at);
+            if (stale != null) {
+                r.status = Request.Status.REJECTED;
+                r.reason = "Заявка устарела: " + stale;
+                plugin.journal().add(r.plotId, r.requester, adminName, Journal.Action.HOLO, "«" + r.text + "»: " + r.reason);
+                notifyRequester(r, "<red>" + r.type.title() + " участка " + Text.esc(r.plotId) + " не применена: "
+                        + Text.esc(stale));
+                trim();
+                save();
+                return;
+            }
+            setHolo(plot, at);
+        } else if (plot != null) {
             apply(plot, r.type, r.text);
         }
         plugin.journal().add(r.plotId, r.requester, adminName, journalApproved(r.type), r.text);
@@ -155,12 +261,14 @@ public final class ModerationService {
 
     private static Journal.Action journalApproved(Request.Type t) {
         return t == Request.Type.NAME ? Journal.Action.NAME_APPROVED
-                : t == Request.Type.DESCRIPTION ? Journal.Action.DESC_APPROVED : Journal.Action.PLAYER_PLOT;
+                : t == Request.Type.DESCRIPTION ? Journal.Action.DESC_APPROVED
+                : t == Request.Type.HOLO ? Journal.Action.HOLO : Journal.Action.PLAYER_PLOT;
     }
 
     private static Journal.Action journalRejected(Request.Type t) {
         return t == Request.Type.NAME ? Journal.Action.NAME_REJECTED
-                : t == Request.Type.DESCRIPTION ? Journal.Action.DESC_REJECTED : Journal.Action.PLAYER_PLOT;
+                : t == Request.Type.DESCRIPTION ? Journal.Action.DESC_REJECTED
+                : t == Request.Type.HOLO ? Journal.Action.HOLO : Journal.Action.PLAYER_PLOT;
     }
 
     private void notifyRequester(Request r, String message) {
