@@ -64,6 +64,22 @@ public final class ModerationService {
         return null;
     }
 
+    /** Заявка на одобрение привязанного участка игрока. Администратору одобрение не нужно. */
+    public void submitPlot(Player player, Plot plot) {
+        if (player.hasPermission("buildmaster.admin")) {
+            plugin.playerPlots().approve(plot);
+            return;
+        }
+        requests.add(new Request(UUID.randomUUID(), Request.Type.PLOT, plot.id, player.getUniqueId(), player.getName(),
+                plot.category.title() + ", " + plot.box.describe(), System.currentTimeMillis()));
+        save();
+        for (Player admin : Bukkit.getOnlinePlayers()) {
+            if (admin.hasPermission("buildmaster.admin")) {
+                Text.send(admin, "<yellow>Новая заявка: участок игрока " + Text.esc(plot.id) + ". Откройте /district moderation");
+            }
+        }
+    }
+
     private void apply(Plot plot, Request.Type type, String text) {
         if (type == Request.Type.NAME) {
             plot.name = text;
@@ -105,11 +121,14 @@ public final class ModerationService {
         r.decidedBy = adminName;
         r.decidedAt = System.currentTimeMillis();
         r.reason = "";
-        if (plot != null) {
+        if (r.type == Request.Type.PLOT) {
+            if (plot != null) {
+                plugin.playerPlots().approve(plot);
+            }
+        } else if (plot != null && r.type != Request.Type.HOLO) {
             apply(plot, r.type, r.text);
         }
-        plugin.journal().add(r.plotId, r.requester, adminName,
-                r.type == Request.Type.NAME ? Journal.Action.NAME_APPROVED : Journal.Action.DESC_APPROVED, r.text);
+        plugin.journal().add(r.plotId, r.requester, adminName, journalApproved(r.type), r.text);
         notifyRequester(r, "<green>" + r.type.title() + " участка " + Text.esc(r.plotId) + " одобрено и опубликовано.");
         trim();
         save();
@@ -123,13 +142,25 @@ public final class ModerationService {
         r.decidedBy = adminName;
         r.decidedAt = System.currentTimeMillis();
         r.reason = reason;
-        plugin.journal().add(r.plotId, r.requester, adminName,
-                r.type == Request.Type.NAME ? Journal.Action.NAME_REJECTED : Journal.Action.DESC_REJECTED,
-                "«" + r.text + "»: " + reason);
+        Plot rejected = plugin.plots().get(r.plotId);
+        if (r.type == Request.Type.PLOT && rejected != null && rejected.isPlayerPlot()) {
+            plugin.playerPlots().reject(rejected);
+        }
+        plugin.journal().add(r.plotId, r.requester, adminName, journalRejected(r.type), "«" + r.text + "»: " + reason);
         notifyRequester(r, "<red>" + r.type.title() + " участка " + Text.esc(r.plotId) + " отклонено. Причина: "
                 + Text.esc(reason));
         trim();
         save();
+    }
+
+    private static Journal.Action journalApproved(Request.Type t) {
+        return t == Request.Type.NAME ? Journal.Action.NAME_APPROVED
+                : t == Request.Type.DESCRIPTION ? Journal.Action.DESC_APPROVED : Journal.Action.PLAYER_PLOT;
+    }
+
+    private static Journal.Action journalRejected(Request.Type t) {
+        return t == Request.Type.NAME ? Journal.Action.NAME_REJECTED
+                : t == Request.Type.DESCRIPTION ? Journal.Action.DESC_REJECTED : Journal.Action.PLAYER_PLOT;
     }
 
     private void notifyRequester(Request r, String message) {

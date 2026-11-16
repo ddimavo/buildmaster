@@ -3,7 +3,7 @@ plugins {
 }
 
 group = 'ru.buildmaster'
-version = project.hasProperty('pluginVersion') ? project.property('pluginVersion') : '1.7.0-SNAPSHOT'
+version = project.hasProperty('pluginVersion') ? project.property('pluginVersion') : '1.8.0-SNAPSHOT'
 
 repositories {
     mavenCentral()

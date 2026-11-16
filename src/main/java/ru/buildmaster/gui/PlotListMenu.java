@@ -17,7 +17,7 @@ public final class PlotListMenu extends Menu {
 
     public PlotListMenu(BuildMasterPlugin plugin, Player player, PlotFilter filter, int page) {
         super(plugin, player, filter.mode == PlotFilter.Mode.FREE ? "<dark_gray>Свободные участки" : "<dark_gray>Мои участки", 6);
-        List<Plot> plots = filter.apply(plugin.plots().all(), player.getUniqueId());
+        List<Plot> plots = filter.apply(plugin.plots().all().stream().filter(p -> p.approval == Plot.Approval.APPROVED || p.isLandlord(player.getUniqueId())).toList(), player.getUniqueId());
         int pages = Math.max(1, (plots.size() + PAGE_SIZE - 1) / PAGE_SIZE);
         int current = Math.min(Math.max(page, 0), pages - 1);
 

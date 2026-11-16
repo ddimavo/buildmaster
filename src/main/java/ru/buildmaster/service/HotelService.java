@@ -77,6 +77,10 @@ public final class HotelService {
      * (на счёт отеля, за вычетом налога на аренду); если управляющего нет - в казну.
      */
     public void income(Plot plot, double amount, String reason) {
+        if (plot.isPlayerPlot() && plot.landlord != null) {
+            landlordIncome(plot, amount, reason);
+            return;
+        }
         Plot hotel = plot.parentId == null ? null : plugin.plots().get(plot.parentId);
         if (hotel == null || hotel.owner == null) {
             plugin.treasury().deposit(amount, reason);
@@ -93,6 +97,24 @@ public final class HotelService {
         plugin.service().warn(hotel.owner, hotel.id, "<green>Поступила оплата за номер <white>" + Text.esc(plot.id)
                 + "</white>: " + plugin.economy().format(net) + " на счёт отеля"
                 + (net < amount ? " (налог на аренду " + plugin.economy().format(amount - net) + ")" : "") + ".");
+    }
+
+    /** Аренда участка игрока: доход арендодателю на кошелёк за вычетом налога на аренду. */
+    private void landlordIncome(Plot plot, double amount, String reason) {
+        double net = plugin.bank().applyRentTax(plot.id, plot.landlord, amount);
+        var seller = org.bukkit.Bukkit.getOfflinePlayer(plot.landlord);
+        if (!plugin.economy().deposit(seller, net)) {
+            plugin.treasury().deposit(net, "Не зачислена аренда участка " + plot.id + " арендодателю");
+            plugin.saveTreasury();
+            plugin.getLogger().warning("Не удалось зачислить арендодателю аренду участка " + plot.id);
+            return;
+        }
+        plugin.journal().add(plot.id, plot.landlord, "система", Journal.Action.PLAYER_PLOT,
+                reason + ": арендодателю " + plugin.economy().format(net)
+                        + (net < amount ? " (налог на аренду " + plugin.economy().format(amount - net) + ")" : ""));
+        plugin.service().warn(plot.landlord, plot.id, "<green>Поступила оплата аренды участка <white>" + Text.esc(plot.id)
+                + "</white>: " + plugin.economy().format(net) + (net < amount
+                ? " (налог на аренду " + plugin.economy().format(amount - net) + ")" : "") + ".");
     }
 
     // ------------------------------------------------------------ цены

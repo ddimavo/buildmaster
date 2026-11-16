@@ -75,7 +75,7 @@ public final class ProtectionListener implements Listener {
         String reason = null;
         if (plugin.service().isLocked(plot)) {
             reason = "Участок сейчас обрабатывается.";
-        } else if (plot.isFree()) {
+        } else if (plot.isFree() && !plot.isLandlord(player.getUniqueId())) {
             reason = "Участок свободен: чтобы строить, его нужно купить или арендовать.";
         } else if (!plot.isMember(player.getUniqueId())) {
             reason = "Это чужой участок.";
@@ -102,6 +102,13 @@ public final class ProtectionListener implements Listener {
         if (plot == null) {
             return;
         }
+        if (plot.isPlayerPlot() && !event.getPlayer().hasPermission("buildmaster.bypass")
+                && ownBuildOnly(event.getPlayer(), plot)
+                && plugin.ledgers().get(plot.id).get(block.getX(), block.getY(), block.getZ()) == null) {
+            event.getPlayer().sendActionBar(Text.mm("<red>Арендатор может ломать только то, что построил сам."));
+            event.setCancelled(true);
+            return;
+        }
         Station broken = Station.fromName(block.getType().name());
         if (broken != null) {
             plugin.stations().dec(plot, broken);
@@ -112,7 +119,7 @@ public final class ProtectionListener implements Listener {
         Ledger ledger = plugin.ledgers().get(plot.id);
         if (ledger.remove(block.getX(), block.getY(), block.getZ()) != null) {
             plugin.ledgers().markDirty(plot.id);
-        } else if (plugin.getConfig().getBoolean("original-blocks-drop-nothing", true)) {
+        } else if (!plot.isPlayerPlot() && plugin.getConfig().getBoolean("original-blocks-drop-nothing", true)) {
             // Антидюп: исходный блок здания при сбросе восстановится, поэтому предмет из него не выпадает
             event.setDropItems(false);
             event.setExpToDrop(0);
@@ -161,7 +168,7 @@ public final class ProtectionListener implements Listener {
                 plugin.power().recalc(plot);
             }
         }
-        if (plot != null && plot.isMember(player.getUniqueId())) {
+        if (plot != null && plot.isMember(player.getUniqueId()) && !plot.isLandlord(player.getUniqueId())) {
             // запоминаем, кто поставил блок: при сбросе здания предмет вернётся именно ему
             Block placed = event.getBlockPlaced();
             Material item = event.getItemInHand().getType();
@@ -221,7 +228,7 @@ public final class ProtectionListener implements Listener {
         }
         ItemStack item = event.getItem();
         UUID id = player.getUniqueId();
-        boolean usable = !plugin.service().isLocked(plot) && !plot.isFree();
+        boolean usable = !plugin.service().isLocked(plot) && (!plot.isFree() || plot.isLandlord(id));
         boolean rightClick = action == Action.RIGHT_CLICK_BLOCK;
         boolean special = item != null && placesThings(item.getType());
         Station station = Station.fromName(block.getType().name());
@@ -233,6 +240,9 @@ public final class ProtectionListener implements Listener {
             allowed = plot.can(id, Plot.Perm.STATIONS) && !special;
         } else if (isContainer(block)) {
             allowed = plot.can(id, Plot.Perm.CONTAINERS) || !plugin.getConfig().getBoolean("protect-containers", true);
+            if (allowed && plot.isPlayerPlot() && !containerAvailable(plot, block, id)) {
+                allowed = false;
+            }
         } else if (plot.can(id, Plot.Perm.BUILD)) {
             allowed = true;
         } else {
@@ -253,6 +263,24 @@ public final class ProtectionListener implements Listener {
             }
             event.setCancelled(true);
         }
+    }
+
+    /** Арендатор участка игрока ломает только своё: блоки арендодателя ему не принадлежат. */
+    private boolean ownBuildOnly(Player player, Plot plot) {
+        return plugin.getConfig().getBoolean("player-plots.tenant-break-own-only", true)
+                && !plot.isFree() && !plot.isLandlord(player.getUniqueId()) && !player.hasPermission("buildmaster.admin");
+    }
+
+    /**
+     * Контейнер на участке игрока принадлежит тому, кто его поставил (по книге учёта), а без записи - арендодателю.
+     * Чужие вещи не открываются ни арендатором, ни арендодателем; доверенные арендатора ходят в контейнеры арендатора.
+     */
+    private boolean containerAvailable(Plot plot, Block block, UUID id) {
+        var entry = plugin.ledgers().get(plot.id).get(block.getX(), block.getY(), block.getZ());
+        if (entry == null) {
+            return plot.isLandlord(id);
+        }
+        return entry.player().equals(id) || (!plot.isLandlord(id) && !entry.player().equals(plot.landlord));
     }
 
     private boolean isContainer(Block block) {

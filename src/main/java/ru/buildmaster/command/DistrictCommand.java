@@ -42,7 +42,7 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
 
     private static final List<String> PLAYER_SUBS = List.of("menu", "list", "info", "buy", "rent", "extend",
             "autorenew", "autoreset", "release", "trust", "untrust", "perm", "account", "power", "warnings", "tp", "replace",
-            "zones", "storage", "claim", "journal", "name", "desc", "bank", "service", "factory", "room", "help");
+            "zones", "storage", "claim", "journal", "name", "desc", "bank", "service", "factory", "room", "region", "help");
     private static final List<String> ADMIN_SUBS = List.of("wand", "pos1", "pos2", "create", "delete", "evict",
             "setprice", "setrent", "setspawn", "zone", "resnapshot", "reload", "seize", "reset", "holo", "category",
             "moderation", "arrest");
@@ -117,6 +117,7 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
                 case "service" -> new ServiceCommands(plugin).handle(sender, rest);
                 case "factory" -> new FactoryCommands(plugin).handle(sender, rest);
                 case "room" -> new RoomCommands(plugin).handle(sender, rest);
+                case "region" -> new RegionCommands(plugin).handle(sender, rest);
                 case "grid" -> new GridCommands(plugin).grid(sender, rest);
                 case "area" -> new GridCommands(plugin).area(sender, rest);
                 case "wand" -> withPlayer(sender, p -> {
@@ -280,6 +281,9 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
         }
         Text.send(sender, "<yellow>Участки:");
         for (Plot p : plugin.plots().all()) {
+            if (p.approval != Plot.Approval.APPROVED && !(sender instanceof Player self && p.isLandlord(self.getUniqueId()))) {
+                continue;
+            }
             String state = switch (p.status) {
                 case FREE -> "<green>свободен</green>, цена " + money(p.price) + ", аренда " + money(p.rentPerDay) + "/сут.";
                 case OWNED -> "<red>куплен</red> (" + Text.esc(String.valueOf(p.ownerName)) + ")";
@@ -1176,6 +1180,9 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
             return filter(result, args[0]);
         }
         String sub = args[0].toLowerCase(Locale.ROOT);
+        if (sub.equals("region")) {
+            return filter(new RegionCommands(plugin).complete(sender, args), args[args.length - 1]);
+        }
         if (sub.equals("room")) {
             return filter(new RoomCommands(plugin).complete(sender, args), args[args.length - 1]);
         }

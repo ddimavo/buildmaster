@@ -109,9 +109,11 @@ public final class PlotMenu extends Menu {
     }
 
     private void buildOwner() {
-        set(10, Text.icon(Material.BRICKS, "<gold>Изменить здание",
-                "<gray>Заменить материал фасада,", "<gray>крыши, стен и т.д."),
-                e -> new ZoneMenu(plugin, player, plot, back).open());
+        if (!plot.isPlayerPlot()) {
+            set(10, Text.icon(Material.BRICKS, "<gold>Изменить здание",
+                    "<gray>Заменить материал фасада,", "<gray>крыши, стен и т.д."),
+                    e -> new ZoneMenu(plugin, player, plot, back).open());
+        }
 
         set(11, Text.icon(Material.NAME_TAG, "<aqua>Название",
                 "<gray>Сейчас: <white>" + (plot.name == null ? "не задано" : Text.esc(plot.name)),

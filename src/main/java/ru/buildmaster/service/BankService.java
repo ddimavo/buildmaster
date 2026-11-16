@@ -121,7 +121,7 @@ public final class BankService {
 
     /** Платящие налог участки: с управляющим, кроме административных зданий. */
     private boolean taxable(Plot plot) {
-        return !plot.isFree() && plot.owner != null && !plot.category.isAdminOnly() && !plot.category.isRentOnly()
+        return !plot.isFree() && plot.owner != null && !plot.isPlayerPlot() && !plot.category.isAdminOnly() && !plot.category.isRentOnly()
                 && !plot.restorePending;
     }
 

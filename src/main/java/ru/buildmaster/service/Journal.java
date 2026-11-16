@@ -52,7 +52,8 @@ public final class Journal {
         SERVICE_PRICE("Прайс услуг"),
         FACTORY("Производство"),
         UPGRADE("Улучшение мастерской"),
-        HOTEL("Отель");
+        HOTEL("Отель"),
+        PLAYER_PLOT("Участок игрока");
 
         private final String title;
 

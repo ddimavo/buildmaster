@@ -23,9 +23,12 @@ import ru.buildmaster.service.HologramService;
 import ru.buildmaster.service.Journal;
 import ru.buildmaster.service.LedgerStore;
 import ru.buildmaster.service.OrderService;
+import ru.buildmaster.service.PlayerPlotService;
 import ru.buildmaster.service.ServiceCatalog;
 import ru.buildmaster.service.ModerationService;
 import ru.buildmaster.service.PlotService;
+import ru.buildmaster.service.RegionAccess;
+import ru.buildmaster.service.WorldGuardRegions;
 import ru.buildmaster.service.PowerService;
 import ru.buildmaster.service.StationService;
 import ru.buildmaster.service.WarningLog;
@@ -59,6 +62,8 @@ public class BuildMasterPlugin extends JavaPlugin {
     private ProductionCatalog production;
     private FactoryService factory;
     private HotelService hotels;
+    private RegionAccess regions;
+    private PlayerPlotService playerPlots;
     private ChatPrompt chatPrompt;
     private SelectionListener selection;
 
@@ -97,6 +102,8 @@ public class BuildMasterPlugin extends JavaPlugin {
         production = new ProductionCatalog(this::getConfig);
         factory = new FactoryService(this);
         hotels = new HotelService(this);
+        regions = new WorldGuardRegions(getLogger());
+        playerPlots = new PlayerPlotService(this);
         plots = new PlotManager(this);
         plots.load();
         service = new PlotService(this);
@@ -224,6 +231,20 @@ public class BuildMasterPlugin extends JavaPlugin {
 
     public ProductionCatalog production() {
         return production;
+    }
+
+    /** Доступ к регионам WorldGuard (по умолчанию через рефлексию). */
+    public RegionAccess regions() {
+        return regions;
+    }
+
+    /** Только для тестов: подмена доступа к WorldGuard. */
+    public void setRegions(RegionAccess access) {
+        this.regions = access;
+    }
+
+    public PlayerPlotService playerPlots() {
+        return playerPlots;
     }
 
     public HotelService hotels() {

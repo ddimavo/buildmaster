@@ -1,6 +1,7 @@
 package ru.buildmaster.model;
 
 import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -12,8 +13,14 @@ public final class Plot {
 
     public enum Status { FREE, OWNED, RENTED }
 
+    /** ADMIN - участок администрации; PLAYER - регион WorldGuard игрока, который он продаёт или сдаёт. */
+    public enum Kind { ADMIN, PLAYER }
+
+    /** Участки игроков становятся видны только после одобрения администратором. */
+    public enum Approval { APPROVED, PENDING }
+
     /** FULL - здание полностью возвращается к исходному виду; ITEMS_ONLY - только забираются вещи игроков. */
-    public enum RestoreMode { FULL, ITEMS_ONLY }
+    public enum RestoreMode { FULL, ITEMS_ONLY, RETURN }
 
     /** Производственная линия: запас сырья, готовая продукция в буфере и накопленное время партии. */
     public static final class Line {
@@ -112,6 +119,19 @@ public final class Plot {
     /** Следующее начисление налога на имущество (мс, 0 - не назначено) и неоплаченный налог. */
     public long nextTaxAt;
     public double taxDebt;
+    /** Участок игрока: регион WorldGuard, арендодатель, одобрение и условия объявления. */
+    public Kind kind = Kind.ADMIN;
+    public String regionId;
+    public UUID landlord;
+    public String landlordName;
+    public Approval approval = Approval.APPROVED;
+    /** Арендодатель сохраняет доступ на время аренды (условие объявления, арендатор соглашается, снимая участок). */
+    public boolean sharedAccess;
+    /** Совладельцы региона: пока все не дали согласие, участок нельзя выставить на продажу или в аренду. */
+    public final Set<UUID> requiredConsents = new HashSet<>();
+    public final Set<UUID> consents = new HashSet<>();
+    /** Участники региона WorldGuard на момент привязки: восстанавливаются после аренды. */
+    public final Set<UUID> regionMembers = new HashSet<>();
     /** Номер отеля: id отеля, в который вложен участок (null - обычный участок). */
     public String parentId;
     /** Блоки дверей номера (x, y, z): открываются только гостем, его доверенными и управляющим отеля. */
@@ -163,6 +183,24 @@ public final class Plot {
         return name != null && !name.isBlank() ? name : category.title() + " " + id;
     }
 
+    public boolean isPlayerPlot() {
+        return kind == Kind.PLAYER;
+    }
+
+    public boolean isLandlord(UUID uuid) {
+        return kind == Kind.PLAYER && landlord != null && landlord.equals(uuid);
+    }
+
+    /** Все совладельцы региона согласились на продажу и аренду. */
+    public boolean consentsComplete() {
+        return consents.containsAll(requiredConsents);
+    }
+
+    /** Арендодатель свободного (или сданного с общим доступом) участка игрока. */
+    private boolean isLandlordWithAccess(UUID uuid) {
+        return kind == Kind.PLAYER && landlord != null && landlord.equals(uuid) && (status == Status.FREE || sharedAccess);
+    }
+
     public boolean isFree() {
         return status == Status.FREE;
     }
@@ -173,7 +211,7 @@ public final class Plot {
 
     /** Есть ли у игрока право (владелец - всегда; публичные права действуют для всех). */
     public boolean can(UUID uuid, Perm perm) {
-        if (isOwner(uuid)) {
+        if (isOwner(uuid) || isLandlordWithAccess(uuid)) {
             return true;
         }
         EnumSet<Perm> set = grants.get(uuid);
@@ -190,7 +228,7 @@ public final class Plot {
 
     /** Связан с участком: владелец или имеет хотя бы одно персональное право. */
     public boolean involves(UUID uuid) {
-        return isOwner(uuid) || grants.containsKey(uuid);
+        return isOwner(uuid) || grants.containsKey(uuid) || (kind == Kind.PLAYER && uuid.equals(landlord));
     }
 
     public void grant(UUID uuid, Perm... perms) {

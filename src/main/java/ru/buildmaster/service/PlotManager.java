@@ -208,6 +208,28 @@ public final class PlotManager {
                 p.publicPerms.add(perm);
             }
         }
+        try {
+            p.kind = Plot.Kind.valueOf(s.getString("kind", "ADMIN"));
+            p.approval = Plot.Approval.valueOf(s.getString("approval", "APPROVED"));
+        } catch (IllegalArgumentException e) {
+            p.kind = Plot.Kind.ADMIN;
+        }
+        p.regionId = s.getString("region");
+        String landlord = s.getString("landlord");
+        if (landlord != null) {
+            p.landlord = UUID.fromString(landlord);
+        }
+        p.landlordName = s.getString("landlord-name");
+        p.sharedAccess = s.getBoolean("shared-access");
+        for (String u : s.getStringList("required-consents")) {
+            p.requiredConsents.add(UUID.fromString(u));
+        }
+        for (String u : s.getStringList("consents")) {
+            p.consents.add(UUID.fromString(u));
+        }
+        for (String u : s.getStringList("region-members")) {
+            p.regionMembers.add(UUID.fromString(u));
+        }
         p.parentId = s.getString("parent");
         p.maxRoomRate = s.getDouble("max-room-rate");
         for (String d : s.getStringList("doors")) {
@@ -300,6 +322,15 @@ public final class PlotManager {
                 yml.set(k + "grants." + e.getKey(), e.getValue().stream().map(Enum::name).toList());
             }
             yml.set(k + "public-perms", p.publicPerms.stream().map(Enum::name).toList());
+            yml.set(k + "kind", p.kind.name());
+            yml.set(k + "approval", p.approval.name());
+            yml.set(k + "region", p.regionId);
+            yml.set(k + "landlord", p.landlord == null ? null : p.landlord.toString());
+            yml.set(k + "landlord-name", p.landlordName);
+            yml.set(k + "shared-access", p.sharedAccess);
+            yml.set(k + "required-consents", p.requiredConsents.stream().map(UUID::toString).toList());
+            yml.set(k + "consents", p.consents.stream().map(UUID::toString).toList());
+            yml.set(k + "region-members", p.regionMembers.stream().map(UUID::toString).toList());
             yml.set(k + "parent", p.parentId);
             yml.set(k + "max-room-rate", p.maxRoomRate);
             yml.set(k + "doors", p.doors.stream().map(d -> d[0] + "," + d[1] + "," + d[2]).toList());

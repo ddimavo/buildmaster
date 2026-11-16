@@ -67,6 +67,10 @@ public final class BuildService {
             Text.err(player, "Менять здание может только владелец.");
             return;
         }
+        if (plot.isPlayerPlot()) {
+            Text.err(player, "Здание участка игрока менять нельзя: оно принадлежит арендодателю.");
+            return;
+        }
         if (plugin.service().isLocked(plot)) {
             Text.err(player, "Участок сейчас обрабатывается, попробуйте позже.");
             return;

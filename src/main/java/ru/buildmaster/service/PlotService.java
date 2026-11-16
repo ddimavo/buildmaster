@@ -263,6 +263,9 @@ public final class PlotService {
         if (!checkAvailable(p, plot)) {
             return false;
         }
+        if (plot.isPlayerPlot()) {
+            return plugin.playerPlots().buy(p, plot);
+        }
         if (plot.category.isRentOnly()) {
             Text.err(p, "Номера отеля только арендуются.");
             return false;
@@ -297,7 +300,27 @@ public final class PlotService {
             return false;
         }
         double cost = RentRules.cost(plot.rentPerDay, days);
-        if (!pay(p, cost, "Аренда участка " + plot.id + " на " + days + " сут. (" + p.getName() + ")", plot)) {
+        if (plot.isPlayerPlot()) {
+            if (plot.approval != Plot.Approval.APPROVED) {
+                Text.err(p, "Участок ещё не одобрен администратором.");
+                return false;
+            }
+            if (!plugin.economy().has(p, cost)) {
+                Text.err(p, "Недостаточно средств. Нужно: " + plugin.economy().format(cost));
+                return false;
+            }
+            // регион переходит арендатору до платежа; если оплата не прошла, он возвращается
+            String error = plugin.playerPlots().beforeRent(plot, p);
+            if (error != null) {
+                Text.err(p, error);
+                return false;
+            }
+            if (!pay(p, cost, "Аренда участка " + plot.id + " на " + days + " сут. (" + p.getName() + ")", plot)) {
+                plugin.playerPlots().afterRent(plot);
+                Text.err(p, "Недостаточно средств. Нужно: " + plugin.economy().format(cost));
+                return false;
+            }
+        } else if (!pay(p, cost, "Аренда участка " + plot.id + " на " + days + " сут. (" + p.getName() + ")", plot)) {
             Text.err(p, "Недостаточно средств. Нужно: " + plugin.economy().format(cost));
             return false;
         }
@@ -396,6 +419,10 @@ public final class PlotService {
     }
 
     private Plot.RestoreMode ownerMode(Plot plot) {
+        // участок игрока: убираем только то, что поставил арендатор, остальное принадлежит арендодателю
+        if (plot.isPlayerPlot()) {
+            return Plot.RestoreMode.RETURN;
+        }
         // номер отеля всегда возвращается к исходному виду: он принадлежит отелю
         return plot.resetOnRelease || plot.category.isRentOnly() ? Plot.RestoreMode.FULL : Plot.RestoreMode.ITEMS_ONLY;
     }
@@ -428,8 +455,14 @@ public final class PlotService {
             // в отеле живут гости: здание целиком не сбрасывается, чтобы не стереть их номера
             release = new Release(release.actor(), release.reason(), release.action(), release.arrest(), Plot.RestoreMode.ITEMS_ONLY);
         }
+        if (plot.isPlayerPlot() && release.mode() != Plot.RestoreMode.RETURN) {
+            release = new Release(release.actor(), release.reason(), release.action(), release.arrest(), Plot.RestoreMode.RETURN);
+        }
         UUID previous = plot.owner;
         plugin.journal().add(plot.id, previous, release.actor(), release.action(), release.reason());
+        if (plot.isPlayerPlot()) {
+            plugin.playerPlots().afterRent(plot);
+        }
         plot.status = Plot.Status.FREE;
         plot.owner = null;
         plot.ownerName = null;
@@ -458,6 +491,10 @@ public final class PlotService {
 
     /** Сброс здания по решению администратора; владелец участка остаётся прежним. */
     public String reset(Plot plot, String actor, String reason) {
+        if (plot.isPlayerPlot()) {
+            return "Участок игрока не сбрасывается к исходному виду: для него нет снимка. Выселите арендатора: "
+                    + "его постройки будут убраны, имущество арендодателя останется.";
+        }
         if (plot.category == Category.HOTEL && plugin.hotels().hasOccupiedRooms(plot)) {
             return "В отеле есть гости: полный сброс стёр бы их номера. Сначала выселите гостей или сбросьте номер отдельно.";
         }
@@ -560,6 +597,10 @@ public final class PlotService {
     private void restoreChunk(Plot plot, World world, Chunk chunk, Box clip, File dir, Ledger ledger,
                               Set<UUID> originals, Map<UUID, List<ItemStack>> out) throws IOException {
         UUID tenant = plot.restoreFor;
+        if (plot.restoreMode == Plot.RestoreMode.RETURN) {
+            returnTenantBuilds(world, chunk, clip, ledger, out);
+            return;
+        }
 
         // 1. содержимое контейнеров: хозяин - тот, кто поставил контейнер; для исходных - арендатор
         for (BlockState state : ChunkAccess.tileEntities(chunk)) {
@@ -616,6 +657,40 @@ public final class PlotService {
                     clearContainer(state);
                 }
             }
+        }
+    }
+
+    /**
+     * Участок игрока: убираются только блоки и контейнеры из книги учёта (их поставил арендатор), предметы
+     * возвращаются поставившему. Контейнеры, сущности и блоки арендодателя не трогаются.
+     */
+    private void returnTenantBuilds(World world, Chunk chunk, Box clip, Ledger ledger, Map<UUID, List<ItemStack>> out) {
+        for (BlockState state : ChunkAccess.tileEntities(chunk)) {
+            Ledger.Entry placed = clip.contains(state.getX(), state.getY(), state.getZ())
+                    ? ledger.get(state.getX(), state.getY(), state.getZ()) : null;
+            if (placed != null) {
+                collectContainer(state, placed.player(), out);
+            }
+        }
+        var iterator = ledger.entries().entrySet().iterator();
+        while (iterator.hasNext()) {
+            var entry = iterator.next();
+            long key = entry.getKey();
+            int x = Ledger.unpackX(key);
+            int y = Ledger.unpackY(key);
+            int z = Ledger.unpackZ(key);
+            if (!clip.contains(x, y, z)) {
+                continue;
+            }
+            var block = world.getBlockAt(x, y, z);
+            if (!block.getType().isAir()) {
+                Material material = Material.matchMaterial(entry.getValue().material());
+                if (material != null && material.isItem()) {
+                    giveStacks(out, entry.getValue().player(), material, entry.getValue().amount());
+                }
+                block.setType(Material.AIR, false);
+            }
+            iterator.remove();
         }
     }
 

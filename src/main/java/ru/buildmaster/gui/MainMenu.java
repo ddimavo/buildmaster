@@ -11,7 +11,7 @@ public final class MainMenu extends Menu {
 
     public MainMenu(BuildMasterPlugin plugin, Player player) {
         super(plugin, player, "<dark_gray>Район коммерции", 3);
-        int free = (int) plugin.plots().all().stream().filter(p -> p.isFree() && !p.restorePending).count();
+        int free = (int) plugin.plots().all().stream().filter(p -> p.isFree() && !p.restorePending && p.approval == ru.buildmaster.model.Plot.Approval.APPROVED).count();
         int mine = (int) plugin.plots().all().stream().filter(p -> p.involves(player.getUniqueId())).count();
         int stored = plugin.storage().countItems(player.getUniqueId(), StorageEntry.State.AVAILABLE);
 

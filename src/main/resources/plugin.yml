@@ -5,6 +5,7 @@ api-version: '1.21'
 description: Район коммерции - участки, покупка, аренда и изменение зданий
 authors: [BuildMaster]
 depend: [Vault]
+softdepend: [WorldGuard]
 commands:
   district:
     description: Управление участками
