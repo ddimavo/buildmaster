@@ -25,7 +25,7 @@ class PersistenceTest extends PluginTestBase {
         p.ownerName = "Steve";
         p.rentedUntil = 123456789L;
         p.autoRenew = true;
-        p.trusted.add(helper);
+        p.grantAll(helper);
         p.name = "Трактир";
         p.description = "Горячие обеды";
         p.hasHolo = true;
@@ -61,7 +61,7 @@ class PersistenceTest extends PluginTestBase {
         assertEquals("Steve", q.ownerName);
         assertEquals(123456789L, q.rentedUntil);
         assertTrue(q.autoRenew);
-        assertTrue(q.trusted.contains(helper));
+        assertTrue(q.can(helper, Plot.Perm.BUILD));
         assertEquals("Трактир", q.name);
         assertEquals("Горячие обеды", q.description);
         assertTrue(q.hasHolo);

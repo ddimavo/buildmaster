@@ -38,7 +38,7 @@ class PlotAndFriendsTest {
         UUID owner = UUID.randomUUID();
         UUID helper = UUID.randomUUID();
         p.owner = owner;
-        p.trusted.add(helper);
+        p.grantAll(helper);
         assertTrue(p.isOwner(owner));
         assertFalse(p.isOwner(helper));
         assertTrue(p.isMember(helper));

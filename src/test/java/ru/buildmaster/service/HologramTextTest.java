@@ -76,6 +76,34 @@ class HologramTextTest {
     }
 
     @Test
+    void workshopHologramShowsElectricityLeftOrBlackout() {
+        Plot p = plot();
+        p.category = Category.WORKSHOP;
+        p.status = Plot.Status.RENTED;
+        p.ownerName = "Steve";
+        p.account.restore(720, 360, 0);
+
+        String lit = String.join("\n", HologramText.lines(p, HologramTextTest::money, 0L));
+        assertTrue(lit.contains("Электричество"), lit);
+        assertTrue(lit.contains("2 д."), lit);
+
+        String dark = String.join("\n", HologramText.lines(p, HologramTextTest::money, 3 * 86_400L));
+        assertTrue(dark.contains("Обесточено"), dark);
+        assertFalse(dark.contains("Электричество"), dark);
+    }
+
+    @Test
+    void nonWorkshopHasNoElectricityLine() {
+        Plot p = plot();
+        p.status = Plot.Status.RENTED;
+        p.ownerName = "Steve";
+        p.account.restore(0, 360, 0);
+        String text = String.join("\n", HologramText.lines(p, HologramTextTest::money, 99_999L));
+        assertFalse(text.contains("Обесточено"));
+        assertFalse(text.contains("Электричество"));
+    }
+
+    @Test
     void userTextIsEscapedAgainstMiniMessageInjection() {
         Plot p = plot();
         p.status = Plot.Status.OWNED;

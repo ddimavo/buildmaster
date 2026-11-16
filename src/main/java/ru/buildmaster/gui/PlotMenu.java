@@ -2,9 +2,7 @@ package ru.buildmaster.gui;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.bukkit.Bukkit;
 import org.bukkit.Material;
-import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import ru.buildmaster.BuildMasterPlugin;
@@ -145,17 +143,46 @@ public final class PlotMenu extends Menu {
                     });
         }
 
-        List<String> names = new ArrayList<>();
-        for (java.util.UUID id : plot.trusted) {
-            OfflinePlayer p = Bukkit.getOfflinePlayer(id);
-            names.add("<white>" + Text.esc(String.valueOf(p.getName())));
+        set(25, Text.icon(Material.WRITABLE_BOOK, "<aqua>Права",
+                "<gray>Игроков с правами: <white>" + plot.grants.size(),
+                "<gray>Публичный доступ: <white>" + (plot.publicPerms.isEmpty() ? "нет"
+                        : String.join(", ", plot.publicPerms.stream().map(Plot.Perm::title).toList())),
+                "<yellow>Нажмите, чтобы настроить"),
+                e -> new RightsMenu(plugin, player, plot, back).open());
+
+        plugin.power().touch(plot);
+        List<String> accountLore = new ArrayList<>();
+        accountLore.add("<gray>Баланс: <white>" + plugin.economy().format(plugin.power().balance(plot)));
+        if (plugin.power().isBilled(plot)) {
+            accountLore.add("<gray>Тариф электричества: <white>" + plugin.economy().format(plot.account.ratePerDay()) + " / сутки");
+            long left = plot.account.secondsLeft(plugin.power().nowSec());
+            accountLore.add(plugin.power().isPowered(plot)
+                    ? "<gray>Хватит на: <white>" + (left == Long.MAX_VALUE ? "без ограничения" : Text.duration(left * 1000L))
+                    : "<red>Обесточено: станки не работают");
         }
-        if (names.isEmpty()) {
-            names.add("<gray>никого нет");
-        }
-        names.add("");
-        names.add("<gray>/district trust <игрок>");
-        set(25, Text.icon(Material.PLAYER_HEAD, "<aqua>Помощники", names.toArray(new String[0])));
+        accountLore.add("<yellow>ЛКМ - пополнить, ПКМ - снять");
+        set(24, Text.icon(Material.GOLD_NUGGET, "<gold>Счёт предприятия", accountLore.toArray(new String[0])), e -> {
+            boolean withdraw = e.isRightClick();
+            plugin.chatPrompt().ask(player, "Введите сумму, чтобы " + (withdraw ? "снять со счёта:" : "внести на счёт:"), text -> {
+                if (!text.equalsIgnoreCase("отмена")) {
+                    try {
+                        double amount = Double.parseDouble(text.replace(',', '.'));
+                        if (withdraw) {
+                            plugin.power().withdraw(player, plot, amount);
+                        } else {
+                            plugin.power().deposit(player, plot, amount);
+                        }
+                    } catch (NumberFormatException ex) {
+                        Text.err(player, "Нужно число.");
+                    }
+                }
+                refresh();
+            });
+        });
+
+        set(40, Text.icon(Material.BELL, "<gold>Журнал предупреждений",
+                "<gray>Непрочитанных: <white>" + plugin.warnings().unread(player.getUniqueId())),
+                e -> new WarningsMenu(plugin, player, 0).open());
 
         set(31, Text.icon(Material.RED_STAINED_GLASS, "<red>Отказаться от участка",
                 "<gray>Ваши вещи вернутся в хранилище"),

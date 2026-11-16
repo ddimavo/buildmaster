@@ -64,7 +64,7 @@ public final class PlotFilter {
         String needle = search == null ? "" : search.trim().toLowerCase(Locale.ROOT);
         List<Plot> result = new ArrayList<>();
         for (Plot p : plots) {
-            boolean match = mode == Mode.FREE ? p.isFree() && !p.restorePending : p.isMember(viewer);
+            boolean match = mode == Mode.FREE ? p.isFree() && !p.restorePending : p.involves(viewer);
             if (!match || (category != null && p.category != category)) {
                 continue;
             }

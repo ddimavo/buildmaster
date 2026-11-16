@@ -30,7 +30,7 @@ public final class PlotListMenu extends Menu {
             List<String> lore = new ArrayList<>(List.of(Icons.plotLore(plugin, plot)));
             lore.add("");
             lore.add("<yellow>Нажмите, чтобы открыть");
-            set(i, Text.icon(Icons.statusMaterial(plot, plot.isMember(player.getUniqueId())),
+            set(i, Text.icon(Icons.statusMaterial(plot, plot.involves(player.getUniqueId())),
                     "<gold>" + Text.esc(plot.displayName()) + " <gray>№ " + Text.esc(plot.id),
                     lore.toArray(new String[0])),
                     e -> new PlotMenu(plugin, player, plot, filter).open());

@@ -159,9 +159,28 @@ public final class PlotManager {
         p.ownerName = s.getString("owner-name");
         p.rentedUntil = s.getLong("rented-until");
         p.autoRenew = s.getBoolean("auto-renew");
+        // старый формат: список доверенных = все права
         for (String t : s.getStringList("trusted")) {
-            p.trusted.add(UUID.fromString(t));
+            p.grantAll(UUID.fromString(t));
         }
+        ConfigurationSection grants = s.getConfigurationSection("grants");
+        if (grants != null) {
+            for (String uid : grants.getKeys(false)) {
+                for (String name : grants.getStringList(uid)) {
+                    Plot.Perm perm = Plot.Perm.parse(name);
+                    if (perm != null) {
+                        p.grant(UUID.fromString(uid), perm);
+                    }
+                }
+            }
+        }
+        for (String name : s.getStringList("public-perms")) {
+            Plot.Perm perm = Plot.Perm.parse(name);
+            if (perm != null && perm != Plot.Perm.BUILD) {
+                p.publicPerms.add(perm);
+            }
+        }
+        p.account.restore(s.getDouble("account.balance"), s.getDouble("account.rate"), s.getLong("account.updated"));
         ConfigurationSection zones = s.getConfigurationSection("zones");
         if (zones != null) {
             for (String name : zones.getKeys(false)) {
@@ -217,9 +236,13 @@ public final class PlotManager {
             yml.set(k + "owner-name", p.ownerName);
             yml.set(k + "rented-until", p.rentedUntil);
             yml.set(k + "auto-renew", p.autoRenew);
-            List<String> trusted = new ArrayList<>();
-            p.trusted.forEach(u -> trusted.add(u.toString()));
-            yml.set(k + "trusted", trusted);
+            for (var e : p.grants.entrySet()) {
+                yml.set(k + "grants." + e.getKey(), e.getValue().stream().map(Enum::name).toList());
+            }
+            yml.set(k + "public-perms", p.publicPerms.stream().map(Enum::name).toList());
+            yml.set(k + "account.balance", p.account.rawBalance());
+            yml.set(k + "account.rate", p.account.ratePerDay());
+            yml.set(k + "account.updated", p.account.updatedAtSec());
             for (Plot.Zone z : p.zones.values()) {
                 yml.set(k + "zones." + z.name() + ".box", z.box().serialize());
                 yml.set(k + "zones." + z.name() + ".icon", z.icon());

@@ -109,6 +109,7 @@ public final class PlotService {
             plot.holoZ = holo.getZ();
             plugin.plots().add(plot);
             plugin.plots().save();
+            plugin.stations().rescan(plot);
             plugin.holograms().update(plot);
             plugin.journal().add(id, null, admin.getName(), Journal.Action.CREATED,
                     category.title() + ", " + box.describe());
@@ -248,9 +249,10 @@ public final class PlotService {
         plot.autoRenew = false;
         plot.warned = false;
         plot.graceUntil = 0;
-        plot.trusted.clear();
+        plot.clearRights();
+        plot.powerWarnLevel = 0;
         plugin.plots().save();
-        plugin.holograms().update(plot);
+        plugin.power().recalc(plot);
     }
 
     public boolean extend(Player p, Plot plot, int days) {
@@ -301,6 +303,25 @@ public final class PlotService {
         plugin.plots().save();
     }
 
+    /** Публичный доступ для всех; возвращает текст ошибки или null. Правила типа участка задаёт администратор. */
+    public String setPublic(Plot plot, Plot.Perm perm, boolean value) {
+        if (perm == Plot.Perm.BUILD) {
+            return "Строительство нельзя открыть для всех.";
+        }
+        if (value) {
+            List<String> allowed = plugin.getConfig().getStringList("public-permissions." + plot.category.key());
+            if (allowed.stream().noneMatch(a -> a.equalsIgnoreCase(perm.name()))) {
+                return "Для типа «" + plot.category.title() + "» публичный доступ «" + perm.title()
+                        + "» запрещён администратором.";
+            }
+            plot.publicPerms.add(perm);
+        } else {
+            plot.publicPerms.remove(perm);
+        }
+        plugin.plots().save();
+        return null;
+    }
+
     private Plot.RestoreMode ownerMode(Plot plot) {
         return plot.resetOnRelease ? Plot.RestoreMode.FULL : Plot.RestoreMode.ITEMS_ONLY;
     }
@@ -338,7 +359,9 @@ public final class PlotService {
         plot.autoRenew = false;
         plot.warned = false;
         plot.graceUntil = 0;
-        plot.trusted.clear();
+        plugin.power().closeAccount(plot, previous, release.action() == Journal.Action.SEIZED);
+        plot.clearRights();
+        plot.powerWarnLevel = 0;
         startRestore(plot, previous, release);
         notifyOwner(previous, "<yellow>Участок <white>" + Text.esc(plot.id) + "</white>: "
                 + release.action().title().toLowerCase() + ". Причина: " + Text.esc(release.reason())
@@ -365,6 +388,18 @@ public final class PlotService {
         plot.failures = 0;
         plugin.plots().save();
         runRestore(plot);
+    }
+
+    /** Предупреждение игроку: запись в журнал предупреждений и сообщение в чат, если он в сети. */
+    public void warn(UUID uuid, String plotId, String miniMessage) {
+        if (uuid == null) {
+            return;
+        }
+        plugin.warnings().add(uuid, plotId, miniMessage);
+        Player online = Bukkit.getPlayer(uuid);
+        if (online != null) {
+            Text.send(online, miniMessage);
+        }
     }
 
     private void notifyOwner(UUID uuid, String message) {
@@ -417,6 +452,7 @@ public final class PlotService {
             plugin.plots().save();
             plugin.ledgers().flush();
             plugin.holograms().update(plot);
+            plugin.stations().rescan(plot);
             for (Map.Entry<UUID, Integer> e : returned.entrySet()) {
                 Player online = Bukkit.getPlayer(e.getKey());
                 if (online != null) {
@@ -615,16 +651,20 @@ public final class PlotService {
                 expire(plot, now);
             } else if (!plot.warned && plot.rentedUntil - now < dayMillis()) {
                 Player owner = plot.owner == null ? null : Bukkit.getPlayer(plot.owner);
-                if (owner != null) {
+                if (plot.owner != null) {
                     plot.warned = true;
-                    Text.send(owner, "<yellow>Аренда участка <white>" + Text.esc(plot.id) + "</white> заканчивается через "
-                            + Text.duration(plot.rentedUntil - now)
+                    warn(plot.owner, plot.id, "<yellow>Аренда участка <white>" + Text.esc(plot.id)
+                            + "</white> заканчивается через " + Text.duration(plot.rentedUntil - now)
                             + (plot.autoRenew ? " (будет продлена автоматически)." : ". Продлите её: /district extend."));
                 }
             }
         }
+        plugin.power().tick();
         plugin.holograms().updateAll();
         plugin.ledgers().flush();
+        if (tickCounter % 4320 == 4319) { // примерно раз в сутки
+            plugin.stations().rescanAll();
+        }
         if (++tickCounter % 180 == 0) { // примерно раз в час
             int removed = plugin.storage().sweepExpired(now, plugin.getConfig().getInt("storage-days", 60));
             if (removed > 0) {
@@ -646,11 +686,9 @@ public final class PlotService {
                 plugin.holograms().update(plot);
                 plugin.journal().add(plot.id, plot.owner, "система", Journal.Action.GRACE_STARTED,
                         "Не хватило средств для автопродления, отсрочка " + grace + " сут.");
-                if (owner.getPlayer() != null) {
-                    Text.send(owner.getPlayer(), "<red>Не хватило средств для продления аренды участка <white>"
-                            + Text.esc(plot.id) + "</white>. Участок заморожен на " + grace
-                            + " сут.: строить нельзя, торговля работает. Пополните счёт.");
-                }
+                warn(plot.owner, plot.id, "<red>Не хватило средств для продления аренды участка <white>"
+                        + Text.esc(plot.id) + "</white>. Участок заморожен на " + grace
+                        + " сут.: строить нельзя, торговля работает. Пополните счёт.");
                 return;
             }
         }

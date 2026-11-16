@@ -1,6 +1,7 @@
 package ru.buildmaster.model;
 
-import java.util.HashSet;
+import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
@@ -13,6 +14,34 @@ public final class Plot {
 
     /** FULL - здание полностью возвращается к исходному виду; ITEMS_ONLY - только забираются вещи игроков. */
     public enum RestoreMode { FULL, ITEMS_ONLY }
+
+    /** Права на участке. Владелец имеет все. */
+    public enum Perm {
+        BUILD("Строительство"), CONTAINERS("Контейнеры"), STATIONS("Станки");
+
+        private final String title;
+
+        Perm(String title) {
+            this.title = title;
+        }
+
+        public String title() {
+            return title;
+        }
+
+        public static Perm parse(String s) {
+            if (s == null) {
+                return null;
+            }
+            String v = s.trim().toLowerCase(java.util.Locale.ROOT);
+            for (Perm p : values()) {
+                if (p.name().toLowerCase(java.util.Locale.ROOT).equals(v) || p.title.toLowerCase(java.util.Locale.ROOT).equals(v)) {
+                    return p;
+                }
+            }
+            return null;
+        }
+    }
 
     /** Именованная часть здания (фасад, крыша, интерьер...), внутри участка. */
     public record Zone(String name, Box box, String icon) { }
@@ -47,7 +76,12 @@ public final class Plot {
     public long rentedUntil;
     public boolean autoRenew;
 
-    public final Set<UUID> trusted = new HashSet<>();
+    /** Права, выданные управляющим отдельным игрокам. */
+    public final Map<UUID, EnumSet<Perm>> grants = new HashMap<>();
+    /** Права, открытые для всех посетителей (BUILD публичным быть не может). */
+    public final EnumSet<Perm> publicPerms = EnumSet.noneOf(Perm.class);
+    /** Денежный счёт предприятия; в мастерских с него списывается электричество. */
+    public final PowerAccount account = new PowerAccount();
     public final Map<String, Zone> zones = new LinkedHashMap<>();
 
     public boolean hasSpawn;
@@ -69,6 +103,8 @@ public final class Plot {
     public transient boolean warned;
     /** Неудачные попытки сброса подряд (после трёх ждём перезапуска). */
     public transient int failures;
+    /** 0 - без предупреждений, 1 - предупреждали за 24 ч, 2 - за 6 ч, 3 - обесточено. */
+    public transient int powerWarnLevel;
 
     public Plot(String id, String world, Box box) {
         this.id = id;
@@ -92,7 +128,62 @@ public final class Plot {
         return owner != null && owner.equals(uuid);
     }
 
+    /** Есть ли у игрока право (владелец - всегда; публичные права действуют для всех). */
+    public boolean can(UUID uuid, Perm perm) {
+        if (isOwner(uuid)) {
+            return true;
+        }
+        EnumSet<Perm> set = grants.get(uuid);
+        if (set != null && set.contains(perm)) {
+            return true;
+        }
+        return perm != Perm.BUILD && publicPerms.contains(perm);
+    }
+
+    /** Может строить: владелец и игроки с правом BUILD. */
     public boolean isMember(UUID uuid) {
-        return isOwner(uuid) || trusted.contains(uuid);
+        return can(uuid, Perm.BUILD);
+    }
+
+    /** Связан с участком: владелец или имеет хотя бы одно персональное право. */
+    public boolean involves(UUID uuid) {
+        return isOwner(uuid) || grants.containsKey(uuid);
+    }
+
+    public void grant(UUID uuid, Perm... perms) {
+        if (perms.length == 0) {
+            return;
+        }
+        EnumSet<Perm> set = grants.computeIfAbsent(uuid, k -> EnumSet.noneOf(Perm.class));
+        set.addAll(java.util.Arrays.asList(perms));
+    }
+
+    public void grantAll(UUID uuid) {
+        grant(uuid, Perm.values());
+    }
+
+    public void revoke(UUID uuid, Perm perm) {
+        EnumSet<Perm> set = grants.get(uuid);
+        if (set != null) {
+            set.remove(perm);
+            if (set.isEmpty()) {
+                grants.remove(uuid);
+            }
+        }
+    }
+
+    public boolean revokeAll(UUID uuid) {
+        return grants.remove(uuid) != null;
+    }
+
+    public EnumSet<Perm> permsOf(UUID uuid) {
+        EnumSet<Perm> set = grants.get(uuid);
+        return set == null ? EnumSet.noneOf(Perm.class) : EnumSet.copyOf(set);
+    }
+
+    /** Сбрасывает все выданные права (при смене управляющего). */
+    public void clearRights() {
+        grants.clear();
+        publicPerms.clear();
     }
 }

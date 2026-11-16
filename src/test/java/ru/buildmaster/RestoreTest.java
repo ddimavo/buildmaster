@@ -94,7 +94,7 @@ class RestoreTest extends PluginTestBase {
         alex = player("Alex", 10_000);
         plot = addPlot("a", Category.SHOP, 0, -1, 10);
         plugin.service().rent(steve, plot, 5);
-        plot.trusted.add(alex.getUniqueId());
+        plot.grantAll(alex.getUniqueId());
     }
 
     @AfterEach

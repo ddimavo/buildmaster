@@ -17,6 +17,9 @@ import ru.buildmaster.service.Journal;
 import ru.buildmaster.service.LedgerStore;
 import ru.buildmaster.service.ModerationService;
 import ru.buildmaster.service.PlotService;
+import ru.buildmaster.service.PowerService;
+import ru.buildmaster.service.StationService;
+import ru.buildmaster.service.WarningLog;
 import ru.buildmaster.service.SnapshotStore;
 import ru.buildmaster.service.StorageService;
 import ru.buildmaster.service.Treasury;
@@ -35,6 +38,9 @@ public class BuildMasterPlugin extends JavaPlugin {
     private Treasury treasury;
     private ModerationService moderation;
     private HologramService holograms;
+    private StationService stations;
+    private PowerService power;
+    private WarningLog warnings;
     private ChatPrompt chatPrompt;
     private SelectionListener selection;
 
@@ -57,6 +63,10 @@ public class BuildMasterPlugin extends JavaPlugin {
         moderation = new ModerationService(this);
         moderation.load();
         holograms = new HologramService(this);
+        stations = new StationService(this);
+        power = new PowerService(this);
+        power.load();
+        warnings = new WarningLog(new java.io.File(getDataFolder(), "warnings"));
         plots = new PlotManager(this);
         plots.load();
         service = new PlotService(this);
@@ -71,6 +81,7 @@ public class BuildMasterPlugin extends JavaPlugin {
         pm.registerEvents(selection, this);
         pm.registerEvents(new JoinListener(this), this);
         pm.registerEvents(new ru.buildmaster.listener.HologramListener(this), this);
+        pm.registerEvents(new ru.buildmaster.listener.StationListener(this), this);
 
         DistrictCommand command = new DistrictCommand(this);
         var district = Objects.requireNonNull(getCommand("district"));
@@ -79,7 +90,10 @@ public class BuildMasterPlugin extends JavaPlugin {
 
         // проверка сроков аренды, автопродление и продолжение незавершённых сбросов зданий
         getServer().getScheduler().runTaskTimer(this, service::tick, 100L, 400L);
-        getServer().getScheduler().runTaskLater(this, holograms::updateAll, 40L);
+        getServer().getScheduler().runTaskLater(this, () -> {
+            stations.rescanAll();
+            holograms.updateAll();
+        }, 40L);
         getLogger().info("Загружено участков: " + plots.all().size());
     }
 
@@ -149,6 +163,18 @@ public class BuildMasterPlugin extends JavaPlugin {
 
     public ModerationService moderation() {
         return moderation;
+    }
+
+    public StationService stations() {
+        return stations;
+    }
+
+    public PowerService power() {
+        return power;
+    }
+
+    public WarningLog warnings() {
+        return warnings;
     }
 
     public HologramService holograms() {

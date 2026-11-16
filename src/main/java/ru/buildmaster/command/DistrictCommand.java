@@ -20,6 +20,8 @@ import ru.buildmaster.gui.JournalMenu;
 import ru.buildmaster.gui.MainMenu;
 import ru.buildmaster.gui.ModerationMenu;
 import ru.buildmaster.gui.StorageMenu;
+import ru.buildmaster.gui.WarningsMenu;
+import ru.buildmaster.model.Station;
 import ru.buildmaster.model.Category;
 import ru.buildmaster.model.Request;
 import ru.buildmaster.model.StorageEntry;
@@ -39,8 +41,8 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
     private static final int MAX_TRUSTED = 10;
 
     private static final List<String> PLAYER_SUBS = List.of("menu", "list", "info", "buy", "rent", "extend",
-            "autorenew", "autoreset", "release", "trust", "untrust", "tp", "replace", "zones", "storage", "claim", "journal",
-            "name", "desc", "help");
+            "autorenew", "autoreset", "release", "trust", "untrust", "perm", "account", "power", "warnings", "tp", "replace",
+            "zones", "storage", "claim", "journal", "name", "desc", "help");
     private static final List<String> ADMIN_SUBS = List.of("wand", "pos1", "pos2", "create", "delete", "evict",
             "setprice", "setrent", "setspawn", "zone", "resnapshot", "reload", "seize", "reset", "holo", "category",
             "moderation", "arrest", "treasury");
@@ -88,6 +90,10 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
                 case "journal" -> withPlayer(sender, p -> new JournalMenu(plugin, p, 0).open());
                 case "name" -> withPlayer(sender, p -> submitText(p, rest, Request.Type.NAME));
                 case "desc" -> withPlayer(sender, p -> submitText(p, rest, Request.Type.DESCRIPTION));
+                case "perm" -> withPlayer(sender, p -> perm(p, rest));
+                case "account" -> account(sender, rest);
+                case "power" -> power(sender, rest);
+                case "warnings" -> withPlayer(sender, p -> new WarningsMenu(plugin, p, 0).open());
                 case "autoreset" -> withPlayer(sender, p -> autoReset(p, rest));
                 case "moderation" -> withPlayer(sender, p -> new ModerationMenu(plugin, p, 0).open());
                 case "seize" -> adminDecision(sender, rest, Journal.Action.SEIZED);
@@ -215,7 +221,11 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
                 "/district storage - хранилище (вещи, возвращённые с участков)",
                 "/district journal - журнал ваших участков и решений администрации",
                 "/district name|desc [номер] <текст> - название и описание (после проверки администратором)",
-                "/district autoreset <on|off> [номер] - сбрасывать ли здание при отказе"};
+                "/district autoreset <on|off> [номер] - сбрасывать ли здание при отказе",
+                "/district perm <игрок|public> <build|containers|stations> <on|off> - права на участке",
+                "/district account [deposit|withdraw <сумма>] - счёт предприятия",
+                "/district power - электричество мастерской",
+                "/district warnings - журнал предупреждений"};
         for (String l : lines) {
             s.sendMessage(Text.mm("<gray>" + Text.esc(l)));
         }
@@ -230,6 +240,7 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
                     "/district evict|seize|reset <номер> <причина> - выселить, изъять (арест вещей), сбросить здание",
                     "/district arrest list | release|delete|auction <игрок> <причина> - решение по арестованным вещам",
                     "/district treasury [pay <игрок> <сумма> <причина>] - казна",
+                    "/district power calc [smelter:2 anvil:1] - калькулятор тарифа",
                     "/district delete <номер> - удалить свободный участок",
                     "/district setprice|setrent <номер> <цена|-> - изменить цены",
                     "/district setspawn [номер] - точка телепорта",
@@ -355,18 +366,165 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
             if (id.equals(p.getUniqueId())) {
                 throw new CommandError("Вы и так владелец.");
             }
-            if (plot.trusted.size() >= MAX_TRUSTED) {
-                throw new CommandError("Нельзя добавить больше " + MAX_TRUSTED + " доверенных игроков.");
+            if (!plot.grants.containsKey(id) && plot.grants.size() >= MAX_TRUSTED) {
+                throw new CommandError("Нельзя выдать права больше чем " + MAX_TRUSTED + " игрокам.");
             }
-            plot.trusted.add(id);
-            Text.ok(p, target.getName() + " теперь может строить на участке " + plot.id + ".");
+            plot.grantAll(id);
+            Text.ok(p, target.getName() + " получил все права на участке " + plot.id
+                    + " (строительство, контейнеры, станки). Тонкая настройка: /district perm");
         } else {
-            if (!plot.trusted.remove(id)) {
-                throw new CommandError(target.getName() + " не в списке доверенных.");
+            if (!plot.revokeAll(id)) {
+                throw new CommandError(target.getName() + " не имеет прав на этом участке.");
             }
-            Text.ok(p, target.getName() + " больше не может строить на участке " + plot.id + ".");
+            Text.ok(p, target.getName() + " лишён всех прав на участке " + plot.id + ".");
+        }
+        plugin.journal().add(plot.id, id, p.getName(), Journal.Action.RIGHTS, add ? "все права" : "права сняты");
+        plugin.plots().save();
+    }
+
+    /** perm <игрок|public> <право> <on|off> [номер] */
+    private void perm(Player p, String[] args) {
+        if (args.length < 3) {
+            throw new CommandError("Использование: /district perm <игрок|public> <build|containers|stations> <on|off> [номер]");
+        }
+        Plot plot = ownPlot(p, args.length > 3 ? args[3] : null);
+        Plot.Perm perm = Plot.Perm.parse(args[1]);
+        if (perm == null) {
+            throw new CommandError("Право: build, containers или stations.");
+        }
+        boolean value = switch (args[2].toLowerCase(Locale.ROOT)) {
+            case "on", "вкл", "true" -> true;
+            case "off", "выкл", "false" -> false;
+            default -> throw new CommandError("Укажите on или off.");
+        };
+        if (args[0].equalsIgnoreCase("public")) {
+            String error = plugin.service().setPublic(plot, perm, value);
+            if (error != null) {
+                throw new CommandError(error);
+            }
+            Text.ok(p, "Публичный доступ «" + perm.title() + "»: " + (value ? "открыт для всех" : "закрыт") + ".");
+            return;
+        }
+        OfflinePlayer target = Bukkit.getPlayerExact(args[0]);
+        if (target == null) {
+            target = Bukkit.getOfflinePlayerIfCached(args[0]);
+        }
+        if (target == null) {
+            throw new CommandError("Игрок «" + args[0] + "» не найден.");
+        }
+        if (target.getUniqueId().equals(p.getUniqueId())) {
+            throw new CommandError("Вы и так владелец.");
+        }
+        if (value) {
+            if (!plot.grants.containsKey(target.getUniqueId()) && plot.grants.size() >= MAX_TRUSTED) {
+                throw new CommandError("Нельзя выдать права больше чем " + MAX_TRUSTED + " игрокам.");
+            }
+            plot.grant(target.getUniqueId(), perm);
+        } else {
+            plot.revoke(target.getUniqueId(), perm);
         }
         plugin.plots().save();
+        plugin.journal().add(plot.id, target.getUniqueId(), p.getName(), Journal.Action.RIGHTS,
+                perm.title() + ": " + (value ? "выдано" : "снято"));
+        Text.ok(p, target.getName() + ": «" + perm.title() + "» " + (value ? "выдано" : "снято") + ".");
+    }
+
+    /** account [deposit|withdraw <сумма> [номер]] - счёт предприятия. */
+    private void account(CommandSender sender, String[] args) {
+        if (args.length == 0 || args[0].equalsIgnoreCase("info")) {
+            withPlayer(sender, p -> accountInfo(p, plotOrHere(p, args.length > 1 ? args[1] : null)));
+            return;
+        }
+        String sub = args[0].toLowerCase(Locale.ROOT);
+        if (!sub.equals("deposit") && !sub.equals("withdraw")) {
+            throw new CommandError("Использование: /district account [deposit|withdraw] <сумма> [номер]");
+        }
+        withPlayer(sender, p -> {
+            if (args.length < 2) {
+                throw new CommandError("Использование: /district account " + sub + " <сумма> [номер]");
+            }
+            double amount;
+            try {
+                amount = Double.parseDouble(args[1].replace(',', '.'));
+            } catch (NumberFormatException e) {
+                throw new CommandError("Сумма должна быть числом.");
+            }
+            Plot plot = plotOrHere(p, args.length > 2 ? args[2] : null);
+            if (sub.equals("deposit")) {
+                plugin.power().deposit(p, plot, amount);
+            } else {
+                plugin.power().withdraw(p, plot, amount);
+            }
+        });
+    }
+
+    private void accountInfo(Player p, Plot plot) {
+        plugin.power().touch(plot);
+        Text.send(p, "<yellow>Счёт участка <white>" + Text.esc(plot.id) + "</white>: <white>"
+                + plugin.economy().format(plugin.power().balance(plot)));
+        if (plugin.power().isBilled(plot)) {
+            double rate = plot.account.ratePerDay();
+            Text.send(p, "<gray> Тариф электричества: <white>" + plugin.economy().format(rate) + " / сутки");
+            long left = plot.account.secondsLeft(plugin.power().nowSec());
+            Text.send(p, "<gray> Хватит на: " + (left == Long.MAX_VALUE ? "<white>без ограничения"
+                    : plugin.power().isPowered(plot) ? "<white>" + Text.duration(left * 1000L) : "<red>обесточено"));
+        }
+    }
+
+    /** power [calc ...] | power deposit <сумма> [номер] */
+    private void power(CommandSender sender, String[] args) {
+        if (args.length > 0 && args[0].equalsIgnoreCase("calc")) {
+            if (!sender.hasPermission("buildmaster.admin")) {
+                throw new CommandError("Недостаточно прав.");
+            }
+            powerCalc(sender, Arrays.copyOfRange(args, 1, args.length));
+            return;
+        }
+        if (args.length > 0 && args[0].equalsIgnoreCase("deposit")) {
+            account(sender, args);
+            return;
+        }
+        account(sender, new String[0]);
+    }
+
+    /** power calc smelter:2 anvil:1 - тариф для набора станков (без аргументов - станки участка, где стоит админ). */
+    private void powerCalc(CommandSender sender, String[] args) {
+        java.util.Map<String, Integer> counts = new java.util.LinkedHashMap<>();
+        if (args.length == 0) {
+            if (!(sender instanceof Player p)) {
+                throw new CommandError("Использование: /district power calc smelter:2 anvil:1 ...");
+            }
+            Plot plot = plotOrHere(p, null);
+            counts.putAll(plugin.stations().tariffCounts(plot));
+        } else {
+            for (String a : args) {
+                String[] kv = a.split(":");
+                String type = kv[0].toLowerCase(Locale.ROOT);
+                if (plugin.getConfig().get("electricity.stations." + type) == null) {
+                    throw new CommandError("Неизвестный станок «" + type + "». Доступно: smelter, anvil, alchemy, enchanting.");
+                }
+                int n = 1;
+                if (kv.length > 1) {
+                    n = parseInt(kv[1], "количество станков");
+                }
+                counts.merge(type, Math.max(0, n), Integer::sum);
+            }
+        }
+        if (counts.isEmpty()) {
+            Text.send(sender, "<gray>Станков нет: тариф 0.");
+            return;
+        }
+        Text.send(sender, "<yellow>Расчёт тарифа (база "
+                + plugin.economy().format(plugin.getConfig().getDouble("electricity.base-rate-per-day", 100))
+                + ", прогрессия " + plugin.getConfig().getDouble("electricity.progression-per-extra-same-type", 0.1) + "):");
+        for (var e : plugin.power().breakdown(counts).entrySet()) {
+            sender.sendMessage(Text.mm("<gray> " + Text.esc(e.getKey()) + " × " + counts.get(e.getKey())
+                    + " (коэф. " + plugin.power().coefficient(e.getKey()) + "): <white>"
+                    + plugin.economy().format(e.getValue()) + " / сутки"));
+        }
+        double total = plugin.power().dailyRate(counts, 0);
+        sender.sendMessage(Text.mm("<yellow>Итого: <white>" + plugin.economy().format(total) + " / сутки, "
+                + plugin.economy().format(total * 30) + " / 30 суток"));
     }
 
     private void teleport(Player p, String[] args) {
@@ -863,6 +1021,30 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
                     for (Category c : Category.values()) {
                         result.add(c.key());
                     }
+                }
+            }
+            case "perm" -> {
+                if (n == 2) {
+                    result.add("public");
+                    Bukkit.getOnlinePlayers().forEach(pl -> result.add(pl.getName()));
+                } else if (n == 3) {
+                    result.addAll(List.of("build", "containers", "stations"));
+                } else if (n == 4) {
+                    result.addAll(List.of("on", "off"));
+                } else if (n == 5) {
+                    result.addAll(plotIds(null));
+                }
+            }
+            case "account" -> {
+                if (n == 2) {
+                    result.addAll(List.of("info", "deposit", "withdraw"));
+                }
+            }
+            case "power" -> {
+                if (n == 2) {
+                    result.addAll(List.of("deposit", "calc"));
+                } else if (n >= 3 && args[1].equalsIgnoreCase("calc")) {
+                    result.addAll(List.of("smelter:", "anvil:", "alchemy:", "enchanting:"));
                 }
             }
             case "autoreset" -> {

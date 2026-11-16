@@ -79,6 +79,11 @@ public final class BuildService {
             Text.err(player, "Этим блоком заменять нельзя: <white>" + to.getKey().getKey() + "</white>.");
             return;
         }
+        if (ru.buildmaster.model.Station.fromName(to.name()) != null
+                || ru.buildmaster.model.Station.fromName(from.name()) != null) {
+            Text.err(player, "Станки ставить и заменять через меню нельзя: размещайте их вручную (действуют лимиты типа здания).");
+            return;
+        }
         if (from.isAir() || from == to) {
             Text.err(player, "Нечего заменять.");
             return;

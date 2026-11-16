@@ -115,3 +115,41 @@ limits:
 moderation:
   max-name-length: 32
   max-description-length: 120
+
+# ---- Электричество мастерских ----
+# Платят только участки типа "мастерская". Вне мастерских станки обычные.
+# Счёт предприятия = денежный счёт участка: с него непрерывно списывается электричество.
+electricity:
+  # тариф в сутки = база × Σ по типам [ коэффициент × Σ по станкам (1 + прогрессия × k) ]
+  base-rate-per-day: 100.0
+  # надбавка за каждый следующий станок того же типа (0 - выключена)
+  progression-per-extra-same-type: 0.10
+  stations:
+    smelter: 1.0      # печь, плавильная печь, коптильня
+    anvil: 1.5
+    alchemy: 2.5      # варочная стойка
+    enchanting: 4.0   # стол зачарований
+  # штраф при изъятии участка: процент от остатка счёта, уходит в казну
+  seizure-penalty-percent: 10
+  # простой сервера не оплачивается: за один шаг биллинговые часы идут не больше этого (сек)
+  max-clock-step-seconds: 120
+
+# ---- Лимиты станков по типам участков ----
+# -1 без ограничений, 0 запрещено, N - не больше N на участок.
+# crafting - верстак; furnace - печь любого вида; anvil - наковальня;
+# other - прочие станки (варочная стойка, стол зачарований, точило, кузнечный стол, ткацкий станок...)
+station-limits:
+  house:      {crafting: -1, furnace: -1, anvil: -1, other: -1}
+  shop:       {crafting: 1,  furnace: 1,  anvil: 1,  other: 0}
+  workshop:   {crafting: -1, furnace: -1, anvil: -1, other: -1}
+  restaurant: {crafting: 1,  furnace: 3,  anvil: 0,  other: 0}
+  warehouse:  {crafting: 1,  furnace: 0,  anvil: 0,  other: 0}
+
+# ---- Публичные права ----
+# Что управляющий может открыть для ВСЕХ посетителей: containers, stations. Пустой список - публичный режим запрещён.
+public-permissions:
+  house: []
+  shop: []
+  workshop: [stations]
+  restaurant: []
+  warehouse: []

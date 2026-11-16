@@ -34,7 +34,12 @@ public final class Journal {
         STORAGE_RELEASED("Арест вещей снят"),
         STORAGE_DELETED("Арестованные вещи удалены"),
         STORAGE_AUCTION("Вещи переданы на аукцион"),
-        TREASURY("Операция с казной");
+        TREASURY("Операция с казной"),
+        ACCOUNT_DEPOSIT("Пополнение счёта"),
+        ACCOUNT_WITHDRAW("Снятие со счёта"),
+        ACCOUNT_REFUND("Возврат остатка счёта"),
+        ACCOUNT_PENALTY("Штраф при изъятии"),
+        RIGHTS("Изменение прав");
 
         private final String title;
 

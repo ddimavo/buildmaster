@@ -1,6 +1,7 @@
 package ru.buildmaster.listener;
 
 import java.util.List;
+import java.util.UUID;
 import org.bukkit.Material;
 import org.bukkit.Tag;
 import org.bukkit.block.Block;
@@ -42,6 +43,8 @@ import org.bukkit.inventory.ItemStack;
 import ru.buildmaster.BuildMasterPlugin;
 import ru.buildmaster.model.Ledger;
 import ru.buildmaster.model.Plot;
+import ru.buildmaster.model.Station;
+import ru.buildmaster.service.StationLimits;
 import ru.buildmaster.util.Text;
 
 /**
@@ -99,6 +102,13 @@ public final class ProtectionListener implements Listener {
         if (plot == null) {
             return;
         }
+        Station broken = Station.fromName(block.getType().name());
+        if (broken != null) {
+            plugin.stations().dec(plot, broken);
+            if (broken.tariffKey() != null) {
+                plugin.power().recalc(plot);
+            }
+        }
         Ledger ledger = plugin.ledgers().get(plot.id);
         if (ledger.remove(block.getX(), block.getY(), block.getZ()) != null) {
             plugin.ledgers().markDirty(plot.id);
@@ -122,6 +132,34 @@ public final class ProtectionListener implements Listener {
             player.sendActionBar(Text.mm("<red>Этот блок нельзя ставить на участке."));
             event.setCancelled(true);
             return;
+        }
+        Station station = plot == null ? null : Station.fromName(event.getBlockPlaced().getType().name());
+        if (station != null && !player.hasPermission("buildmaster.bypass")) {
+            int limit = plugin.stations().limit(plot.category, station);
+            if (limit >= 0) {
+                String refusal = null;
+                if (!plugin.stations().ready(plot)) {
+                    refusal = "Идёт подсчёт станков на участке, попробуйте через минуту.";
+                } else {
+                    StationLimits.Result r = StationLimits.check(plot.category, station,
+                            plugin.stations().groupCount(plot, station), limit);
+                    if (!r.allowed()) {
+                        refusal = r.message();
+                    }
+                }
+                if (refusal != null) {
+                    event.setCancelled(true);
+                    plugin.service().warn(player.getUniqueId(), plot.id, "<red>" + Text.esc(refusal)
+                            + " <click:run_command:/district><aqua>[Свободные мастерские]</aqua></click>");
+                    return;
+                }
+            }
+        }
+        if (station != null) {
+            plugin.stations().inc(plot, station);
+            if (station.tariffKey() != null) {
+                plugin.power().recalc(plot);
+            }
         }
         if (plot != null && plot.isMember(player.getUniqueId())) {
             // запоминаем, кто поставил блок: при сбросе здания предмет вернётся именно ему
@@ -173,25 +211,37 @@ public final class ProtectionListener implements Listener {
             return;
         }
         ItemStack item = event.getItem();
-        boolean member = !plugin.service().isLocked(plot) && !plot.isFree() && plot.isMember(player.getUniqueId());
-        if (member) {
-            if (action == Action.RIGHT_CLICK_BLOCK && item != null && !plugin.rules().canPlace(item.getType())) {
+        UUID id = player.getUniqueId();
+        boolean usable = !plugin.service().isLocked(plot) && !plot.isFree();
+        boolean rightClick = action == Action.RIGHT_CLICK_BLOCK;
+        boolean special = item != null && placesThings(item.getType());
+        Station station = Station.fromName(block.getType().name());
+
+        boolean allowed;
+        if (!usable) {
+            allowed = isPublic(block) && !special;
+        } else if (station != null && station != Station.CRAFTING) {
+            allowed = plot.can(id, Plot.Perm.STATIONS) && !special;
+        } else if (isContainer(block)) {
+            allowed = plot.can(id, Plot.Perm.CONTAINERS) || !plugin.getConfig().getBoolean("protect-containers", true);
+        } else if (plot.can(id, Plot.Perm.BUILD)) {
+            allowed = true;
+        } else {
+            allowed = isPublic(block) && !special;
+        }
+
+        if (allowed) {
+            if (usable && rightClick && item != null && !plugin.rules().canPlace(item.getType())) {
                 player.sendActionBar(Text.mm("<red>Этим предметом нельзя пользоваться на участке."));
                 event.setCancelled(true);
             }
             return;
         }
-        boolean harmless = isPublic(block) && (item == null || !placesThings(item.getType()));
-        if (harmless) {
-            return;
-        }
-        if (!plugin.getConfig().getBoolean("protect-containers", true) && isContainer(block)
-                && (item == null || !placesThings(item.getType()))) {
-            return; // контейнеры разрешено открывать всем
-        }
-        // чужие предметы в руках (вёдра, яйца, рамки) и любые не публичные блоки - запрещены
-        if (action == Action.RIGHT_CLICK_BLOCK || action == Action.LEFT_CLICK_BLOCK) {
+        if (rightClick || action == Action.LEFT_CLICK_BLOCK) {
             denied(player, plot);
+            if (usable && !plot.isMember(id)) {
+                player.sendActionBar(Text.mm("<red>У вас нет права пользоваться этим на участке."));
+            }
             event.setCancelled(true);
         }
     }

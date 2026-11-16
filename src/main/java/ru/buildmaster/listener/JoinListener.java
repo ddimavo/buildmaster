@@ -34,6 +34,10 @@ public final class JoinListener implements Listener {
                 Text.send(player, "<red>Часть ваших вещей арестована до решения администрации (" + arrested + " шт.).");
             }
             plugin.moderation().deliverMissed(player);
+            int unread = plugin.warnings().unread(player.getUniqueId());
+            if (unread > 0) {
+                Text.send(player, "<gold>У вас непрочитанных предупреждений: " + unread + ". Откройте <white>/district warnings</white>.");
+            }
             long day = plugin.service().dayMillis();
             for (Plot plot : plugin.plots().ownedBy(player.getUniqueId())) {
                 long left = plot.rentedUntil - System.currentTimeMillis();

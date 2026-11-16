@@ -12,7 +12,7 @@ public final class MainMenu extends Menu {
     public MainMenu(BuildMasterPlugin plugin, Player player) {
         super(plugin, player, "<dark_gray>Район коммерции", 3);
         int free = (int) plugin.plots().all().stream().filter(p -> p.isFree() && !p.restorePending).count();
-        int mine = (int) plugin.plots().all().stream().filter(p -> p.isMember(player.getUniqueId())).count();
+        int mine = (int) plugin.plots().all().stream().filter(p -> p.involves(player.getUniqueId())).count();
         int stored = plugin.storage().countItems(player.getUniqueId(), StorageEntry.State.AVAILABLE);
 
         set(10, Text.icon(Material.LIME_CONCRETE, "<green>Свободные участки",
@@ -28,6 +28,10 @@ public final class MainMenu extends Menu {
         set(16, Text.icon(Material.WRITABLE_BOOK, "<white>Журнал",
                 "<gray>История ваших участков, решения", "<gray>администрации и причины"),
                 e -> new JournalMenu(plugin, player, 0).open());
+        int unread = plugin.warnings().unread(player.getUniqueId());
+        set(20, Text.icon(unread > 0 ? Material.BELL : Material.NOTE_BLOCK, "<gold>Журнал предупреждений",
+                "<gray>Непрочитанных: <white>" + unread, "<gray>Аренда, электричество, отказы"),
+                e -> new WarningsMenu(plugin, player, 0).open());
         if (player.hasPermission("buildmaster.admin")) {
             int pending = plugin.moderation().pending().size();
             set(22, Text.icon(Material.ANVIL, "<red>Модерация", "<gray>Ожидают проверки: <white>" + pending,

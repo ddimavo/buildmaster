@@ -53,6 +53,7 @@ public abstract class PluginTestBase {
         plot.price = price;
         plot.rentPerDay = rent;
         plugin.plots().add(plot);
+        plugin.stations().register(plot);
         return plot;
     }
 }

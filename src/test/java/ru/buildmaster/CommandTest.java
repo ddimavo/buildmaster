@@ -149,9 +149,9 @@ class CommandTest extends PluginTestBase {
         steve.performCommand("district rent 2 a");
 
         steve.performCommand("district trust Alex a");
-        assertTrue(p.trusted.contains(alex.getUniqueId()));
+        assertTrue(p.grants.containsKey(alex.getUniqueId()));
         steve.performCommand("district untrust Alex a");
-        assertFalse(p.trusted.contains(alex.getUniqueId()));
+        assertFalse(p.grants.containsKey(alex.getUniqueId()));
     }
 
     @Test

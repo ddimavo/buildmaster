@@ -70,7 +70,7 @@ class ProtectionTest extends PluginTestBase {
 
     @Test
     void trustedHelperCanBuild() {
-        plot.trusted.add(alex.getUniqueId());
+        plot.grantAll(alex.getUniqueId());
         assertFalse(placeBlock(alex, block(3, 3, 3), Material.OAK_PLANKS).isCancelled());
     }
 
@@ -147,7 +147,7 @@ class ProtectionTest extends PluginTestBase {
 
     @Test
     void placedBlocksAreRecordedPerPlayer() {
-        plot.trusted.add(alex.getUniqueId());
+        plot.grantAll(alex.getUniqueId());
         placeBlock(steve, block(1, 1, 1), Material.FURNACE);
         placeBlock(alex, block(2, 1, 1), Material.CHEST);
 
@@ -198,7 +198,7 @@ class ProtectionTest extends PluginTestBase {
     @Test
     void helperBlocksAreNotConfusedWithOriginals() {
         // блок помощника в книге - ломается с дропом, а не "без дропа"
-        plot.trusted.add(alex.getUniqueId());
+        plot.grantAll(alex.getUniqueId());
         Block b = block(6, 6, 6);
         placeBlock(alex, b, Material.OAK_PLANKS);
         assertTrue(breakBlock(alex, b).isDropItems());
