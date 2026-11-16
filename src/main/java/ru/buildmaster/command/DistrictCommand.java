@@ -43,7 +43,7 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
 
     private static final List<String> PLAYER_SUBS = List.of("menu", "list", "info", "buy", "rent", "extend",
             "autorenew", "autoreset", "release", "trust", "untrust", "perm", "account", "power", "warnings", "tp", "replace",
-            "zones", "storage", "claim", "journal", "name", "desc", "bank", "service", "factory", "room", "region", "job", "hologram", "machine", "chest", "shop", "goods", "storefront", "link", "unlink", "help");
+            "zones", "storage", "claim", "journal", "name", "desc", "bank", "service", "factory", "room", "region", "job", "hologram", "machine", "chest", "shop", "goods", "storefront", "link", "unlink", "enchant", "help");
     private static final List<String> ADMIN_SUBS = List.of("wand", "pos1", "pos2", "create", "delete", "evict",
             "setprice", "setrent", "setspawn", "zone", "resnapshot", "reload", "seize", "reset", "holo", "category",
             "moderation", "arrest", "auction", "show");
@@ -126,6 +126,7 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
                 case "bank" -> new BankCommands(plugin).handle(sender, rest);
                 case "service" -> new ServiceCommands(plugin).handle(sender, rest);
                 case "factory" -> new FactoryCommands(plugin).handle(sender, rest);
+                case "enchant" -> new EnchantCommands(plugin).handle(sender, rest);
                 case "shop" -> new GoodsCommands(plugin).shop(sender, rest);
                 case "goods" -> new GoodsCommands(plugin).goods(sender, rest);
                 case "storefront" -> new GoodsCommands(plugin).storefront(sender, rest);
@@ -274,6 +275,7 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
                 "/district region bind|list|consent|sale|rent|access|unbind - свой регион WorldGuard: продажа и аренда",
                 "/district job board|list|apply|post|staff|fire... - доска объявлений, вакансии и работники",
                 "/district hologram [main|services|manager] [номер] - позиция голограммы (общая и услуг - после проверки, панель - сразу)",
+                "/district enchant [list|propose <предмет> <зачарование> <уровень>|remove|types] - зачарования для стола зачарований (одобряет администратор)",
                 "/district shop <участок> - витрина; /district goods [menu|list|deposit|take|price] - товары предприятия",
                 "/district link <мастерская> <магазин|склад> - связь: продукция уходит туда сама; unlink, storefront on|off",
                 "/district power - электричество мастерской",
@@ -1245,6 +1247,9 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
         }
         if (sub.equals("hologram") && args.length == 2) {
             return filter(List.of("main", "services", "manager"), args[1]);
+        }
+        if (sub.equals("enchant")) {
+            return filter(new EnchantCommands(plugin).complete(sender, args), args[args.length - 1]);
         }
         if (sub.equals("machine")) {
             return filter(new FactoryCommands(plugin).completeMachine(sender, args), args[args.length - 1]);

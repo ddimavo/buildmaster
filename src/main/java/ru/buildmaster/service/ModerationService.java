@@ -80,6 +80,39 @@ public final class ModerationService {
         }
     }
 
+    // ------------------------------------------------------------ зачарования станков
+
+    /** Заявка на зачарование для стола зачарований мастерской. Администратору одобрение не нужно. */
+    public void submitEnchant(Player player, Plot plot, String recipeId) {
+        if (player.hasPermission("buildmaster.admin")) {
+            plot.approvedEnchants.add(recipeId);
+            plugin.plots().save();
+            plugin.journal().add(plot.id, player.getUniqueId(), player.getName(), Journal.Action.ENCHANT, recipeId);
+            return;
+        }
+        requests.removeIf(r -> r.status == Request.Status.PENDING && r.type == Request.Type.ENCHANT
+                && r.plotId.equals(plot.id) && r.text.equals(recipeId));
+        requests.add(new Request(UUID.randomUUID(), Request.Type.ENCHANT, plot.id, player.getUniqueId(), player.getName(),
+                recipeId, System.currentTimeMillis()));
+        save();
+        for (Player a : Bukkit.getOnlinePlayers()) {
+            if (a.hasPermission("buildmaster.admin")) {
+                Text.send(a, "<yellow>Новая заявка: зачарование для мастерской " + Text.esc(plot.id) + ". Откройте /district moderation");
+            }
+        }
+    }
+
+    /** Ожидающие заявки на зачарования мастерской. */
+    public List<Request> pendingEnchants(String plotId) {
+        List<Request> list = new ArrayList<>();
+        for (Request r : requests) {
+            if (r.status == Request.Status.PENDING && r.type == Request.Type.ENCHANT && r.plotId.equals(plotId)) {
+                list.add(r);
+            }
+        }
+        return list;
+    }
+
     // ------------------------------------------------------------ позиция голограммы
 
     /** Почему точка не годится для голограммы участка, либо null. */
@@ -245,6 +278,23 @@ public final class ModerationService {
             if (plot != null) {
                 plugin.playerPlots().approve(plot);
             }
+        } else if (r.type == Request.Type.ENCHANT) {
+            RecipeBook.Recipe recipe = plugin.recipes().get(r.text);
+            String stale = plot == null || plot.category != ru.buildmaster.model.Category.WORKSHOP || plot.isFree()
+                    ? "мастерская больше недоступна"
+                    : !plot.isOwner(r.requester) ? "мастерская сменила управляющего"
+                    : recipe == null || !recipe.enchanting() ? "зачарование недействительно" : null;
+            if (stale != null) {
+                r.status = Request.Status.REJECTED;
+                r.reason = "Заявка устарела: " + stale;
+                plugin.journal().add(r.plotId, r.requester, adminName, Journal.Action.ENCHANT, "«" + r.text + "»: " + r.reason);
+                notifyRequester(r, "<red>" + r.type.title() + " мастерской " + Text.esc(r.plotId) + " не применено: " + Text.esc(stale));
+                trim();
+                save();
+                return;
+            }
+            plot.approvedEnchants.add(r.text);
+            plugin.plots().save();
         } else if (r.type == Request.Type.HOLO) {
             org.bukkit.Location at = plot == null ? null : holoParse(plot, r.text);
             String stale = plot == null || at == null || holoKind(r.text) == null ? "участок или позиция больше недействительны"
@@ -292,13 +342,15 @@ public final class ModerationService {
     private static Journal.Action journalApproved(Request.Type t) {
         return t == Request.Type.NAME ? Journal.Action.NAME_APPROVED
                 : t == Request.Type.DESCRIPTION ? Journal.Action.DESC_APPROVED
-                : t == Request.Type.HOLO ? Journal.Action.HOLO : Journal.Action.PLAYER_PLOT;
+                : t == Request.Type.HOLO ? Journal.Action.HOLO : t == Request.Type.ENCHANT ? Journal.Action.ENCHANT
+                : Journal.Action.PLAYER_PLOT;
     }
 
     private static Journal.Action journalRejected(Request.Type t) {
         return t == Request.Type.NAME ? Journal.Action.NAME_REJECTED
                 : t == Request.Type.DESCRIPTION ? Journal.Action.DESC_REJECTED
-                : t == Request.Type.HOLO ? Journal.Action.HOLO : Journal.Action.PLAYER_PLOT;
+                : t == Request.Type.HOLO ? Journal.Action.HOLO : t == Request.Type.ENCHANT ? Journal.Action.ENCHANT
+                : Journal.Action.PLAYER_PLOT;
     }
 
     private void notifyRequester(Request r, String message) {

@@ -232,6 +232,7 @@ public final class PlotManager {
         }
         p.revenue = s.getDouble("revenue");
         p.linkedTo = s.getString("link");
+        p.approvedEnchants.addAll(s.getStringList("approved-enchants"));
         p.storefront = s.getBoolean("storefront");
         p.linkRequests.addAll(s.getStringList("link-requests"));
         if (s.isList("services-pos") && s.getDoubleList("services-pos").size() == 3) {
@@ -380,6 +381,9 @@ public final class PlotManager {
             yml.set(k + "region-members", p.regionMembers.stream().map(UUID::toString).toList());
             yml.set(k + "revenue", p.revenue);
             yml.set(k + "link", p.linkedTo);
+            if (!p.approvedEnchants.isEmpty()) {
+                yml.set(k + "approved-enchants", new java.util.ArrayList<>(p.approvedEnchants));
+            }
             if (p.storefront) {
                 yml.set(k + "storefront", true);
             }

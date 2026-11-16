@@ -185,6 +185,22 @@ public final class ProductionService {
         return new View(pos, type, station, recipe, status, ratio, state.output, cap);
     }
 
+    /** Рецепты, доступные станку мастерской: из реестра игры, а для стола зачарований - одобренные администратором. */
+    public List<RecipeBook.Recipe> recipesFor(Plot plot, Material block) {
+        if ("enchant".equals(RecipeBook.familyOf(block))) {
+            List<RecipeBook.Recipe> list = new ArrayList<>();
+            for (String id : plot.approvedEnchants) {
+                RecipeBook.Recipe r = plugin.recipes().get(id);
+                if (r != null) {
+                    list.add(r);
+                }
+            }
+            list.sort(java.util.Comparator.comparing(RecipeBook.Recipe::id));
+            return list;
+        }
+        return plugin.recipes().forBlock(block);
+    }
+
     /** Все станки мастерской (с заданием и без) по позиции. */
     public List<View> views(Plot plot) {
         List<String> keys = new ArrayList<>(plugin.stations().machines(plot).keySet());
@@ -251,6 +267,9 @@ public final class ProductionService {
         }
         if (!recipe.family().equals(family)) {
             return "Этот рецепт для другого станка (" + RecipeBook.familyTitle(recipe.family()) + ").";
+        }
+        if (recipe.enchanting() && !plot.approvedEnchants.contains(recipe.id())) {
+            return "Это зачарование ещё не одобрено администратором для вашей мастерской: /district enchant propose.";
         }
         Plot.MachineState existing = plot.machineStates.get(pos);
         boolean already = existing != null && existing.recipe != null;
@@ -418,7 +437,7 @@ public final class ProductionService {
             }
             // связь с магазином или складом (или своя витрина) важнее сундука продукции
             Plot dest = linked != null ? linked : plot.storefront ? plot : null;
-            if (dest != null) {
+            if (dest != null && !r.enchanting()) {
                 int put = plugin.goods().add(dest, r.output(), state.output);
                 state.output -= put;
                 changed |= put > 0;
@@ -429,10 +448,12 @@ public final class ProductionService {
                 if (inv == null || state.output <= 0) {
                     continue;
                 }
-                int stack = Math.max(1, r.output().getMaxStackSize());
+                int stack = Math.max(1, plugin.recipes().stackOf(r).getMaxStackSize());
                 while (state.output > 0) {
                     int n = Math.min(stack, state.output);
-                    var left = inv.addItem(new ItemStack(r.output(), n));
+                    ItemStack out = plugin.recipes().stackOf(r);
+                    out.setAmount(n);
+                    var left = inv.addItem(out);
                     int rest = left.isEmpty() ? 0 : left.values().iterator().next().getAmount();
                     int placed = n - rest;
                     state.output -= placed;
@@ -498,7 +519,7 @@ public final class ProductionService {
             if (r == null || state.output <= 0) {
                 continue;
             }
-            items.addAll(ServiceCatalog.split(new ItemStack(r.output()), state.output));
+            items.addAll(ServiceCatalog.split(plugin.recipes().stackOf(r), state.output));
             total += state.output;
             state.output = 0;
         }
@@ -550,7 +571,7 @@ public final class ProductionService {
         for (Plot.MachineState state : plot.machineStates.values()) {
             RecipeBook.Recipe r = plugin.recipes().get(state.recipe);
             if (r != null && state.output > 0) {
-                items.addAll(ServiceCatalog.split(new ItemStack(r.output()), state.output));
+                items.addAll(ServiceCatalog.split(plugin.recipes().stackOf(r), state.output));
             }
         }
         if (manager != null && !items.isEmpty()) {
@@ -566,6 +587,7 @@ public final class ProductionService {
         plot.rawChests.clear();
         plot.productChests.clear();
         plot.legacyLines.clear();
+        plot.approvedEnchants.clear();
         plot.level = 0;
     }
 
@@ -649,7 +671,7 @@ public final class ProductionService {
             Plot.MachineState state = plot.machineStates.remove(pos);
             RecipeBook.Recipe r = plugin.recipes().get(state.recipe);
             if (r != null && state.output > 0 && plot.owner != null) {
-                plugin.orders().deliver(plot.owner, plot.id, ServiceCatalog.split(new ItemStack(r.output()), state.output),
+                plugin.orders().deliver(plot.owner, plot.id, ServiceCatalog.split(plugin.recipes().stackOf(r), state.output),
                         "Станок разрушен, продукция возвращена, участок " + plot.id);
             }
             changed = true;

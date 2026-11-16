@@ -42,7 +42,8 @@ public final class ModerationMenu extends Menu {
                 lore.add("<aqua>Shift+ЛКМ - телепорт на предложенную позицию");
             }
             set(i, Text.icon(r.type == Request.Type.NAME ? Material.NAME_TAG
-                            : r.type == Request.Type.HOLO ? Material.ENDER_EYE : Material.WRITABLE_BOOK,
+                            : r.type == Request.Type.HOLO ? Material.ENDER_EYE
+                            : r.type == Request.Type.ENCHANT ? Material.ENCHANTED_BOOK : Material.WRITABLE_BOOK,
                     "<gold>" + r.type.title(), lore.toArray(new String[0])), e -> {
                         if (e.isShiftClick()) {
                             Plot plot = plugin.plots().get(r.plotId);

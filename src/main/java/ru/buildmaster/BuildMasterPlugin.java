@@ -71,6 +71,7 @@ public class BuildMasterPlugin extends JavaPlugin {
     private ru.buildmaster.service.RoomAutoService roomAuto;
     private ru.buildmaster.service.DoorHolograms doorHolograms;
     private ru.buildmaster.service.GoodsService goods;
+    private ru.buildmaster.service.EnchantService enchants;
     private ru.buildmaster.service.LinkService links;
     private ru.buildmaster.service.ServicesHolograms servicesHolograms;
     private ru.buildmaster.service.SelectionVisualizer visualizer;
@@ -122,6 +123,7 @@ public class BuildMasterPlugin extends JavaPlugin {
         roomAuto = new ru.buildmaster.service.RoomAutoService(this);
         doorHolograms = new ru.buildmaster.service.DoorHolograms(this);
         goods = new ru.buildmaster.service.GoodsService(this);
+        enchants = new ru.buildmaster.service.EnchantService(this);
         links = new ru.buildmaster.service.LinkService(this);
         servicesHolograms = new ru.buildmaster.service.ServicesHolograms(this);
         visualizer = new ru.buildmaster.service.SelectionVisualizer(this);
@@ -299,6 +301,10 @@ public class BuildMasterPlugin extends JavaPlugin {
     /** Только для тестов: подмена доступа к WorldGuard. */
     public void setRegions(RegionAccess access) {
         this.regions = access;
+    }
+
+    public ru.buildmaster.service.EnchantService enchants() {
+        return enchants;
     }
 
     public ru.buildmaster.service.GoodsService goods() {

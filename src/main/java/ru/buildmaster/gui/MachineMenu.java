@@ -24,7 +24,7 @@ public final class MachineMenu extends Menu {
         var f = plugin.factory();
         ProductionService.View view = f.view(plot, pos);
         Material block = view.block();
-        List<RecipeBook.Recipe> all = plugin.recipes().forBlock(block);
+        List<RecipeBook.Recipe> all = f.recipesFor(plot, block);
 
         // ---- фильтры: категория и поиск ----
         Set<String> categories = new LinkedHashSet<>();
@@ -60,13 +60,15 @@ public final class MachineMenu extends Menu {
                 }
                 lore.add("<gray>Сырьё: <white>" + ing.count() + " × " + names(ing) + " <dark_gray>(на складе " + have + ")");
             }
-            lore.add("<gray>Результат: <white>" + r.outputAmount() + " × " + r.output().name());
+            lore.add("<gray>Результат: <white>" + r.outputAmount() + " × " + (r.enchanting()
+                    ? r.output().name() + " + " + r.enchantKey() + " " + r.enchantLevel() : r.output().name()));
             lore.add("<gray>Время партии: <white>" + Math.round(f.secondsPerBatch(plot, r) * 10) / 10.0 + " с");
             if (active) {
                 lore.add("<green>● Сейчас назначено");
             }
             lore.add("<yellow>Нажмите, чтобы назначить");
-            set(i, Text.icon(ServicesMenu.iconFor(r.output()), (active ? "<green>" : "<gold>") + r.output().name(), lore.toArray(new String[0])),
+            set(i, Text.icon(ServicesMenu.iconFor(r.output()), (active ? "<green>" : "<gold>") + (r.enchanting() ? r.output().name() + " + " + r.enchantKey() + " " + r.enchantLevel()
+                            : r.output().name()), lore.toArray(new String[0])),
                     e -> {
                         String error = f.assign(player, plot, pos, r.id());
                         if (error != null) {
@@ -132,6 +134,29 @@ public final class MachineMenu extends Menu {
                                         text.equalsIgnoreCase("отмена") ? search : text).open());
                     }
                 });
+        if ("enchant".equals(RecipeBook.familyOf(block))) {
+            set(50, Text.icon(Material.ENCHANTED_BOOK, "<light_purple>Предложить зачарование",
+                    "<gray>Одобренных: <white>" + plot.approvedEnchants.size() + "<gray> из " + plugin.enchants().maxRecipes(),
+                    "<gray>Заявку одобряет администратор",
+                    "<yellow>Нажмите, чтобы ввести предмет, зачарование и уровень"), e ->
+                    plugin.chatPrompt().ask(player, "Введите предмет (например DIAMOND_SWORD):", item ->
+                            plugin.chatPrompt().ask(player, "Введите зачарование (например sharpness; список: /district enchant types):", ench ->
+                                    plugin.chatPrompt().ask(player, "Введите уровень (число):", lvl -> {
+                                        try {
+                                            Material m = Material.matchMaterial(item);
+                                            String error = m == null ? "Неизвестный предмет." : plugin.enchants().propose(player, plot, m, ench,
+                                                    Integer.parseInt(lvl.trim()));
+                                            if (error != null) {
+                                                Text.err(player, error);
+                                            } else {
+                                                Text.ok(player, "Заявка отправлена администратору.");
+                                            }
+                                        } catch (NumberFormatException ex) {
+                                            Text.err(player, "Уровень должен быть числом.");
+                                        }
+                                        new MachineMenu(plugin, player, plot, pos, category, current, search).open();
+                                    }))));
+        }
         set(49, Ui.back("Производство"), e -> new FactoryMenu(plugin, player, plot, null).open());
         if (current < pages - 1) {
             set(53, Ui.next(current, pages), e -> new MachineMenu(plugin, player, plot, pos, category, current + 1, search).open());

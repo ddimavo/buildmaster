@@ -180,6 +180,9 @@ public final class Plot {
     /** Мастерская складывает продукцию на свою витрину (если нет связи). */
     public boolean storefront;
 
+    /** Одобренные администратором зачарования мастерской: идентификаторы рецептов «enchant:ПРЕДМЕТ|ключ|уровень». */
+    public final java.util.Set<String> approvedEnchants = new java.util.LinkedHashSet<>();
+
     /** Станки мастерской с заданием: позиция "x,y,z" -> состояние. */
     public final Map<String, MachineState> machineStates = new LinkedHashMap<>();
     /** Склад сырья мастерской: материал -> количество (общий для всех станков). */

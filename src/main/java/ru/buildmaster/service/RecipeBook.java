@@ -39,7 +39,17 @@ public final class RecipeBook {
      * Рецепт станка. family: furnace | blast | smoker | craft | enchant. Идентификатор - "семейство:РЕЗУЛЬТАТ".
      */
     public record Recipe(String id, Kind kind, String family, List<Ingredient> inputs, Material output, int outputAmount,
-                         double seconds, String category) {
+                         double seconds, String category, String enchantKey, int enchantLevel) {
+
+        public Recipe(String id, Kind kind, String family, List<Ingredient> inputs, Material output, int outputAmount,
+                      double seconds, String category) {
+            this(id, kind, family, inputs, output, outputAmount, seconds, category, null, 0);
+        }
+
+        /** Рецепт зачарования предмета. */
+        public boolean enchanting() {
+            return enchantKey != null;
+        }
         public boolean uses(Material m) {
             return inputs.stream().anyMatch(i -> i.accepts(m));
         }
@@ -49,7 +59,30 @@ public final class RecipeBook {
         }
     }
 
+    /** Поиск зачарований по ключу (в тестах подменяется): настоящие и кастомные зачарования берутся из реестра игры. */
+    public interface EnchantLookup {
+        org.bukkit.enchantments.Enchantment get(String key);
+
+        List<org.bukkit.enchantments.Enchantment> all();
+    }
+
+    private static final EnchantLookup REGISTRY = new EnchantLookup() {
+        @Override
+        public org.bukkit.enchantments.Enchantment get(String key) {
+            org.bukkit.NamespacedKey k = org.bukkit.NamespacedKey.fromString(key.contains(":") ? key : "minecraft:" + key);
+            return k == null ? null : org.bukkit.Registry.ENCHANTMENT.get(k);
+        }
+
+        @Override
+        public List<org.bukkit.enchantments.Enchantment> all() {
+            List<org.bukkit.enchantments.Enchantment> list = new ArrayList<>();
+            org.bukkit.Registry.ENCHANTMENT.forEach(list::add);
+            return list;
+        }
+    };
+
     private final BuildMasterPlugin plugin;
+    private EnchantLookup enchants = REGISTRY;
     private Supplier<Iterator<org.bukkit.inventory.Recipe>> source = Bukkit::recipeIterator;
     private Map<String, Recipe> cache;
 
@@ -65,6 +98,72 @@ public final class RecipeBook {
 
     public void invalidate() {
         cache = null;
+    }
+
+    /** Только для тестов: подмена реестра зачарований. */
+    public void setEnchantLookup(EnchantLookup lookup) {
+        this.enchants = lookup == null ? REGISTRY : lookup;
+    }
+
+    public EnchantLookup enchantLookup() {
+        return enchants;
+    }
+
+    // ------------------------------------------------------------ зачарования
+
+    /** Ключ зачарования без «minecraft:» (так он хранится в идентификаторе рецепта). */
+    public static String shortKey(org.bukkit.enchantments.Enchantment e) {
+        org.bukkit.NamespacedKey k = e.getKey();
+        return "minecraft".equals(k.getNamespace()) ? k.getKey() : k.toString();
+    }
+
+    public static String enchantId(Material item, String key, int level) {
+        return "enchant:" + item.name() + "|" + key.replace("minecraft:", "") + "|" + level;
+    }
+
+    /** Лазурита на зачарование уровня level. */
+    public int lapisFor(int level) {
+        return Math.max(1, plugin.getConfig().getInt("enchanting.lapis-base", 1)
+                + plugin.getConfig().getInt("enchanting.lapis-per-level", 2) * level);
+    }
+
+    public double enchantSeconds(int level) {
+        return Math.max(1, plugin.getConfig().getDouble("enchanting.seconds-base", 8)
+                + plugin.getConfig().getDouble("enchanting.seconds-per-level", 4) * level);
+    }
+
+    /** Рецепт зачарования из идентификатора «enchant:ПРЕДМЕТ|ключ|уровень» либо null, если он недействителен. */
+    private Recipe enchantRecipe(String id) {
+        String[] p = id.substring("enchant:".length()).split("\\|");
+        if (p.length != 3) {
+            return null;
+        }
+        Material item = Material.matchMaterial(p[0]);
+        org.bukkit.enchantments.Enchantment e = enchants.get(p[1]);
+        int level;
+        try {
+            level = Integer.parseInt(p[2]);
+        } catch (NumberFormatException ex) {
+            return null;
+        }
+        if (item == null || e == null || level < 1) {
+            return null;
+        }
+        return new Recipe(enchantId(item, p[1], level), Kind.ENCHANT, "enchant",
+                List.of(new Ingredient(List.of(item), 1), new Ingredient(List.of(Material.LAPIS_LAZULI), lapisFor(level))),
+                item, 1, enchantSeconds(level), "Зачарования", p[1].replace("minecraft:", ""), level);
+    }
+
+    /** Предмет, который получается по рецепту (с зачарованием, если оно есть). */
+    public ItemStack stackOf(Recipe r) {
+        ItemStack stack = new ItemStack(r.output(), Math.max(1, r.outputAmount()));
+        if (r.enchanting()) {
+            org.bukkit.enchantments.Enchantment e = enchants.get(r.enchantKey());
+            if (e != null) {
+                stack.addUnsafeEnchantment(e, r.enchantLevel());
+            }
+        }
+        return stack;
     }
 
     // ------------------------------------------------------------ станки
@@ -251,7 +350,13 @@ public final class RecipeBook {
     // ------------------------------------------------------------ запросы
 
     public Recipe get(String id) {
-        return id == null ? null : all().get(id);
+        if (id == null) {
+            return null;
+        }
+        if (id.startsWith("enchant:")) {
+            return enchantRecipe(id);
+        }
+        return all().get(id);
     }
 
     /** Рецепты, доступные станку с данным блоком, по алфавиту. */
