@@ -30,8 +30,12 @@ public final class HologramService {
     }
 
     private Component render(Plot plot) {
-        List<String> lines = HologramText.lines(plot, plugin.economy()::format, plugin.power().nowSec(),
-                plugin.power().mode() == PowerService.Mode.USAGE, plugin.grid().offReason(plot));
+        List<String> lines = new java.util.ArrayList<>(HologramText.lines(plot, plugin.economy()::format, plugin.power().nowSec(),
+                plugin.power().mode() == PowerService.Mode.USAGE, plugin.grid().offReason(plot)));
+        if (plot.category == ru.buildmaster.model.Category.HOTEL) {
+            int total = plugin.plots().childrenOf(plot.id).size();
+            lines.add("<aqua>Свободных номеров: <white>" + plugin.hotels().freeRooms(plot) + "/" + total);
+        }
         return Text.mm(String.join("\n", lines));
     }
 

@@ -31,7 +31,7 @@ public final class BankSettingsMenu extends Menu {
                 });
         int slot = 19;
         for (Category c : Category.values()) {
-            if (c.isAdminOnly()) {
+            if (c.isAdminOnly() || c.isRentOnly()) {
                 continue;
             }
             set(slot++, Text.icon(Material.GOLD_NUGGET, "<aqua>Налог на имущество: " + c.title(),

@@ -112,6 +112,12 @@ public final class Plot {
     /** Следующее начисление налога на имущество (мс, 0 - не назначено) и неоплаченный налог. */
     public long nextTaxAt;
     public double taxDebt;
+    /** Номер отеля: id отеля, в который вложен участок (null - обычный участок). */
+    public String parentId;
+    /** Блоки дверей номера (x, y, z): открываются только гостем, его доверенными и управляющим отеля. */
+    public final java.util.List<int[]> doors = new java.util.ArrayList<>();
+    /** Отель: максимальная цена номера за сутки, которую может назначить управляющий (0 - только администратор). */
+    public double maxRoomRate;
     /** Уровень улучшений мастерской (0 - базовый) и производственные линии. */
     public int level;
     public final Map<String, Line> lines = new LinkedHashMap<>();

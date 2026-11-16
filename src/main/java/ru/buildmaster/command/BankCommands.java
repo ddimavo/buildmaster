@@ -223,7 +223,7 @@ final class BankCommands {
         }
         if (args.length >= 3 && args[0].equalsIgnoreCase("property")) {
             Category c = Category.parse(args[1]);
-            if (c == null || c.isAdminOnly()) {
+            if (c == null || c.isAdminOnly() || c.isRentOnly()) {
                 throw new CommandError("Укажите тип: house, shop, workshop, restaurant или warehouse.");
             }
             Double v = null;

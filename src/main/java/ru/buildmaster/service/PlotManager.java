@@ -44,13 +44,22 @@ public final class PlotManager {
         return id == null ? null : plots.get(id.toLowerCase(Locale.ROOT));
     }
 
+    private int modCount;
+
+    /** Счётчик изменений набора участков (для кэшей, зависящих от списка участков). */
+    public int modCount() {
+        return modCount;
+    }
+
     public void add(Plot plot) {
         plots.put(plot.id.toLowerCase(Locale.ROOT), plot);
+        modCount++;
         reindex();
     }
 
     public void remove(Plot plot) {
         plots.remove(plot.id.toLowerCase(Locale.ROOT));
+        modCount++;
         reindex();
     }
 
@@ -67,21 +76,39 @@ public final class PlotManager {
         if (list == null) {
             return null;
         }
+        // вложенные участки (номера отеля): побеждает самый маленький, то есть самый внутренний
+        Plot best = null;
         for (Plot p : list) {
-            if (p.box.contains(x, y, z)) {
+            if (p.box.contains(x, y, z) && (best == null || p.box.volume() < best.box.volume())) {
+                best = p;
+            }
+        }
+        return best;
+    }
+
+    public Plot overlapping(String world, Box box) {
+        return overlapping(world, box, null);
+    }
+
+    /** Участок, пересекающийся с областью; участок с id ignoreId (отель для своих номеров) не считается. */
+    public Plot overlapping(String world, Box box, String ignoreId) {
+        for (Plot p : plots.values()) {
+            if (p.world.equals(world) && p.box.intersects(box) && !p.id.equalsIgnoreCase(ignoreId)) {
                 return p;
             }
         }
         return null;
     }
 
-    public Plot overlapping(String world, Box box) {
+    /** Номера отеля. */
+    public List<Plot> childrenOf(String parentId) {
+        List<Plot> result = new ArrayList<>();
         for (Plot p : plots.values()) {
-            if (p.world.equals(world) && p.box.intersects(box)) {
-                return p;
+            if (p.parentId != null && p.parentId.equalsIgnoreCase(parentId)) {
+                result.add(p);
             }
         }
-        return null;
+        return result;
     }
 
     public List<Plot> ownedBy(UUID uuid) {
@@ -111,6 +138,7 @@ public final class PlotManager {
     }
 
     public void load() {
+        modCount++;
         plots.clear();
         if (file.exists()) {
             YamlConfiguration yml = YamlConfiguration.loadConfiguration(file);
@@ -179,6 +207,12 @@ public final class PlotManager {
             if (perm != null && perm != Plot.Perm.BUILD) {
                 p.publicPerms.add(perm);
             }
+        }
+        p.parentId = s.getString("parent");
+        p.maxRoomRate = s.getDouble("max-room-rate");
+        for (String d : s.getStringList("doors")) {
+            String[] c = d.split(",");
+            p.doors.add(new int[] {Integer.parseInt(c[0].trim()), Integer.parseInt(c[1].trim()), Integer.parseInt(c[2].trim())});
         }
         p.level = s.getInt("factory.level");
         ConfigurationSection lines = s.getConfigurationSection("factory.lines");
@@ -266,6 +300,9 @@ public final class PlotManager {
                 yml.set(k + "grants." + e.getKey(), e.getValue().stream().map(Enum::name).toList());
             }
             yml.set(k + "public-perms", p.publicPerms.stream().map(Enum::name).toList());
+            yml.set(k + "parent", p.parentId);
+            yml.set(k + "max-room-rate", p.maxRoomRate);
+            yml.set(k + "doors", p.doors.stream().map(d -> d[0] + "," + d[1] + "," + d[2]).toList());
             yml.set(k + "factory.level", p.level);
             for (var l : p.lines.entrySet()) {
                 yml.set(k + "factory.lines." + l.getKey() + ".input", l.getValue().input);

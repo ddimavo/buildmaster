@@ -51,7 +51,8 @@ public final class Journal {
         SERVICE_REFUND("Возврат по заказу"),
         SERVICE_PRICE("Прайс услуг"),
         FACTORY("Производство"),
-        UPGRADE("Улучшение мастерской");
+        UPGRADE("Улучшение мастерской"),
+        HOTEL("Отель");
 
         private final String title;
 

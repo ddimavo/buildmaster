@@ -10,7 +10,9 @@ public enum Category {
     RESTAURANT("Ресторан"),
     WAREHOUSE("Склад"),
     BANK("Банк"),
-    POWER_PLANT("Электростанция");
+    POWER_PLANT("Электростанция"),
+    HOTEL("Отель"),
+    ROOM("Номер");
 
     private final String title;
 
@@ -25,6 +27,11 @@ public enum Category {
     /** Ключ в config.yml (house, shop...). */
     public String key() {
         return name().toLowerCase(Locale.ROOT);
+    }
+
+    /** Только аренда (без покупки): номера отелей. */
+    public boolean isRentOnly() {
+        return this == ROOM;
     }
 
     /** Административные здания: создаёт только администратор, купить или арендовать их нельзя. */

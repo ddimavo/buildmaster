@@ -42,7 +42,7 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
 
     private static final List<String> PLAYER_SUBS = List.of("menu", "list", "info", "buy", "rent", "extend",
             "autorenew", "autoreset", "release", "trust", "untrust", "perm", "account", "power", "warnings", "tp", "replace",
-            "zones", "storage", "claim", "journal", "name", "desc", "bank", "service", "factory", "help");
+            "zones", "storage", "claim", "journal", "name", "desc", "bank", "service", "factory", "room", "help");
     private static final List<String> ADMIN_SUBS = List.of("wand", "pos1", "pos2", "create", "delete", "evict",
             "setprice", "setrent", "setspawn", "zone", "resnapshot", "reload", "seize", "reset", "holo", "category",
             "moderation", "arrest");
@@ -116,6 +116,7 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
                 case "bank" -> new BankCommands(plugin).handle(sender, rest);
                 case "service" -> new ServiceCommands(plugin).handle(sender, rest);
                 case "factory" -> new FactoryCommands(plugin).handle(sender, rest);
+                case "room" -> new RoomCommands(plugin).handle(sender, rest);
                 case "grid" -> new GridCommands(plugin).grid(sender, rest);
                 case "area" -> new GridCommands(plugin).area(sender, rest);
                 case "wand" -> withPlayer(sender, p -> {
@@ -237,6 +238,7 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
                 "/district bank [info|statement] - банк: меню, условия, выписка",
                 "/district service [orders|offers|order|collect|cancel|price|toggle] - услуги мастерских и заказы",
                 "/district factory [info|install|load|collect|upgrade|levels] - производство и улучшения мастерской",
+                "/district room list [отель] - номера отеля; rate <номер> <цена> - цена номера (управляющий отеля)",
                 "/district power - электричество мастерской",
                 "/district warnings - журнал предупреждений"};
         for (String l : lines) {
@@ -255,6 +257,7 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
                     "/district treasury [pay <игрок> <сумма> <причина>] - казна (право buildmaster.bank)",
                     "/district bank accounts|account <номер>|admin ... - счета, комиссии, штраф, налоги (право buildmaster.bank)",
                     "/district grid info|capacity|price|connect|disconnect|restore|autoconnect|report - электросеть (право buildmaster.grid)",
+                    "/district room create|template|door|delete|maxrate - деление отеля на номера",
                     "/district area create|delete|add|remove|list|info - районы (право buildmaster.grid)",
                     "/district power calc [smelter:2 anvil:1] - калькулятор тарифа",
                     "/district power admin info|base|progression|usage|mode|coef|discount|add|stats - тарифы и статистика",
@@ -895,6 +898,9 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
         if (!plot.isFree() || plugin.service().isLocked(plot)) {
             throw new CommandError("Удалять можно только свободный участок. Сначала: /district evict " + plot.id);
         }
+        if (!plugin.plots().childrenOf(plot.id).isEmpty()) {
+            throw new CommandError("В отеле есть номера: сначала удалите их (/district room delete <номер>).");
+        }
         plugin.plots().remove(plot);
         plugin.snapshots().delete(plugin.plots().snapshotDir(plot.id));
         plugin.ledgers().delete(plot.id);
@@ -916,7 +922,10 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
         }
         String reason = String.join(" ", Arrays.copyOfRange(args, 1, args.length));
         if (action == Journal.Action.RESET) {
-            plugin.service().reset(plot, sender.getName(), reason);
+            String error = plugin.service().reset(plot, sender.getName(), reason);
+            if (error != null) {
+                throw new CommandError(error);
+            }
             Text.ok(sender, "Здание участка " + plot.id + " сбрасывается к исходному виду.");
             return;
         }
@@ -1167,6 +1176,9 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
             return filter(result, args[0]);
         }
         String sub = args[0].toLowerCase(Locale.ROOT);
+        if (sub.equals("room")) {
+            return filter(new RoomCommands(plugin).complete(sender, args), args[args.length - 1]);
+        }
         if (sub.equals("factory")) {
             return filter(new FactoryCommands(plugin).complete(sender, args), args[args.length - 1]);
         }

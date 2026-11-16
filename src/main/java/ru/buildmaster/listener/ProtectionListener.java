@@ -202,6 +202,15 @@ public final class ProtectionListener implements Listener {
         if (block == null || action == Action.PHYSICAL) {
             return;
         }
+        Plot room = plugin.hotels().roomAtDoor(block);
+        if (room != null && (action == Action.RIGHT_CLICK_BLOCK || action == Action.LEFT_CLICK_BLOCK)) {
+            // дверь номера: занятый номер открывается только гостю, его доверенным и управляющему отеля
+            if (!plugin.hotels().canUseDoor(event.getPlayer(), room)) {
+                event.getPlayer().sendActionBar(Text.mm("<red>Дверь заперта: номер занят."));
+                event.setCancelled(true);
+            }
+            return;
+        }
         Plot plot = plotAt(block);
         if (plot == null) {
             return;

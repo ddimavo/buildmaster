@@ -59,7 +59,7 @@ public class SnapshotStore {
     }
 
     /** Исходные рамки, картины и стойки: при сбросе они остаются, а добавленные игроками убираются. */
-    public static Set<UUID> originalEntities(World world, Box box) {
+    public Set<UUID> originalEntities(World world, Box box) {
         Set<UUID> ids = new HashSet<>();
         for (Entity e : world.getNearbyEntities(new org.bukkit.util.BoundingBox(box.minX(), box.minY(), box.minZ(),
                 box.maxX() + 1, box.maxY() + 1, box.maxZ() + 1), x -> x instanceof Hanging || x instanceof ArmorStand)) {

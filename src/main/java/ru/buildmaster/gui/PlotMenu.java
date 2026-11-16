@@ -39,6 +39,13 @@ public final class PlotMenu extends Menu {
         if (admin && !plot.isFree() && !plugin.service().isLocked(plot)) {
             buildAdmin();
         }
+        if (plot.category == ru.buildmaster.model.Category.HOTEL) {
+            long free = plugin.hotels().freeRooms(plot);
+            set(22, Text.icon(Material.RED_BED, "<gold>Номера отеля",
+                    "<gray>Свободно: <white>" + free + "<gray> из <white>" + plugin.hotels().rooms(plot).size(),
+                    "<yellow>Нажмите, чтобы посмотреть и снять"),
+                    e -> new RoomsMenu(plugin, player, plot, back, 0).open());
+        }
         if (plot.category == ru.buildmaster.model.Category.WORKSHOP && !plot.isFree()
                 && !plugin.service().isLocked(plot)) {
             if (owner) {
@@ -236,7 +243,12 @@ public final class PlotMenu extends Menu {
         set(29, Text.icon(Material.TNT, "<red>Сбросить здание",
                 "<gray>Здание вернётся к исходному виду,", "<gray>вещи игроков - в их хранилища",
                 "<yellow>Потребуется причина"),
-                e -> askReason("Причина сброса здания:", reason -> plugin.service().reset(plot, player.getName(), reason)));
+                e -> askReason("Причина сброса здания:", reason -> {
+                    String error = plugin.service().reset(plot, player.getName(), reason);
+                    if (error != null) {
+                        Text.err(player, error);
+                    }
+                }));
         set(30, Text.icon(Material.IRON_DOOR, "<red>Выселить",
                 "<gray>Участок освобождается, вещи - в хранилище", "<yellow>Потребуется причина"),
                 e -> askReason("Причина выселения:", reason -> plugin.service().evict(plot,

@@ -14,6 +14,7 @@ import ru.buildmaster.service.BuildService;
 import ru.buildmaster.service.DistrictManager;
 import ru.buildmaster.service.FactoryService;
 import ru.buildmaster.service.GridService;
+import ru.buildmaster.service.HotelService;
 import ru.buildmaster.service.ProductionCatalog;
 import ru.buildmaster.service.UpgradeCatalog;
 import ru.buildmaster.service.EconomyHook;
@@ -57,6 +58,7 @@ public class BuildMasterPlugin extends JavaPlugin {
     private UpgradeCatalog upgrades;
     private ProductionCatalog production;
     private FactoryService factory;
+    private HotelService hotels;
     private ChatPrompt chatPrompt;
     private SelectionListener selection;
 
@@ -94,6 +96,7 @@ public class BuildMasterPlugin extends JavaPlugin {
         upgrades = new UpgradeCatalog(this::getConfig);
         production = new ProductionCatalog(this::getConfig);
         factory = new FactoryService(this);
+        hotels = new HotelService(this);
         plots = new PlotManager(this);
         plots.load();
         service = new PlotService(this);
@@ -221,6 +224,10 @@ public class BuildMasterPlugin extends JavaPlugin {
 
     public ProductionCatalog production() {
         return production;
+    }
+
+    public HotelService hotels() {
+        return hotels;
     }
 
     public FactoryService factory() {

@@ -110,6 +110,8 @@ limits:
     workshop: 1
     restaurant: 1
     warehouse: 1
+    hotel: 1
+    room: 1
 
 # ---- Модерация названий и описаний ----
 moderation:
@@ -147,6 +149,8 @@ station-limits:
   workshop:   {crafting: -1, furnace: -1, anvil: -1, other: -1}
   restaurant: {crafting: 1,  furnace: 3,  anvil: 0,  other: 0}
   warehouse:  {crafting: 1,  furnace: 0,  anvil: 0,  other: 0}
+  hotel:      {crafting: -1, furnace: -1, anvil: -1, other: -1}
+  room:       {crafting: 1,  furnace: 1,  anvil: 0,  other: 0}
 
 # ---- Публичные права ----
 # Что управляющий может открыть для ВСЕХ посетителей: containers, stations. Пустой список - публичный режим запрещён.
@@ -156,6 +160,8 @@ public-permissions:
   workshop: [stations]
   restaurant: []
   warehouse: []
+  hotel: []
+  room: []
 
 # ---- Банк ----
 # Значения можно менять командами /district bank admin ... (хранятся в bank.yml и важнее этих).
@@ -175,6 +181,7 @@ bank:
     workshop: 0
     restaurant: 0
     warehouse: 0
+    hotel: 0
   # операции со счётом (пополнение, снятие) только внутри здания банка
   only-in-bank: false
 
@@ -307,3 +314,10 @@ upgrades:
     1: {price: 3000, max-lines: 2, speed: 1.25, stock: 2.0, buffer: 2.0, order-queue: 10}
     2: {price: 8000, max-lines: 3, speed: 1.5, stock: 4.0, buffer: 4.0, order-queue: 20}
     3: {price: 20000, max-lines: 5, speed: 2.0, stock: 8.0, buffer: 8.0, order-queue: 40}
+
+# ---- Отели ----
+# Отель - участок типа hotel; номера - вложенные участки типа room (создаёт администратор:
+# /district room create | template). Гость арендует номер как обычный участок (до 14 суток, продление,
+# автопродление, отсрочка), оплата поступает на счёт управляющего отеля за вычетом налога на аренду
+# (bank.rent-tax-percent), а если управляющего нет - в казну. Стены и дверь номера гость менять не может:
+# номером считается только интерьер. При выезде вещи гостя возвращаются в его хранилище, номер сбрасывается к исходному виду.

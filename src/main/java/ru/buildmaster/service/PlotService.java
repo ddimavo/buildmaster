@@ -91,7 +91,7 @@ public final class PlotService {
             }
         }, () -> {
             try {
-                plugin.snapshots().saveMeta(dir, box, SnapshotStore.originalEntities(world, box));
+                plugin.snapshots().saveMeta(dir, box, plugin.snapshots().originalEntities(world, box));
             } catch (IOException e) {
                 creating.remove(key);
                 plugin.getLogger().log(Level.SEVERE, "Не удалось записать снимок " + id, e);
@@ -126,6 +126,63 @@ public final class PlotService {
         });
     }
 
+    /**
+     * Создаёт номер отеля: участок типа ROOM внутри отеля. Область - интерьер номера (стены остаются отелю).
+     * done получает true, если номер создан.
+     */
+    public void createRoom(Player admin, Plot hotel, String roomId, Box box, double rate, List<int[]> doors,
+                           java.util.function.Consumer<Boolean> done) {
+        String id = hotel.id + "-" + roomId;
+        String key = id.toLowerCase();
+        World world = Bukkit.getWorld(hotel.world);
+        if (world == null) {
+            Text.err(admin, "Мир отеля не загружен.");
+            done.accept(false);
+            return;
+        }
+        File dir = plugin.plots().snapshotDir(id);
+        creating.add(key);
+        ChunkJob.run(plugin, world, box, (chunk, clip) -> {
+            try {
+                plugin.snapshots().capture(dir, world, chunk.getX(), chunk.getZ(), clip);
+            } catch (IOException e) {
+                throw new IllegalStateException(e);
+            }
+        }, () -> {
+            try {
+                plugin.snapshots().saveMeta(dir, box, plugin.snapshots().originalEntities(world, box));
+            } catch (IOException e) {
+                creating.remove(key);
+                plugin.getLogger().log(Level.SEVERE, "Не удалось записать снимок " + id, e);
+                Text.err(admin, "Не удалось сохранить снимок номера " + id + ": " + e.getMessage());
+                done.accept(false);
+                return;
+            }
+            Plot room = new Plot(id, hotel.world, box);
+            room.category = Category.ROOM;
+            room.createdBy = admin.getUniqueId();
+            room.parentId = hotel.id;
+            room.price = -1;
+            room.rentPerDay = rate;
+            room.resetOnRelease = true;
+            room.doors.addAll(doors);
+            plugin.plots().add(room);
+            plugin.plots().save();
+            plugin.stations().register(room);
+            plugin.hotels().invalidate();
+            plugin.journal().add(id, null, admin.getName(), Journal.Action.HOTEL,
+                    "Создан номер в отеле " + hotel.id + ", " + box.describe() + ", " + priceText(rate) + " за сутки");
+            creating.remove(key);
+            Text.ok(admin, "Номер <white>" + id + "</white> создан (" + box.describe() + ", " + priceText(rate) + " за сутки).");
+            done.accept(true);
+        }, error -> {
+            creating.remove(key);
+            plugin.getLogger().log(Level.SEVERE, "Ошибка создания номера " + id, error);
+            Text.err(admin, "Ошибка при создании номера " + id + ": " + error.getMessage());
+            done.accept(false);
+        });
+    }
+
     /** Заново снимает исходный вид свободного участка (после правок здания админом). */
     public void resnapshot(Player admin, Plot plot) {
         World world = Bukkit.getWorld(plot.world);
@@ -143,7 +200,7 @@ public final class PlotService {
             }
         }, () -> {
             try {
-                plugin.snapshots().saveMeta(dir, plot.box, SnapshotStore.originalEntities(world, plot.box));
+                plugin.snapshots().saveMeta(dir, plot.box, plugin.snapshots().originalEntities(world, plot.box));
                 Text.ok(admin, "Исходный вид участка " + plot.id + " обновлён.");
             } catch (IOException e) {
                 Text.err(admin, "Не удалось сохранить снимок: " + e.getMessage());
@@ -193,12 +250,12 @@ public final class PlotService {
     }
 
     /** Платёж в казну. Деньги списываются у игрока и учитываются на счёте казны. */
-    private boolean pay(OfflinePlayer player, double amount, String reason) {
+    private boolean pay(OfflinePlayer player, double amount, String reason, Plot plot) {
         if (!plugin.economy().withdraw(player, amount)) {
             return false;
         }
-        plugin.treasury().deposit(amount, reason);
-        plugin.saveTreasury();
+        // обычные участки платят в казну, номера отеля - управляющему отеля (за вычетом налога на аренду)
+        plugin.hotels().income(plot, amount, reason);
         return true;
     }
 
@@ -206,11 +263,15 @@ public final class PlotService {
         if (!checkAvailable(p, plot)) {
             return false;
         }
+        if (plot.category.isRentOnly()) {
+            Text.err(p, "Номера отеля только арендуются.");
+            return false;
+        }
         if (plot.price < 0) {
             Text.err(p, "Этот участок не продаётся, только аренда.");
             return false;
         }
-        if (!pay(p, plot.price, "Покупка участка " + plot.id + " (" + p.getName() + ")")) {
+        if (!pay(p, plot.price, "Покупка участка " + plot.id + " (" + p.getName() + ")", plot)) {
             Text.err(p, "Недостаточно средств. Нужно: " + plugin.economy().format(plot.price));
             return false;
         }
@@ -236,7 +297,7 @@ public final class PlotService {
             return false;
         }
         double cost = RentRules.cost(plot.rentPerDay, days);
-        if (!pay(p, cost, "Аренда участка " + plot.id + " на " + days + " сут. (" + p.getName() + ")")) {
+        if (!pay(p, cost, "Аренда участка " + plot.id + " на " + days + " сут. (" + p.getName() + ")", plot)) {
             Text.err(p, "Недостаточно средств. Нужно: " + plugin.economy().format(cost));
             return false;
         }
@@ -289,7 +350,7 @@ public final class PlotService {
             return false;
         }
         double cost = RentRules.cost(plot.rentPerDay, days);
-        if (!pay(p, cost, "Продление аренды " + plot.id + " на " + days + " сут. (" + p.getName() + ")")) {
+        if (!pay(p, cost, "Продление аренды " + plot.id + " на " + days + " сут. (" + p.getName() + ")", plot)) {
             Text.err(p, "Недостаточно средств. Нужно: " + plugin.economy().format(cost));
             return false;
         }
@@ -335,7 +396,8 @@ public final class PlotService {
     }
 
     private Plot.RestoreMode ownerMode(Plot plot) {
-        return plot.resetOnRelease ? Plot.RestoreMode.FULL : Plot.RestoreMode.ITEMS_ONLY;
+        // номер отеля всегда возвращается к исходному виду: он принадлежит отелю
+        return plot.resetOnRelease || plot.category.isRentOnly() ? Plot.RestoreMode.FULL : Plot.RestoreMode.ITEMS_ONLY;
     }
 
     /** Добровольный отказ управляющего от участка. */
@@ -362,6 +424,10 @@ public final class PlotService {
 
     /** Освобождает участок: вещи уходят в хранилища их владельцев, здание сбрасывается по режиму. */
     public void evict(Plot plot, Release release) {
+        if (plot.category == Category.HOTEL && release.mode() == Plot.RestoreMode.FULL && plugin.hotels().hasOccupiedRooms(plot)) {
+            // в отеле живут гости: здание целиком не сбрасывается, чтобы не стереть их номера
+            release = new Release(release.actor(), release.reason(), release.action(), release.arrest(), Plot.RestoreMode.ITEMS_ONLY);
+        }
         UUID previous = plot.owner;
         plugin.journal().add(plot.id, previous, release.actor(), release.action(), release.reason());
         plot.status = Plot.Status.FREE;
@@ -391,11 +457,15 @@ public final class PlotService {
     }
 
     /** Сброс здания по решению администратора; владелец участка остаётся прежним. */
-    public void reset(Plot plot, String actor, String reason) {
+    public String reset(Plot plot, String actor, String reason) {
+        if (plot.category == Category.HOTEL && plugin.hotels().hasOccupiedRooms(plot)) {
+            return "В отеле есть гости: полный сброс стёр бы их номера. Сначала выселите гостей или сбросьте номер отдельно.";
+        }
         plugin.journal().add(plot.id, plot.owner, actor, Journal.Action.RESET, reason);
         startRestore(plot, plot.owner, new Release(actor, reason, Journal.Action.RESET, false, Plot.RestoreMode.FULL));
         notifyOwner(plot.owner, "<yellow>Администрация сбросила здание участка <white>" + Text.esc(plot.id)
                 + "</white>. Причина: " + Text.esc(reason) + ". Ваши вещи отправлены в хранилище (/district storage).");
+        return null;
     }
 
     private void startRestore(Plot plot, UUID tenant, Release release) {
@@ -493,8 +563,9 @@ public final class PlotService {
 
         // 1. содержимое контейнеров: хозяин - тот, кто поставил контейнер; для исходных - арендатор
         for (BlockState state : ChunkAccess.tileEntities(chunk)) {
-            if (!clip.contains(state.getX(), state.getY(), state.getZ())) {
-                continue;
+            if (!clip.contains(state.getX(), state.getY(), state.getZ())
+                    || plugin.hotels().inChildRoom(plot, state.getX(), state.getY(), state.getZ())) {
+                continue; // номера отеля принадлежат гостям и сбрасываются отдельно
             }
             Ledger.Entry placed = ledger.get(state.getX(), state.getY(), state.getZ());
             collectContainer(state, placed != null ? placed.player() : tenant, out);
@@ -502,7 +573,9 @@ public final class PlotService {
 
         // 2. сущности: выброшенные предметы, рамки и стойки, добавленные игроками
         for (Entity e : ChunkAccess.entities(chunk)) {
-            if (!clip.contains(e.getLocation().getBlockX(), e.getLocation().getBlockY(), e.getLocation().getBlockZ())) {
+            if (!clip.contains(e.getLocation().getBlockX(), e.getLocation().getBlockY(), e.getLocation().getBlockZ())
+                    || plugin.hotels().inChildRoom(plot, e.getLocation().getBlockX(), e.getLocation().getBlockY(),
+                            e.getLocation().getBlockZ())) {
                 continue;
             }
             if (e instanceof Item dropped) {
@@ -735,7 +808,7 @@ public final class PlotService {
         int days = Math.max(1, plugin.getConfig().getInt("autorenew-days", 7));
         days = Math.min(days, maxRentDays());
         double cost = RentRules.cost(plot.rentPerDay, days);
-        if (!pay(owner, cost, "Автопродление аренды " + plot.id + " (" + owner.getName() + ")")) {
+        if (!pay(owner, cost, "Автопродление аренды " + plot.id + " (" + owner.getName() + ")", plot)) {
             return false;
         }
         plot.rentedUntil = Math.max(plot.rentedUntil, now) + days * dayMillis();
