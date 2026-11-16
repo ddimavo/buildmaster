@@ -42,7 +42,7 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
 
     private static final List<String> PLAYER_SUBS = List.of("menu", "list", "info", "buy", "rent", "extend",
             "autorenew", "autoreset", "release", "trust", "untrust", "perm", "account", "power", "warnings", "tp", "replace",
-            "zones", "storage", "claim", "journal", "name", "desc", "bank", "help");
+            "zones", "storage", "claim", "journal", "name", "desc", "bank", "service", "help");
     private static final List<String> ADMIN_SUBS = List.of("wand", "pos1", "pos2", "create", "delete", "evict",
             "setprice", "setrent", "setspawn", "zone", "resnapshot", "reload", "seize", "reset", "holo", "category",
             "moderation", "arrest");
@@ -114,6 +114,7 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
                     treasury(sender, rest);
                 }
                 case "bank" -> new BankCommands(plugin).handle(sender, rest);
+                case "service" -> new ServiceCommands(plugin).handle(sender, rest);
                 case "grid" -> new GridCommands(plugin).grid(sender, rest);
                 case "area" -> new GridCommands(plugin).area(sender, rest);
                 case "wand" -> withPlayer(sender, p -> {
@@ -233,6 +234,7 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
                 "/district perm <игрок|public> <build|containers|stations> <on|off> - права на участке",
                 "/district account [deposit|withdraw <сумма>|statement] - счёт предприятия",
                 "/district bank [info|statement] - банк: меню, условия, выписка",
+                "/district service [orders|offers|order|collect|cancel|price|toggle] - услуги мастерских и заказы",
                 "/district power - электричество мастерской",
                 "/district warnings - журнал предупреждений"};
         for (String l : lines) {
@@ -1163,6 +1165,9 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
             return filter(result, args[0]);
         }
         String sub = args[0].toLowerCase(Locale.ROOT);
+        if (sub.equals("service")) {
+            return filter(new ServiceCommands(plugin).complete(sender, args), args[args.length - 1]);
+        }
         if (sub.equals("bank")) {
             return filter(new BankCommands(plugin).complete(sender, args), args[args.length - 1]);
         }

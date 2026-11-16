@@ -45,7 +45,11 @@ public final class Journal {
         TAX("Налог"),
         COMMISSION("Комиссия банка"),
         BANK_SETTINGS("Настройки банка"),
-        GRID("Электросеть");
+        GRID("Электросеть"),
+        SERVICE_ORDER("Заказ в мастерской"),
+        SERVICE_DONE("Заказ выдан"),
+        SERVICE_REFUND("Возврат по заказу"),
+        SERVICE_PRICE("Прайс услуг");
 
         private final String title;
 

@@ -18,6 +18,8 @@ import ru.buildmaster.service.PlotManager;
 import ru.buildmaster.service.HologramService;
 import ru.buildmaster.service.Journal;
 import ru.buildmaster.service.LedgerStore;
+import ru.buildmaster.service.OrderService;
+import ru.buildmaster.service.ServiceCatalog;
 import ru.buildmaster.service.ModerationService;
 import ru.buildmaster.service.PlotService;
 import ru.buildmaster.service.PowerService;
@@ -47,6 +49,8 @@ public class BuildMasterPlugin extends JavaPlugin {
     private BankService bank;
     private GridService grid;
     private DistrictManager districts;
+    private ServiceCatalog catalog;
+    private OrderService orders;
     private ChatPrompt chatPrompt;
     private SelectionListener selection;
 
@@ -78,6 +82,9 @@ public class BuildMasterPlugin extends JavaPlugin {
         grid = new GridService(this);
         districts = new DistrictManager(new java.io.File(getDataFolder(), "districts.yml"));
         districts.load();
+        catalog = new ServiceCatalog(this);
+        orders = new OrderService(this);
+        orders.load();
         plots = new PlotManager(this);
         plots.load();
         service = new PlotService(this);
@@ -115,6 +122,9 @@ public class BuildMasterPlugin extends JavaPlugin {
         }
         if (ledgers != null) {
             ledgers.flush();
+        }
+        if (orders != null) {
+            orders.save();
         }
         if (holograms != null) {
             holograms.removeAll();
@@ -190,6 +200,14 @@ public class BuildMasterPlugin extends JavaPlugin {
 
     public GridService grid() {
         return grid;
+    }
+
+    public ServiceCatalog catalog() {
+        return catalog;
+    }
+
+    public OrderService orders() {
+        return orders;
     }
 
     public DistrictManager districts() {

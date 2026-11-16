@@ -180,6 +180,12 @@ public final class PlotManager {
                 p.publicPerms.add(perm);
             }
         }
+        ConfigurationSection offers = s.getConfigurationSection("offers");
+        if (offers != null) {
+            for (String key : offers.getKeys(false)) {
+                p.offers.put(key, new Plot.Offer(offers.getBoolean(key + ".enabled"), offers.getDouble(key + ".price")));
+            }
+        }
         p.discountPercent = s.getDouble("discount-percent");
         p.plantCapacity = s.getDouble("plant.capacity");
         p.plantMultiplier = s.getDouble("plant.multiplier", 1.0);
@@ -249,6 +255,10 @@ public final class PlotManager {
                 yml.set(k + "grants." + e.getKey(), e.getValue().stream().map(Enum::name).toList());
             }
             yml.set(k + "public-perms", p.publicPerms.stream().map(Enum::name).toList());
+            for (var o : p.offers.entrySet()) {
+                yml.set(k + "offers." + o.getKey() + ".enabled", o.getValue().enabled);
+                yml.set(k + "offers." + o.getKey() + ".price", o.getValue().price);
+            }
             yml.set(k + "discount-percent", p.discountPercent);
             yml.set(k + "plant.capacity", p.plantCapacity);
             yml.set(k + "plant.multiplier", p.plantMultiplier);

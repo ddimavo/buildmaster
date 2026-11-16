@@ -39,6 +39,19 @@ public final class PlotMenu extends Menu {
         if (admin && !plot.isFree() && !plugin.service().isLocked(plot)) {
             buildAdmin();
         }
+        if (plot.category == ru.buildmaster.model.Category.WORKSHOP && !plot.isFree()
+                && !plugin.service().isLocked(plot)) {
+            if (owner) {
+                set(14, Text.icon(Material.WRITABLE_BOOK, "<gold>Прайс услуг",
+                        "<gray>Включить услуги и назначить цены"),
+                        e -> new OffersMenu(plugin, player, plot, back).open());
+            }
+            if (!owner) {
+                set(22, Text.icon(Material.FURNACE, "<gold>Услуги мастерской",
+                        "<gray>Переплавка, ремонт и другие услуги", "<yellow>Нажмите, чтобы посмотреть"),
+                        e -> new ServicesMenu(plugin, player, plot, back).open());
+            }
+        }
         if (plugin.getConfig().getBoolean("allow-visit-teleport", true) || owner || admin) {
             set(39, Text.icon(Material.ENDER_PEARL, "<light_purple>Телепортироваться"),
                     e -> {

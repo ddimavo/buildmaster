@@ -191,3 +191,48 @@ grid:
   surcharge-step: 0.02
   max-multiplier: 3.0
   update-interval-seconds: 600
+
+# ---- Услуги мастерских (заказы) ----
+# Клиент оплачивает услугу и отдаёт материалы (они хранятся в эскроу), мастерская выполняет заказ сама,
+# пока есть электричество, клиент забирает результат, оплата поступает на счёт мастерской.
+# Управляющий включает услуги и назначает цену за единицу работы (в пределах max-price).
+services:
+  # множитель времени выполнения (1.0 - как в игре; 0.5 - вдвое быстрее)
+  time-factor: 1.0
+  max-units-per-order: 256
+  max-active-orders-per-workshop: 20
+  max-orders-per-client: 5
+  # готовый заказ, который не забрали, через столько суток уходит в хранилище клиента
+  ready-expire-days: 30
+  smelt:                 # переплавка: рецепты печи берутся из игры, время - из рецепта
+    title: Переплавка
+    default-price: 1.0   # за предмет
+    max-price: 20.0
+  repair:                # ремонт повреждённых предметов на наковальне
+    title: Ремонт
+    default-price: 10.0  # за предмет
+    max-price: 100.0
+    seconds-per-item: 5
+  # дополнительные услуги: из input-amount предметов input получается output-amount предметов output
+  # station: smelter | anvil | alchemy | enchanting
+  recipes:
+    compress-iron:
+      title: Слитки из самородков
+      station: smelter
+      input: IRON_NUGGET
+      input-amount: 9
+      output: IRON_INGOT
+      output-amount: 1
+      seconds: 5
+      default-price: 1.0
+      max-price: 20.0
+    compress-gold:
+      title: Золотые слитки из самородков
+      station: smelter
+      input: GOLD_NUGGET
+      input-amount: 9
+      output: GOLD_INGOT
+      output-amount: 1
+      seconds: 5
+      default-price: 1.0
+      max-price: 20.0

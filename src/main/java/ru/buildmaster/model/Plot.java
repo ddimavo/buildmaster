@@ -15,6 +15,17 @@ public final class Plot {
     /** FULL - здание полностью возвращается к исходному виду; ITEMS_ONLY - только забираются вещи игроков. */
     public enum RestoreMode { FULL, ITEMS_ONLY }
 
+    /** Предложение услуги: управляющий включает его и назначает цену за единицу работы. */
+    public static final class Offer {
+        public boolean enabled;
+        public double price;
+
+        public Offer(boolean enabled, double price) {
+            this.enabled = enabled;
+            this.price = price;
+        }
+    }
+
     /** Права на участке. Владелец имеет все. */
     public enum Perm {
         BUILD("Строительство"), CONTAINERS("Контейнеры"), STATIONS("Станки");
@@ -94,6 +105,8 @@ public final class Plot {
     /** Следующее начисление налога на имущество (мс, 0 - не назначено) и неоплаченный налог. */
     public long nextTaxAt;
     public double taxDebt;
+    /** Услуги мастерской: ключ предложения -> цена и включено ли оно. */
+    public final Map<String, Offer> offers = new LinkedHashMap<>();
     /** Индивидуальная скидка на электричество (0-100 %), назначается администратором. */
     public double discountPercent;
     public final Map<String, Zone> zones = new LinkedHashMap<>();

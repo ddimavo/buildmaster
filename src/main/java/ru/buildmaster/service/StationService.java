@@ -57,6 +57,17 @@ public final class StationService {
         return total;
     }
 
+    /** Сколько станков с данным ключом тарифа (smelter, anvil...) стоит в здании. */
+    public int countByTariffKey(Plot plot, String tariffKey) {
+        int total = 0;
+        for (Station s : Station.values()) {
+            if (tariffKey.equals(s.tariffKey())) {
+                total += count(plot, s);
+            }
+        }
+        return total;
+    }
+
     /** Количество станков по ключам тарифа (smelter, anvil, alchemy, enchanting). */
     public Map<String, Integer> tariffCounts(Plot plot) {
         Map<String, Integer> result = new HashMap<>();
