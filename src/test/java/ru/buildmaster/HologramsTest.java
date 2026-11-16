@@ -404,6 +404,14 @@ class HologramsTest extends PluginTestBase {
         assertTrue(fakes.get(1).at.getY() > workshop.holoY, "панель выше общей голограммы");
     }
 
+    @Test
+    void revenueSurvivesARestart() {
+        workshop.revenue = 777.5;
+        plugin.plots().save();
+        plugin.plots().load();
+        assertEquals(777.5, plugin.plots().get("w").revenue, 1e-9);
+    }
+
     @AfterEach
     void cleanup() {
         plugin.machineHolograms().removeAll();
