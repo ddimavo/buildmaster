@@ -29,6 +29,12 @@ public final class EconomyHook {
         return e == null ? String.format("%.2f", amount) : e.format(amount);
     }
 
+    /** Баланс игрока или 0, если экономики нет. */
+    public double balance(OfflinePlayer player) {
+        Economy e = eco();
+        return e == null ? 0 : e.getBalance(player);
+    }
+
     public boolean has(OfflinePlayer player, double amount) {
         Economy e = eco();
         return e != null && e.has(player, amount);

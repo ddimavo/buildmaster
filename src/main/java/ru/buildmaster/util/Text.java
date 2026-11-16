@@ -46,11 +46,11 @@ public final class Text {
         ItemStack stack = new ItemStack(material);
         ItemMeta meta = stack.getItemMeta();
         if (name != null) {
-            meta.displayName(item(name));
+            meta.displayName(item(Style.name(name)));
         }
         if (lore.length > 0) {
             List<Component> lines = new ArrayList<>();
-            for (String l : lore) {
+            for (String l : Style.lore(lore)) {
                 lines.add(item(l));
             }
             meta.lore(lines);

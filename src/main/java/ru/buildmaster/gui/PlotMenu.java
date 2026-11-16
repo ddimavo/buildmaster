@@ -69,7 +69,7 @@ public final class PlotMenu extends Menu {
                         plugin.service().teleport(player, plot);
                     });
         }
-        set(36, Text.icon(Material.ARROW, "<yellow>Назад"), e -> new PlotListMenu(plugin, player, back, 0).open());
+        set(36, Ui.back(null), e -> new PlotListMenu(plugin, player, back, 0).open());
         set(44, Text.icon(Material.BARRIER, "<red>Закрыть"), e -> player.closeInventory());
         fill(Material.GRAY_STAINED_GLASS_PANE);
     }

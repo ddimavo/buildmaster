@@ -30,7 +30,7 @@ public final class ZoneMenu extends Menu {
             set(13, Text.icon(Material.PAPER, "<gray>Отдельные зоны не настроены",
                     "<gray>Администратор может добавить их", "<gray>командой /district zone add"));
         }
-        set(31, Text.icon(Material.ARROW, "<yellow>Назад"), e -> new PlotMenu(plugin, player, plot, back).open());
+        set(31, Ui.back(null), e -> new PlotMenu(plugin, player, plot, back).open());
         fill(Material.GRAY_STAINED_GLASS_PANE);
     }
 }

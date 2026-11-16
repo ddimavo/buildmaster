@@ -87,11 +87,11 @@ public final class PlantMenu extends Menu {
             set(22, Text.icon(Material.BARRIER, "<gray>К станции никто не подключён"));
         }
         if (current > 0) {
-            set(45, Text.icon(Material.ARROW, "<yellow>Назад"), e -> new PlantMenu(plugin, player, plant, current - 1).open());
+            set(45, Ui.prev(current, pages), e -> new PlantMenu(plugin, player, plant, current - 1).open());
         }
         set(49, Text.icon(Material.ARROW, "<yellow>К списку станций"), e -> new GridMenu(plugin, player, 0).open());
         if (current < pages - 1) {
-            set(53, Text.icon(Material.ARROW, "<yellow>Вперёд"), e -> new PlantMenu(plugin, player, plant, current + 1).open());
+            set(53, Ui.next(current, pages), e -> new PlantMenu(plugin, player, plant, current + 1).open());
         }
         fill(Material.GRAY_STAINED_GLASS_PANE);
     }

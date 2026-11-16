@@ -55,7 +55,7 @@ class AdminBuildingsTest extends PluginTestBase {
 
     /** Пустой слот меню - либо null, либо серое стекло-заполнитель. */
     private static boolean blank(ItemStack item) {
-        return item == null || item.getType() == Material.GRAY_STAINED_GLASS_PANE;
+        return item == null || item.getType().name().endsWith("_STAINED_GLASS_PANE");
     }
 
     private boolean openMenu(PlayerMock p, Class<? extends Menu> type) {

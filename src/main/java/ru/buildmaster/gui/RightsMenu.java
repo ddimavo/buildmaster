@@ -79,7 +79,7 @@ public final class RightsMenu extends Menu {
                         new PlayerRightsMenu(plugin, player, plot, target.getUniqueId(), back).open();
                     }
                 }));
-        set(49, Text.icon(Material.ARROW, "<yellow>Назад"), e -> new PlotMenu(plugin, player, plot, back).open());
+        set(49, Ui.back(null), e -> new PlotMenu(plugin, player, plot, back).open());
         fill(Material.GRAY_STAINED_GLASS_PANE);
     }
 }

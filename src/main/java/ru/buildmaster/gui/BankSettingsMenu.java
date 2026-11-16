@@ -53,7 +53,7 @@ public final class BankSettingsMenu extends Menu {
                         new BankSettingsMenu(plugin, player).open();
                     }));
         }
-        set(27, Text.icon(Material.ARROW, "<yellow>Назад"), e -> new BankMenu(plugin, player).open());
+        set(27, Ui.back(null), e -> new BankMenu(plugin, player).open());
         fill(Material.GRAY_STAINED_GLASS_PANE);
     }
 

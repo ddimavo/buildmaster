@@ -45,7 +45,7 @@ public final class PlayerRightsMenu extends Menu {
             plugin.journal().add(plot.id, target, player.getName(), Journal.Action.RIGHTS, "права сняты");
             new RightsMenu(plugin, player, plot, back).open();
         });
-        set(18, Text.icon(Material.ARROW, "<yellow>Назад"), e -> new RightsMenu(plugin, player, plot, back).open());
+        set(18, Ui.back(null), e -> new RightsMenu(plugin, player, plot, back).open());
         fill(Material.GRAY_STAINED_GLASS_PANE);
     }
 }

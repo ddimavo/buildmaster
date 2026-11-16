@@ -39,7 +39,7 @@ public final class ReportMenu extends Menu {
             if (slot <= 44) {
                 set(slot, Text.icon(Material.MAP, "<gray>Без района", lore(plugin, grid.report(loose))));
             }
-            set(49, Text.icon(Material.ARROW, "<yellow>Назад"), e -> new GridMenu(plugin, player, 0).open());
+            set(49, Ui.back(null), e -> new GridMenu(plugin, player, 0).open());
         } else {
             List<Plot> plots = grid.plotsOf(district);
             int slot = 0;
@@ -79,7 +79,7 @@ public final class ReportMenu extends Menu {
                 Text.ok(player, "Подключено предприятий: " + n + ".");
                 new ReportMenu(plugin, player, district).open();
             });
-            set(49, Text.icon(Material.ARROW, "<yellow>Назад"), e -> new ReportMenu(plugin, player, null).open());
+            set(49, Ui.back(null), e -> new ReportMenu(plugin, player, null).open());
         }
         fill(Material.GRAY_STAINED_GLASS_PANE);
     }

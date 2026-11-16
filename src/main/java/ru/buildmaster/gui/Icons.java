@@ -42,29 +42,55 @@ final class Icons {
     static String[] plotLore(BuildMasterPlugin plugin, Plot plot) {
         List<String> lore = new ArrayList<>();
         lore.add("<gray>Тип: <white>" + plot.category.title() + " <gray>· размер: <white>" + plot.box.describe());
+        if (plot.isPlayerPlot()) {
+            lore.add("<gray>Арендодатель: <white>" + Text.esc(String.valueOf(plot.landlordName)));
+            if (plot.approval == Plot.Approval.PENDING) {
+                lore.add("<gold>⏳ Ожидает одобрения администратора");
+            }
+        }
         if (plot.description != null && !plot.description.isBlank()) {
             lore.add("<gray><italic>" + Text.esc(plot.description));
         }
         switch (plot.status) {
             case FREE -> {
-                lore.add("<green>Свободен");
+                lore.add("<green>● Свободен");
                 lore.add("<gray>Цена: <white>" + (plot.price < 0 ? "не продаётся" : plugin.economy().format(plot.price)));
                 lore.add("<gray>Аренда: <white>" + (plot.rentPerDay < 0 ? "не сдаётся"
                         : plugin.economy().format(plot.rentPerDay) + " / сутки"));
+                if (plot.category == ru.buildmaster.model.Category.HOTEL) {
+                    lore.add("<gray>Номеров: <white>" + plugin.plots().childrenOf(plot.id).size());
+                }
             }
             case OWNED -> {
-                lore.add("<red>Занят <gray>(куплен)");
+                lore.add("<red>● Занят <gray>(куплен)");
                 lore.add("<gray>Владелец: <white>" + Text.esc(String.valueOf(plot.ownerName)));
             }
             case RENTED -> {
-                lore.add("<yellow>Арендован");
+                long left = plot.rentedUntil - System.currentTimeMillis();
+                lore.add(plot.isFrozen() ? "<red>● Заморожен" : "<yellow>● Арендован");
                 lore.add("<gray>Арендатор: <white>" + Text.esc(String.valueOf(plot.ownerName)));
-                lore.add("<gray>Осталось: <white>" + Text.duration(plot.rentedUntil - System.currentTimeMillis()));
+                lore.add("<gray>Осталось: <white>" + Text.duration(left));
+                lore.add(ru.buildmaster.util.Style.bar((double) left / (plugin.service().maxRentDays()
+                        * plugin.service().dayMillis()), 12, left < 86_400_000L ? "red" : "yellow"));
                 lore.add("<gray>Автопродление: " + (plot.autoRenew ? "<green>включено" : "<red>выключено"));
                 if (plot.isFrozen()) {
-                    lore.add("<red>Заморожен: платёж просрочен, осталось "
-                            + Text.duration(plot.graceUntil - System.currentTimeMillis()));
+                    lore.add("<red>Платёж просрочен, осталось " + Text.duration(plot.graceUntil - System.currentTimeMillis()));
                 }
+            }
+        }
+        if (!plot.isFree()) {
+            if (plot.category == ru.buildmaster.model.Category.WORKSHOP) {
+                lore.add("<gray>Станков: <white>" + plugin.stations().tariffCounts(plot).values().stream().mapToInt(Integer::intValue).sum()
+                        + (plugin.power().isPowered(plot) ? " <green>⚡ есть ток" : " <red>⚡ обесточена"));
+            }
+            if (plot.category == ru.buildmaster.model.Category.HOTEL) {
+                lore.add("<gray>Номеров свободно: <white>" + plugin.hotels().freeRooms(plot) + " из "
+                        + plugin.plots().childrenOf(plot.id).size());
+            }
+            int staff = plugin.jobs().employeesOf(plot.id).size();
+            int vacancies = plugin.jobs().vacanciesOf(plot.id).size();
+            if (staff + vacancies > 0) {
+                lore.add("<gray>Работники: <white>" + staff + " <gray>· вакансий: <white>" + vacancies);
             }
         }
         return lore.toArray(new String[0]);

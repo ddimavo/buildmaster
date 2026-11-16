@@ -54,7 +54,7 @@ public final class AccountMenu extends Menu {
                         new AccountMenu(plugin, player, plot).open();
                     }));
         }
-        set(49, Text.icon(Material.ARROW, "<yellow>Назад"),
+        set(49, Ui.back(null),
                 e -> new AccountsMenu(plugin, player, banker && !mine, 0).open());
         fill(Material.GRAY_STAINED_GLASS_PANE);
     }

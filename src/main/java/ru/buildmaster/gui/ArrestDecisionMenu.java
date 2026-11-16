@@ -33,7 +33,7 @@ public final class ArrestDecisionMenu extends Menu {
         if (slot == 0) {
             set(22, Text.icon(Material.BARRIER, "<gray>Вещей нет"));
         }
-        set(45, Text.icon(Material.ARROW, "<yellow>Назад"), e -> new ArrestedPlayerMenu(plugin, player, target, 0).open());
+        set(45, Ui.back(null), e -> new ArrestedPlayerMenu(plugin, player, target, 0).open());
         set(46, Text.icon(Material.LIME_CONCRETE, "<green>Вернуть игроку",
                 "<gray>Вещи станут доступны в его хранилище", "<yellow>Потребуется причина"),
                 e -> ArrestedPlayerMenu.decide(plugin, player, target, entryId, ArrestService.Decision.RELEASE));

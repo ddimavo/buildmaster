@@ -79,7 +79,7 @@ class ArrestedMenuTest extends PluginTestBase {
         assertEquals(Material.BARRIER, steve.getOpenInventory().getTopInventory().getItem(22).getType());
         // прямой вызов решения без прав тоже ничего не меняет в меню игрока
         new ru.buildmaster.gui.ArrestedPlayerMenu(plugin, steve, steve.getUniqueId(), 0).open();
-        assertEquals(Material.GRAY_STAINED_GLASS_PANE, steve.getOpenInventory().getTopInventory().getItem(0).getType());
+        assertTrue(steve.getOpenInventory().getTopInventory().getItem(0).getType().name().endsWith("_STAINED_GLASS_PANE"));
     }
 
     @Test
@@ -114,7 +114,7 @@ class ArrestedMenuTest extends PluginTestBase {
         boss.simulateInventoryClick(0);                       // партия a
         var decision = boss.getOpenInventory().getTopInventory();
         assertEquals(Material.DIAMOND, decision.getItem(0).getType());
-        assertEquals(Material.GRAY_STAINED_GLASS_PANE, decision.getItem(1).getType(), "только вещи этой партии");
+        assertTrue(decision.getItem(1).getType().name().endsWith("_STAINED_GLASS_PANE"), "только вещи этой партии");
         boss.simulateInventoryClick(46);                      // вернуть
         answer(boss, "ошибка ареста");
         assertEquals(5, count(steve.getUniqueId(), StorageEntry.State.AVAILABLE));

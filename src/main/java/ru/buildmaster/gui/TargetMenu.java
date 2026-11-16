@@ -46,7 +46,7 @@ public final class TargetMenu extends Menu {
             set(22, Text.icon(Material.BARRIER, "<red>Ничего не найдено"));
         }
         if (current > 0) {
-            set(45, Text.icon(Material.ARROW, "<yellow>Предыдущая страница"),
+            set(45, Ui.prev(current, pages),
                     e -> new TargetMenu(plugin, player, plot, zoneName, box, from, filter, current - 1, back).open());
         }
         set(47, Text.icon(Material.COMPASS, "<aqua>Поиск по названию",
@@ -58,10 +58,10 @@ public final class TargetMenu extends Menu {
             set(48, Text.icon(Material.BARRIER, "<red>Сбросить поиск"),
                     e -> new TargetMenu(plugin, player, plot, zoneName, box, from, "", 0, back).open());
         }
-        set(49, Text.icon(Material.ARROW, "<yellow>Назад"),
+        set(49, Ui.back(null),
                 e -> new SourceMenu(plugin, player, plot, zoneName, box, back, 0).open());
         if (current < pages - 1) {
-            set(53, Text.icon(Material.ARROW, "<yellow>Следующая страница"),
+            set(53, Ui.next(current, pages),
                     e -> new TargetMenu(plugin, player, plot, zoneName, box, from, filter, current + 1, back).open());
         }
         fill(Material.GRAY_STAINED_GLASS_PANE);

@@ -56,7 +56,7 @@ public final class OffersMenu extends Menu {
                 }
             });
         }
-        set(27, Text.icon(Material.ARROW, "<yellow>Назад"), e -> new PlotMenu(plugin, player, plot, back).open());
+        set(27, Ui.back(null), e -> new PlotMenu(plugin, player, plot, back).open());
         fill(Material.GRAY_STAINED_GLASS_PANE);
     }
 }

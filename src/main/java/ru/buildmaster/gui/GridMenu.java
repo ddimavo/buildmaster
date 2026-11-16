@@ -75,7 +75,7 @@ public final class GridMenu extends Menu {
                     "<gray>Создайте: /district create <номер> power_plant - -"));
         }
         if (current > 0) {
-            set(45, Text.icon(Material.ARROW, "<yellow>Назад"), e -> new GridMenu(plugin, player, current - 1).open());
+            set(45, Ui.prev(current, pages), e -> new GridMenu(plugin, player, current - 1).open());
         }
         set(47, Text.icon(Material.REPEATER, "<aqua>Подключить все свободные мастерские",
                 "<gray>К наименее загруженным станциям"), e -> {
@@ -83,9 +83,9 @@ public final class GridMenu extends Menu {
                     new GridMenu(plugin, player, current).open();
                 });
         set(48, Text.icon(Material.MAP, "<aqua>Потребление по районам"), e -> new ReportMenu(plugin, player, null).open());
-        set(49, Text.icon(Material.OAK_DOOR, "<gray>В главное меню"), e -> new MainMenu(plugin, player).open());
+        set(49, Ui.home(), e -> new MainMenu(plugin, player).open());
         if (current < pages - 1) {
-            set(53, Text.icon(Material.ARROW, "<yellow>Вперёд"), e -> new GridMenu(plugin, player, current + 1).open());
+            set(53, Ui.next(current, pages), e -> new GridMenu(plugin, player, current + 1).open());
         }
         fill(Material.GRAY_STAINED_GLASS_PANE);
     }

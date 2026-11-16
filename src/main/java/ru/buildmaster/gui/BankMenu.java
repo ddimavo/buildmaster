@@ -50,7 +50,7 @@ public final class BankMenu extends Menu {
             set(23, Text.icon(Material.COMPARATOR, "<red>Настройки банка",
                     "<gray>Комиссии, штраф, налоги"), e -> new BankSettingsMenu(plugin, player).open());
         }
-        set(27, Text.icon(Material.OAK_DOOR, "<gray>В главное меню"), e -> new MainMenu(plugin, player).open());
+        set(27, Ui.home(), e -> new MainMenu(plugin, player).open());
         fill(Material.GRAY_STAINED_GLASS_PANE);
     }
 }

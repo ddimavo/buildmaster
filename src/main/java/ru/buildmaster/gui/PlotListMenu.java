@@ -39,7 +39,7 @@ public final class PlotListMenu extends Menu {
             set(22, Text.icon(Material.BARRIER, "<red>Ничего не найдено", "<gray>Измените фильтры или поиск"));
         }
         if (current > 0) {
-            set(45, Text.icon(Material.ARROW, "<yellow>Назад"), e -> new PlotListMenu(plugin, player, filter, current - 1).open());
+            set(45, Ui.prev(current, pages), e -> new PlotListMenu(plugin, player, filter, current - 1).open());
         }
         Category cat = filter.category;
         set(46, Text.icon(Material.HOPPER, "<aqua>Тип: <white>" + (cat == null ? "все" : cat.title()),
@@ -74,9 +74,9 @@ public final class PlotListMenu extends Menu {
                         });
                     }
                 });
-        set(49, Text.icon(Material.OAK_DOOR, "<gray>В главное меню"), e -> new MainMenu(plugin, player).open());
+        set(49, Ui.home(), e -> new MainMenu(plugin, player).open());
         if (current < pages - 1) {
-            set(53, Text.icon(Material.ARROW, "<yellow>Вперёд"), e -> new PlotListMenu(plugin, player, filter, current + 1).open());
+            set(53, Ui.next(current, pages), e -> new PlotListMenu(plugin, player, filter, current + 1).open());
         }
         fill(Material.GRAY_STAINED_GLASS_PANE);
     }

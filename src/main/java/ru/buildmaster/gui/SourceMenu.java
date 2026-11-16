@@ -30,7 +30,7 @@ public final class SourceMenu extends Menu {
         this.box = box;
         this.back = back;
         set(22, Text.icon(Material.CLOCK, "<yellow>Сканирую здание..."));
-        set(49, Text.icon(Material.ARROW, "<yellow>Назад"), e -> new ZoneMenu(plugin, player, plot, back).open());
+        set(49, Ui.back(null), e -> new ZoneMenu(plugin, player, plot, back).open());
         fill(Material.GRAY_STAINED_GLASS_PANE);
         plugin.build().scan(plot, box, counts -> show(counts, page), error ->
                 Text.err(player, "Не удалось просканировать здание: " + error.getMessage()));
@@ -61,11 +61,11 @@ public final class SourceMenu extends Menu {
             set(22, Text.icon(Material.BARRIER, "<red>Здесь нет блоков, которые можно заменить"));
         }
         if (current > 0) {
-            set(45, Text.icon(Material.ARROW, "<yellow>Предыдущая страница"), e -> show(counts, current - 1));
+            set(45, Ui.prev(current, pages), e -> show(counts, current - 1));
         }
-        set(49, Text.icon(Material.ARROW, "<yellow>Назад"), e -> new ZoneMenu(plugin, player, plot, back).open());
+        set(49, Ui.back(null), e -> new ZoneMenu(plugin, player, plot, back).open());
         if (current < pages - 1) {
-            set(53, Text.icon(Material.ARROW, "<yellow>Следующая страница"), e -> show(counts, current + 1));
+            set(53, Ui.next(current, pages), e -> show(counts, current + 1));
         }
         fill(Material.GRAY_STAINED_GLASS_PANE);
     }

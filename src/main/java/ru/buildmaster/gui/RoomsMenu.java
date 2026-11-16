@@ -47,11 +47,11 @@ public final class RoomsMenu extends Menu {
             set(22, Text.icon(Material.BARRIER, "<gray>В отеле пока нет номеров"));
         }
         if (current > 0) {
-            set(45, Text.icon(Material.ARROW, "<yellow>Назад"), e -> new RoomsMenu(plugin, player, hotel, back, current - 1).open());
+            set(45, Ui.prev(current, pages), e -> new RoomsMenu(plugin, player, hotel, back, current - 1).open());
         }
         set(49, Text.icon(Material.ARROW, "<yellow>К отелю"), e -> new PlotMenu(plugin, player, hotel, back).open());
         if (current < pages - 1) {
-            set(53, Text.icon(Material.ARROW, "<yellow>Вперёд"), e -> new RoomsMenu(plugin, player, hotel, back, current + 1).open());
+            set(53, Ui.next(current, pages), e -> new RoomsMenu(plugin, player, hotel, back, current + 1).open());
         }
         fill(Material.GRAY_STAINED_GLASS_PANE);
     }

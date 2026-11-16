@@ -53,7 +53,7 @@ public final class ServicesMenu extends Menu {
             set(13, Text.icon(Material.BARRIER, "<gray>Мастерская пока не оказывает услуг"));
         }
         set(30, Text.icon(Material.CHEST, "<aqua>Мои заказы"), e -> new MyOrdersMenu(plugin, player, 0).open());
-        set(27, Text.icon(Material.ARROW, "<yellow>Назад"), e -> new PlotMenu(plugin, player, plot, back).open());
+        set(27, Ui.back(null), e -> new PlotMenu(plugin, player, plot, back).open());
         fill(Material.GRAY_STAINED_GLASS_PANE);
     }
 
