@@ -111,6 +111,7 @@ public final class ProtectionListener implements Listener {
         }
         Station broken = Station.fromName(block.getType().name());
         if (broken != null) {
+            plugin.stations().removeMachine(plot, block.getX(), block.getY(), block.getZ());
             plugin.stations().dec(plot, broken);
             if (broken.tariffKey() != null) {
                 plugin.power().recalc(plot);
@@ -158,6 +159,22 @@ public final class ProtectionListener implements Listener {
                     event.setCancelled(true);
                     plugin.service().warn(player.getUniqueId(), plot.id, "<red>" + Text.esc(refusal)
                             + " <click:run_command:/district><aqua>[Свободные мастерские]</aqua></click>");
+                    return;
+                }
+            }
+        }
+        if (station != null && station.tariffKey() != null && plot.category == ru.buildmaster.model.Category.WORKSHOP) {
+            Block placedBlock = event.getBlockPlaced();
+            if (player.hasPermission("buildmaster.bypass")) {
+                plugin.stations().addMachine(plot, placedBlock.getX(), placedBlock.getY(), placedBlock.getZ(), station);
+            } else {
+                // станок мастерской устанавливается платно: деньги списываются сразу, без денег блок не ставится
+                String refusal = plugin.stations().install(plot, player, station, placedBlock.getX(), placedBlock.getY(),
+                        placedBlock.getZ());
+                if (refusal != null) {
+                    event.setCancelled(true);
+                    Text.err(player, refusal);
+                    player.sendActionBar(Text.mm("<red>Станок не установлен: " + Text.esc(refusal)));
                     return;
                 }
             }

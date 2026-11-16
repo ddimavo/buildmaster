@@ -18,6 +18,8 @@ public final class StationService {
 
     private final BuildMasterPlugin plugin;
     private final Map<String, EnumMap<Station, Integer>> counts = new HashMap<>();
+    /** Рабочие станки мастерских: участок -> позиция "x,y,z" -> станок. Для голограмм и платной установки. */
+    private final Map<String, Map<String, Station>> machines = new HashMap<>();
 
     public StationService(BuildMasterPlugin plugin) {
         this.plugin = plugin;
@@ -39,6 +41,76 @@ public final class StationService {
 
     public void forget(Plot plot) {
         counts.remove(key(plot));
+        machines.remove(key(plot));
+    }
+
+    // ------------------------------------------------------------ рабочие станки мастерской
+
+    public static String posKey(int x, int y, int z) {
+        return x + "," + y + "," + z;
+    }
+
+    /** Платные станки мастерской (позиция -> станок). */
+    public Map<String, Station> machines(Plot plot) {
+        return machines.getOrDefault(key(plot), Map.of());
+    }
+
+    public void addMachine(Plot plot, int x, int y, int z, Station station) {
+        machines.computeIfAbsent(key(plot), k -> new HashMap<>()).put(posKey(x, y, z), station);
+    }
+
+    public void removeMachine(Plot plot, int x, int y, int z) {
+        Map<String, Station> m = machines.get(key(plot));
+        if (m != null) {
+            m.remove(posKey(x, y, z));
+        }
+    }
+
+    /** Цена установки станка с данным ключом тарифа (0 - бесплатно). */
+    public double installPrice(String tariffKey) {
+        return Math.max(0, plugin.getConfig().getDouble("station-install." + tariffKey, 0));
+    }
+
+    /**
+     * Установка платного станка управляющим: деньги списываются со счёта предприятия, при нехватке - с кошелька
+     * управляющего, и уходят в казну. Станок регистрируется как рабочий. Возвращает причину отказа или null.
+     */
+    public String install(Plot plot, org.bukkit.entity.Player player, Station station, int x, int y, int z) {
+        if (!plot.isOwner(player.getUniqueId())) {
+            return "Станки в мастерской устанавливает только управляющий: установка платная.";
+        }
+        double price = installPrice(station.tariffKey());
+        double fromAccount = 0;
+        double fromWallet = 0;
+        if (price > 0) {
+            plugin.power().touch(plot);
+            double account = plot.account.rawBalance();
+            fromAccount = Math.min(account, price);
+            fromWallet = price - fromAccount;
+            if (fromWallet > 1e-9 && (!plugin.economy().available() || !plugin.economy().has(player, fromWallet))) {
+                return "Не хватает денег на установку: " + station.title() + " стоит " + plugin.economy().format(price)
+                        + ". На счёте предприятия " + plugin.economy().format(account)
+                        + ". Пополните счёт: /district account deposit <сумма>";
+            }
+            if (fromAccount > 1e-9) {
+                plot.account.withdraw(fromAccount);
+            }
+            if (fromWallet > 1e-9 && !plugin.economy().withdraw(player, fromWallet)) {
+                plot.account.deposit(fromAccount);
+                return "Не удалось списать деньги за установку станка. Попробуйте ещё раз.";
+            }
+            plugin.treasury().deposit(price, "Установка станка " + station.title() + ", участок " + plot.id);
+            plugin.saveTreasury();
+            plugin.plots().save();
+        }
+        addMachine(plot, x, y, z, station);
+        plugin.journal().add(plot.id, player.getUniqueId(), player.getName(), Journal.Action.STATION,
+                station.title() + " установлен, списано " + plugin.economy().format(price));
+        ru.buildmaster.util.Text.ok(player, "Станок «" + station.title() + "» установлен как рабочий"
+                + (price > 0 ? ": списано " + plugin.economy().format(price)
+                + (fromWallet > 1e-9 ? " (со счёта " + plugin.economy().format(fromAccount) + ", из кошелька "
+                + plugin.economy().format(fromWallet) + ")" : " со счёта предприятия") : "") + ".");
+        return null;
     }
 
     public int count(Plot plot, Station station) {
@@ -108,6 +180,7 @@ public final class StationService {
             return;
         }
         EnumMap<Station, Integer> fresh = new EnumMap<>(Station.class);
+        Map<String, Station> foundMachines = new HashMap<>();
         ChunkJob.run(plugin, world, plot.box, (chunk, clip) -> {
             for (int y = clip.minY(); y <= clip.maxY(); y++) {
                 for (int z = clip.minZ(); z <= clip.maxZ(); z++) {
@@ -119,12 +192,16 @@ public final class StationService {
                         Station station = Station.fromName(type.name());
                         if (station != null) {
                             fresh.merge(station, 1, Integer::sum);
+                            if (station.tariffKey() != null) {
+                                foundMachines.put(posKey(x, y, z), station);
+                            }
                         }
                     }
                 }
             }
         }, () -> {
             counts.put(key(plot), fresh);
+            machines.put(key(plot), foundMachines);
             plugin.power().recalc(plot);
         }, error -> plugin.getLogger().log(Level.WARNING, "Не удалось пересчитать станки участка " + plot.id, error));
     }

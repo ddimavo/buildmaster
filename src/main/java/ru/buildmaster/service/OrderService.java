@@ -324,6 +324,7 @@ public final class OrderService {
         if (plot != null && manager != null) {
             plugin.power().touch(plot);
             plot.account.deposit(order.paid);
+            plot.revenue += order.paid;
             plugin.plots().save();
             plugin.service().warn(manager, plot.id, "<green>Заказ <white>" + order.shortId() + "</white> выдан клиенту "
                     + Text.esc(order.clientName) + ": на счёт участка <white>" + Text.esc(plot.id) + "</white> зачислено "

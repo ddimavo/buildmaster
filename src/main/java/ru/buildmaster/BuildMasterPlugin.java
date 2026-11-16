@@ -67,6 +67,8 @@ public class BuildMasterPlugin extends JavaPlugin {
     private ru.buildmaster.service.JobService jobs;
     private ru.buildmaster.auction.TreasuryAuction treasuryAuction;
     private ru.buildmaster.service.ArrestService arrests;
+    private ru.buildmaster.service.MachineHolograms machineHolograms;
+    private ru.buildmaster.service.ManagerPanels managerPanels;
     private ChatPrompt chatPrompt;
     private SelectionListener selection;
 
@@ -110,6 +112,8 @@ public class BuildMasterPlugin extends JavaPlugin {
         jobs = new ru.buildmaster.service.JobService(this);
         treasuryAuction = new ru.buildmaster.auction.TreasuryAuction(this);
         arrests = new ru.buildmaster.service.ArrestService(this);
+        machineHolograms = new ru.buildmaster.service.MachineHolograms(this);
+        managerPanels = new ru.buildmaster.service.ManagerPanels(this);
         jobs.load();
         plots = new PlotManager(this);
         plots.load();
@@ -147,6 +151,8 @@ public class BuildMasterPlugin extends JavaPlugin {
         // проверка сроков аренды, автопродление и продолжение незавершённых сбросов зданий
         getServer().getScheduler().runTaskTimer(this, service::tick, 100L, 400L);
         getServer().getScheduler().runTaskTimer(this, jobs::minuteTick, 1200L, 1200L);
+        getServer().getScheduler().runTaskTimer(this, machineHolograms::tick, 60L, 20L);
+        getServer().getScheduler().runTaskTimer(this, managerPanels::tick, 80L, 40L);
         getServer().getScheduler().runTaskLater(this, () -> {
             stations.rescanAll();
             holograms.updateAll();
@@ -170,6 +176,12 @@ public class BuildMasterPlugin extends JavaPlugin {
         }
         if (holograms != null) {
             holograms.removeAll();
+        }
+        if (machineHolograms != null) {
+            machineHolograms.removeAll();
+        }
+        if (managerPanels != null) {
+            managerPanels.removeAll();
         }
         saveTreasury();
     }
@@ -264,6 +276,14 @@ public class BuildMasterPlugin extends JavaPlugin {
     /** Только для тестов: подмена доступа к WorldGuard. */
     public void setRegions(RegionAccess access) {
         this.regions = access;
+    }
+
+    public ru.buildmaster.service.MachineHolograms machineHolograms() {
+        return machineHolograms;
+    }
+
+    public ru.buildmaster.service.ManagerPanels managerPanels() {
+        return managerPanels;
     }
 
     public ru.buildmaster.service.ArrestService arrests() {

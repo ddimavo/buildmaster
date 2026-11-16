@@ -56,7 +56,8 @@ public final class Journal {
         PLAYER_PLOT("Участок игрока"),
         JOB("Работа"),
         AUCTION("Передано на аукцион"),
-        HOLO("Позиция голограммы");
+        HOLO("Позиция голограммы"),
+        STATION("Установка станка");
 
         private final String title;
 

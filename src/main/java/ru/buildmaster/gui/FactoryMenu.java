@@ -48,7 +48,7 @@ public final class FactoryMenu extends Menu {
             }
             Plot.Line line = plot.lines.get(def.id());
             List<String> lore = new ArrayList<>();
-            lore.add("<gray>" + def.inputAmount() + " × " + def.input().name() + " → " + def.outputAmount() + " × " + def.output().name());
+            lore.add("<gray>" + def.inputAmount() + " × " + def.inputNames() + " → " + def.outputAmount() + " × " + def.output().name());
             lore.add("<gray>Станок: <white>" + def.station() + "<gray> (стоит: " + plugin.stations().countByTariffKey(plot, def.station()) + ")");
             if (line == null) {
                 lore.add("<gray>Установка: <white>" + plugin.economy().format(def.installPrice()));

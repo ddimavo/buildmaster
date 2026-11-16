@@ -196,6 +196,84 @@ class FactoryIntegrationTest extends PluginTestBase {
     }
 
     @Test
+    void rawOreItselfIsAcceptedAsRawMaterial() {
+        installIron();
+        steve.getInventory().clear();
+        giveItems(steve, Material.RAW_IRON, 40);
+
+        assertNull(plugin.factory().load(steve, workshop, "iron-ingots", 0));
+
+        assertEquals(40, ironLine().input);
+        assertEquals(0, count(steve, Material.RAW_IRON));
+    }
+
+    @Test
+    void oreBlocksAndRawOreMixInOneStock() {
+        installIron();
+        steve.getInventory().clear();
+        giveItems(steve, Material.RAW_IRON, 10);
+        giveItems(steve, Material.IRON_ORE, 5);
+        giveItems(steve, Material.DEEPSLATE_IRON_ORE, 3);
+        giveItems(steve, Material.GOLD_ORE, 7);
+
+        assertNull(plugin.factory().load(steve, workshop, "iron-ingots", 0));
+
+        assertEquals(18, ironLine().input, "золото не подходит для железной линии");
+        assertEquals(7, count(steve, Material.GOLD_ORE));
+        assertEquals(0, count(steve, Material.RAW_IRON) + count(steve, Material.IRON_ORE) + count(steve, Material.DEEPSLATE_IRON_ORE));
+    }
+
+    @Test
+    void loadingTakesThePrimaryRawMaterialFirstWhenLimited() {
+        installIron();
+        steve.getInventory().clear();
+        giveItems(steve, Material.IRON_ORE, 10);
+        giveItems(steve, Material.RAW_IRON, 10);
+
+        assertNull(plugin.factory().load(steve, workshop, "iron-ingots", 12));
+
+        assertEquals(12, ironLine().input);
+        assertEquals(0, count(steve, Material.RAW_IRON));
+        assertEquals(8, count(steve, Material.IRON_ORE));
+    }
+
+    @Test
+    void renamedRawOreIsNotAccepted() {
+        installIron();
+        steve.getInventory().clear();
+        ItemStack special = new ItemStack(Material.RAW_IRON, 10);
+        special.editMeta(m -> m.displayName(net.kyori.adventure.text.Component.text("Особая")));
+        steve.getInventory().addItem(special);
+
+        String error = plugin.factory().load(steve, workshop, "iron-ingots", 0);
+
+        assertNotNull(error);
+        assertTrue(error.contains("RAW_IRON"), error);
+        assertEquals(10, count(steve, Material.RAW_IRON));
+    }
+
+    @Test
+    void goldAndCopperLinesAcceptTheirRawOres() {
+        var gold = plugin.production().get("gold-ingots");
+        var copper = plugin.production().get("copper-ingots");
+        assertTrue(gold.accepts(Material.RAW_GOLD) && gold.accepts(Material.GOLD_ORE) && gold.accepts(Material.DEEPSLATE_GOLD_ORE));
+        assertTrue(copper.accepts(Material.RAW_COPPER) && copper.accepts(Material.COPPER_ORE));
+        assertEquals(Material.RAW_GOLD, gold.input(), "основное сырьё - первое в списке");
+        assertFalse(gold.accepts(Material.RAW_IRON));
+    }
+
+    @Test
+    void aLineWithASingleInputKeyStillWorks() {
+        plugin.getConfig().set("production.lines.legacy.title", "Старая");
+        plugin.getConfig().set("production.lines.legacy.station", "smelter");
+        plugin.getConfig().set("production.lines.legacy.input", "COBBLESTONE");
+        plugin.getConfig().set("production.lines.legacy.output", "STONE");
+        var line = plugin.production().get("legacy");
+        assertNotNull(line);
+        assertEquals(java.util.List.of(Material.COBBLESTONE), line.inputs());
+    }
+
+    @Test
     void loadingRespectsTheRequestedAmountAndTheStockCapacity() {
         installIron();
         steve.getInventory().clear();
@@ -420,7 +498,7 @@ class FactoryIntegrationTest extends PluginTestBase {
         assertNull(plugin.factory().remove(steve, workshop, "iron-ingots"));
 
         assertNull(ironLine());
-        assertEquals(15, count(steve, Material.IRON_ORE));
+        assertEquals(15, count(steve, Material.RAW_IRON));
         assertEquals(5, count(steve, Material.IRON_INGOT));
         assertEquals(account, plugin.power().balance(workshop), 0.1, "стоимость установки не возвращается");
     }
@@ -517,7 +595,7 @@ class FactoryIntegrationTest extends PluginTestBase {
         plugin.service().release(steve, workshop);
 
         // после улучшения до уровня 1 партия занимает 4 с: за 26 с готово 6 партий
-        assertEquals(14, count(steve, Material.IRON_ORE) + stored(steve.getUniqueId(), Material.IRON_ORE, StorageEntry.State.AVAILABLE));
+        assertEquals(14, count(steve, Material.RAW_IRON) + stored(steve.getUniqueId(), Material.RAW_IRON, StorageEntry.State.AVAILABLE));
         assertEquals(6, count(steve, Material.IRON_INGOT) + stored(steve.getUniqueId(), Material.IRON_INGOT, StorageEntry.State.AVAILABLE));
         assertTrue(workshop.lines.isEmpty());
         assertEquals(0, workshop.level, "улучшения принадлежат участку, при смене управляющего сбрасываются");
@@ -534,7 +612,7 @@ class FactoryIntegrationTest extends PluginTestBase {
                 Plot.RestoreMode.ITEMS_ONLY));
 
         assertEquals(0, count(steve, Material.IRON_ORE), "в инвентарь не выдаётся");
-        assertEquals(15, stored(steve.getUniqueId(), Material.IRON_ORE, StorageEntry.State.ARRESTED));
+        assertEquals(15, stored(steve.getUniqueId(), Material.RAW_IRON, StorageEntry.State.ARRESTED));
         assertEquals(5, stored(steve.getUniqueId(), Material.IRON_INGOT, StorageEntry.State.ARRESTED));
     }
 
@@ -548,7 +626,7 @@ class FactoryIntegrationTest extends PluginTestBase {
         plugin.service().evict(workshop, new PlotService.Release("Boss", "выселение", Journal.Action.EVICTED, false,
                 Plot.RestoreMode.ITEMS_ONLY));
 
-        assertEquals(10, stored(id, Material.IRON_ORE, StorageEntry.State.AVAILABLE));
+        assertEquals(10, stored(id, Material.RAW_IRON, StorageEntry.State.AVAILABLE));
     }
 
     @Test

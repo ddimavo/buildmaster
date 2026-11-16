@@ -609,6 +609,7 @@ public final class JobService {
     /** Продажа в магазине (ChestShop): доход магазина для процента работников. */
     public void onSale(Plot plot, double amount) {
         if (plot != null && plot.category == Category.SHOP && !plot.isFree()) {
+            plot.revenue += amount;
             onIncome(plot, amount);
         }
     }

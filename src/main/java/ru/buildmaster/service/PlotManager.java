@@ -230,6 +230,7 @@ public final class PlotManager {
         for (String u : s.getStringList("region-members")) {
             p.regionMembers.add(UUID.fromString(u));
         }
+        p.revenue = s.getDouble("revenue");
         p.parentId = s.getString("parent");
         p.maxRoomRate = s.getDouble("max-room-rate");
         for (String d : s.getStringList("doors")) {
@@ -331,6 +332,7 @@ public final class PlotManager {
             yml.set(k + "required-consents", p.requiredConsents.stream().map(UUID::toString).toList());
             yml.set(k + "consents", p.consents.stream().map(UUID::toString).toList());
             yml.set(k + "region-members", p.regionMembers.stream().map(UUID::toString).toList());
+            yml.set(k + "revenue", p.revenue);
             yml.set(k + "parent", p.parentId);
             yml.set(k + "max-room-rate", p.maxRoomRate);
             yml.set(k + "doors", p.doors.stream().map(d -> d[0] + "," + d[1] + "," + d[2]).toList());

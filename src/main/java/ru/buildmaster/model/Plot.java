@@ -145,6 +145,8 @@ public final class Plot {
     public final Map<String, Offer> offers = new LinkedHashMap<>();
     /** Индивидуальная скидка на электричество (0-100 %), назначается администратором. */
     public double discountPercent;
+    /** Выручка предприятия за всё время: оплата номеров, продажи магазина, оплаченные заказы услуг. */
+    public double revenue;
     public final Map<String, Zone> zones = new LinkedHashMap<>();
 
     public boolean hasSpawn;

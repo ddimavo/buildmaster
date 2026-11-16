@@ -3,6 +3,7 @@ package ru.buildmaster.service;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
@@ -153,11 +154,11 @@ public final class FactoryService {
             return "Склад линии полон (" + stockCapacity(plot) + ").";
         }
         PlayerInventory inv = manager.getInventory();
-        // подходят только обычные предметы: без названий, чар и других свойств (иначе они потеряются при переработке)
-        ItemStack plain = new ItemStack(def.input());
+        // подходят только обычные предметы: без названий, чар и других свойств (иначе они потеряются при переработке);
+        // сырьём считается и сама руда (например, сырое железо), и блок руды
         int available = 0;
         for (ItemStack s : inv.getStorageContents()) {
-            if (s != null && s.isSimilar(plain)) {
+            if (s != null && def.accepts(s.getType()) && s.isSimilar(new ItemStack(s.getType()))) {
                 available += s.getAmount();
             }
         }
@@ -166,18 +167,21 @@ public final class FactoryService {
             amount = Math.min(amount, requested);
         }
         if (amount <= 0) {
-            return "В инвентаре нет подходящего сырья: " + def.input().name() + " (обычные предметы без названий и свойств).";
+            return "В инвентаре нет подходящего сырья: " + def.inputNames() + " (обычные предметы без названий и свойств).";
         }
-        // списываем именно обычные предметы
+        // сначала списываем основное сырьё линии, потом остальные виды
         int left = amount;
         ItemStack[] contents = inv.getStorageContents();
-        for (int i = 0; i < contents.length && left > 0; i++) {
-            ItemStack s = contents[i];
-            if (s != null && s.isSimilar(plain)) {
-                int take = Math.min(left, s.getAmount());
-                s.setAmount(s.getAmount() - take);
-                inv.setItem(i, s.getAmount() <= 0 ? null : s);
-                left -= take;
+        for (Material m : def.inputs()) {
+            ItemStack plain = new ItemStack(m);
+            for (int i = 0; i < contents.length && left > 0; i++) {
+                ItemStack s = contents[i];
+                if (s != null && s.isSimilar(plain)) {
+                    int take = Math.min(left, s.getAmount());
+                    s.setAmount(s.getAmount() - take);
+                    inv.setItem(i, s.getAmount() <= 0 ? null : s);
+                    left -= take;
+                }
             }
         }
         line.input += amount;

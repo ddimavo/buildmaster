@@ -41,9 +41,15 @@ public class SnapshotStore {
     public void capture(File dir, World world, int cx, int cz, Box clip) throws IOException {
         dir.mkdirs();
         Structure structure = manager().createStructure();
-        structure.fill(new Location(world, clip.minX(), clip.minY(), clip.minZ()),
-                new Location(world, clip.maxX(), clip.maxY(), clip.maxZ()), false);
+        // размер в блоках (включительно): вариант с двумя углами считает разность координат и теряет последний слой,
+        // а для области толщиной в один блок даёт размер 0 («не может быть меньше 1x1x1»)
+        structure.fill(new Location(world, clip.minX(), clip.minY(), clip.minZ()), sizeOf(clip), false);
         manager().saveStructure(chunkFile(dir, cx, cz), structure);
+    }
+
+    /** Размер области в блоках, включая обе границы. */
+    public static org.bukkit.util.BlockVector sizeOf(Box box) {
+        return new org.bukkit.util.BlockVector(box.sizeX(), box.sizeY(), box.sizeZ());
     }
 
     /** Вставляет сохранённый кусок обратно. false - файла для этого чанка нет. */
