@@ -22,11 +22,11 @@ public final class Plot {
     /** FULL - здание полностью возвращается к исходному виду; ITEMS_ONLY - только забираются вещи игроков. */
     public enum RestoreMode { FULL, ITEMS_ONLY, RETURN }
 
-    /** Производственная линия: запас сырья, готовая продукция в буфере и накопленное время партии. */
-    public static final class Line {
-        public int input;
-        public int output;
+    /** Состояние станка мастерской: назначенный рецепт, накопленное время партии и продукция, ещё не выложенная в сундук. */
+    public static final class MachineState {
+        public String recipe;
         public double progress;
+        public int output;
     }
 
     /** Предложение услуги: управляющий включает его и назначает цену за единицу работы. */
@@ -140,7 +140,15 @@ public final class Plot {
     public double maxRoomRate;
     /** Уровень улучшений мастерской (0 - базовый) и производственные линии. */
     public int level;
-    public final Map<String, Line> lines = new LinkedHashMap<>();
+    /** Станки мастерской с заданием: позиция "x,y,z" -> состояние. */
+    public final Map<String, MachineState> machineStates = new LinkedHashMap<>();
+    /** Склад сырья мастерской: материал -> количество (общий для всех станков). */
+    public final Map<org.bukkit.Material, Integer> stock = new LinkedHashMap<>();
+    /** Сундуки-приёмники сырья и сундуки продукции: позиции "x,y,z". */
+    public final java.util.List<String> rawChests = new java.util.ArrayList<>();
+    public final java.util.List<String> productChests = new java.util.ArrayList<>();
+    /** Данные старых производственных линий (до версии 1.17): переносятся на склад при загрузке и очищаются. */
+    public final Map<String, int[]> legacyLines = new LinkedHashMap<>();
     /** Услуги мастерской: ключ предложения -> цена и включено ли оно. */
     public final Map<String, Offer> offers = new LinkedHashMap<>();
     /** Индивидуальная скидка на электричество (0-100 %), назначается администратором. */

@@ -62,6 +62,43 @@ public final class MachineText {
         return lines;
     }
 
+    /**
+     * Станок мастерской с заданием: что делает, статус, прогресс партии, сырьё (по ингредиентам), продукция в буфере.
+     * inputs - готовые строки «название × на складе», уже отформатированные.
+     */
+    public static List<String> production(String title, String recipeTitle, String statusTitle, boolean working, double ratio,
+                                          List<String> inputs, String outputName, int outputAmount, int bufferCapacity,
+                                          String cost) {
+        List<String> lines = new ArrayList<>();
+        lines.add("<gold>" + title);
+        lines.add("<gray>Делает: <white>" + recipeTitle);
+        lines.add("<gray>Статус: " + (working ? "<green>" : "<red>") + statusTitle);
+        if (working) {
+            lines.add(bar(ratio));
+        }
+        for (String in : inputs) {
+            lines.add("<gray>Сырьё: " + in);
+        }
+        lines.add("<gray>Продукция: " + (outputAmount <= 0 ? "<dark_gray>пусто" : "<white>" + outputName + " × " + outputAmount)
+                + (bufferCapacity > 0 ? " <dark_gray>/ " + bufferCapacity : ""));
+        if (cost != null) {
+            lines.add("<yellow>" + cost);
+        }
+        return lines;
+    }
+
+    /** Станок без задания: обслуживает заказы игроков. */
+    public static List<String> unassigned(String title, boolean powered, String offReason, String cost) {
+        List<String> lines = new ArrayList<>();
+        lines.add("<gold>" + title);
+        lines.add("<gray>Задание: <dark_gray>не назначено");
+        lines.add("<gray>Статус: " + (powered ? "<green>обслуживает заказы игроков" : status(false, false, offReason)));
+        if (cost != null) {
+            lines.add("<yellow>" + cost);
+        }
+        return lines;
+    }
+
     /** Наковальня и стол зачарований: состояния внутри нет, показываем статус, расход и счётчик операций. */
     public static List<String> simple(String title, boolean powered, String offReason, long operations, String spent,
                                       String cost) {

@@ -43,7 +43,7 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
 
     private static final List<String> PLAYER_SUBS = List.of("menu", "list", "info", "buy", "rent", "extend",
             "autorenew", "autoreset", "release", "trust", "untrust", "perm", "account", "power", "warnings", "tp", "replace",
-            "zones", "storage", "claim", "journal", "name", "desc", "bank", "service", "factory", "room", "region", "job", "hologram", "help");
+            "zones", "storage", "claim", "journal", "name", "desc", "bank", "service", "factory", "room", "region", "job", "hologram", "machine", "chest", "help");
     private static final List<String> ADMIN_SUBS = List.of("wand", "pos1", "pos2", "create", "delete", "evict",
             "setprice", "setrent", "setspawn", "zone", "resnapshot", "reload", "seize", "reset", "holo", "category",
             "moderation", "arrest", "auction", "show");
@@ -124,6 +124,8 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
                 case "bank" -> new BankCommands(plugin).handle(sender, rest);
                 case "service" -> new ServiceCommands(plugin).handle(sender, rest);
                 case "factory" -> new FactoryCommands(plugin).handle(sender, rest);
+                case "machine" -> new FactoryCommands(plugin).machine(sender, rest);
+                case "chest" -> new FactoryCommands(plugin).chest(sender, rest);
                 case "room" -> new RoomCommands(plugin).handle(sender, rest);
                 case "region" -> new RegionCommands(plugin).handle(sender, rest);
                 case "job" -> new JobCommands(plugin).handle(sender, rest);
@@ -259,7 +261,8 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
                 "/district account [deposit|withdraw <сумма>|statement] - счёт предприятия",
                 "/district bank [info|statement] - банк: меню, условия, выписка",
                 "/district service [orders|offers|order|collect|cancel|price|toggle] - услуги мастерских и заказы",
-                "/district factory [info|install|load|collect|upgrade|levels] - производство и улучшения мастерской",
+                "/district factory [menu|info|levels|load|collect|upgrade] - производство и улучшения мастерской",
+                "/district machine [menu|info|set <рецепт>|clear] - задание станку (смотрите на станок); /district chest raw|product|unmark - сундуки мастерской",
                 "/district room list [отель] - номера отеля; rate <номер> <цена> - цена номера (управляющий отеля)",
                 "/district region bind|list|consent|sale|rent|access|unbind - свой регион WorldGuard: продажа и аренда",
                 "/district job board|list|apply|post|staff|fire... - доска объявлений, вакансии и работники",
@@ -1227,6 +1230,12 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
         }
         if (sub.equals("room")) {
             return filter(new RoomCommands(plugin).complete(sender, args), args[args.length - 1]);
+        }
+        if (sub.equals("machine")) {
+            return filter(new FactoryCommands(plugin).completeMachine(sender, args), args[args.length - 1]);
+        }
+        if (sub.equals("chest")) {
+            return filter(args.length == 2 ? List.of("raw", "product", "unmark") : List.of(), args[args.length - 1]);
         }
         if (sub.equals("factory")) {
             return filter(new FactoryCommands(plugin).complete(sender, args), args[args.length - 1]);

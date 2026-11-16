@@ -12,9 +12,6 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.block.Block;
-import org.bukkit.block.BlockState;
-import org.bukkit.block.BrewingStand;
-import org.bukkit.block.Furnace;
 import org.bukkit.entity.Display;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
@@ -199,28 +196,26 @@ public final class MachineHolograms {
                 ? "Операция: " + plugin.economy().format(power.operationPrice(plot, key))
                 : "Мощность: " + String.format(java.util.Locale.ROOT, "%.1f", power.coefficient(key)) + " V/сут";
         String title = blockTitle(block.getType());
-        BlockState state;
-        try {
-            state = block.getState();
-        } catch (RuntimeException e) {
-            state = null;
+        ProductionService.View view = plugin.factory().view(plot, StationService.posKey(block.getX(), block.getY(), block.getZ()));
+        if (view.recipe() == null) {
+            return MachineText.unassigned(title, powered, off, cost);
         }
-        if (state instanceof Furnace furnace) {
-            var inv = furnace.getInventory();
-            ItemStack in = inv.getSmelting();
-            ItemStack fuel = inv.getFuel();
-            ItemStack out = inv.getResult();
-            return MachineText.furnace(title, powered, off, furnace.getBurnTime() > 0, furnace.getCookTime(),
-                    (int) furnace.getCookTimeTotal(), itemName(in), in == null ? 0 : in.getAmount(), itemName(fuel),
-                    fuel == null ? 0 : fuel.getAmount(), itemName(out), out == null ? 0 : out.getAmount(), cost);
+        RecipeBook.Recipe recipe = view.recipe();
+        List<String> inputs = new ArrayList<>();
+        for (RecipeBook.Ingredient ing : recipe.inputs()) {
+            Material shown = ing.options().get(0);
+            int have = 0;
+            for (Material m : ing.options()) {
+                int n = plugin.factory().stock(plot, m);
+                have += n;
+                if (n > 0 && plugin.factory().stock(plot, shown) == 0) {
+                    shown = m;
+                }
+            }
+            inputs.add(itemName(new ItemStack(shown)) + " × " + have + " <dark_gray>(по " + ing.count() + ")");
         }
-        if (state instanceof BrewingStand stand) {
-            ItemStack ingredient = stand.getInventory().getIngredient();
-            return MachineText.brewing(title, powered, off, stand.getBrewingTime(), 400, itemName(ingredient),
-                    ingredient == null ? 0 : ingredient.getAmount(), stand.getFuelLevel(), cost);
-        }
-        var stats = power.stats().byType(plot.id).get(key);
-        String spent = stats == null ? null : plugin.economy().format(stats.spent());
-        return MachineText.simple(title, powered, off, stats == null ? 0 : stats.operations(), spent, cost);
+        return MachineText.production(title, itemName(new ItemStack(recipe.output())), view.status().title(),
+                view.status() == ProductionService.Status.WORKING, view.ratio(), inputs, itemName(new ItemStack(recipe.output())),
+                view.output(), view.bufferCapacity(), cost);
     }
 }

@@ -92,7 +92,7 @@ public final class OrderService {
 
     /** Время на единицу работы с учётом числа станков и скорости; бесконечность без станков. */
     private double secondsPerUnit(Plot plot, ServiceCatalog.Offer def, ServiceOrder order) {
-        int stations = plugin.stations().countByTariffKey(plot, def.stationKey());
+        int stations = plugin.stations().countByTariffKey(plot, def.stationKey()) - plugin.factory().assignedCount(plot, def.stationKey());
         double base = def.secondsPerUnit();
         if (def.kind() == ServiceCatalog.Kind.SMELT && !order.input.isEmpty()) {
             base = plugin.catalog().baseSeconds(def, ItemStack.deserializeBytes(order.input.get(0)));
@@ -217,7 +217,7 @@ public final class OrderService {
             return reason != null ? "Мастерская отключена от электростанции: " + reason + "."
                     : "Мастерская обесточена: новые заказы не принимаются.";
         }
-        if (plugin.stations().countByTariffKey(plot, def.stationKey()) <= 0) {
+        if (plugin.stations().countByTariffKey(plot, def.stationKey()) - plugin.factory().assignedCount(plot, def.stationKey()) <= 0) {
             return "В мастерской нет нужного станка для этой услуги.";
         }
         var cfg = plugin.getConfig();

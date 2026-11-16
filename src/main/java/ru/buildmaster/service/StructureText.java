@@ -86,14 +86,14 @@ public final class StructureText {
         var stats = power.stats().total(plot.id);
         lines.add(stat("Операций / потрачено", stats.operations() + " / " + money.apply(stats.spent())));
         lines.add("<yellow>— Производство —");
-        int raw = 0;
-        int product = 0;
-        for (Plot.Line line : plot.lines.values()) {
-            raw += line.input;
-            product += line.output;
-        }
-        lines.add(stat("Линии", plot.lines.size() + " из " + plugin.upgrades().of(plot).maxLines() + " · уровень " + plot.level));
-        lines.add(stat("Сырьё / продукция", raw + " / " + product));
+        var factory = plugin.factory();
+        int product = factory.views(plot).stream().mapToInt(ProductionService.View::output).sum();
+        long working = factory.views(plot).stream().filter(v -> v.status() == ProductionService.Status.WORKING).count();
+        lines.add(stat("Станков с заданием", factory.assignedCount(plot) + " из " + factory.slots(plot)
+                + " · работают " + working + " · уровень " + plot.level));
+        lines.add(stat("Склад сырья", factory.stockTotal(plot) + " / " + factory.stockCapacity(plot)));
+        lines.add(stat("Продукция в буферах", String.valueOf(product)));
+        lines.add(stat("Сундуки сырья / продукции", plot.rawChests.size() + " / " + plot.productChests.size()));
         long orders = plugin.orders().ofPlot(plot.id).size();
         lines.add(stat("Заказов услуг", String.valueOf(orders)));
         staffLines(plugin, plot, money, lines);

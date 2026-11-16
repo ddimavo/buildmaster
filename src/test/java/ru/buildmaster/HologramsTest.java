@@ -126,18 +126,9 @@ class HologramsTest extends PluginTestBase {
         assertTrue(text.contains("Стоимость"));
         assertTrue(text.contains("Станки") && text.contains("Всего"));
         assertTrue(text.contains("плавилен 1") && text.contains("наковален 1"));
-        assertTrue(text.contains("Линии") && text.contains("Сырьё / продукция"));
+        assertTrue(text.contains("Станков с заданием") && text.contains("Склад сырья") && text.contains("Продукция в буферах"), text);
         assertTrue(text.contains("Выручка всего") && text.contains("345"));
         assertTrue(text.contains("Баланс счёта"));
-    }
-
-    @Test
-    void theWorkshopPanelCountsProductionAndOrders() {
-        Plot.Line line = new Plot.Line();
-        line.input = 30;
-        line.output = 7;
-        workshop.lines.put("iron-ingots", line);
-        assertTrue(text(workshop).contains("30 / 7"));
     }
 
     @Test

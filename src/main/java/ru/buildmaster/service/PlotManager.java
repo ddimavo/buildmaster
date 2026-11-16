@@ -238,16 +238,33 @@ public final class PlotManager {
             p.doors.add(new int[] {Integer.parseInt(c[0].trim()), Integer.parseInt(c[1].trim()), Integer.parseInt(c[2].trim())});
         }
         p.level = s.getInt("factory.level");
-        ConfigurationSection lines = s.getConfigurationSection("factory.lines");
-        if (lines != null) {
-            for (String lineId : lines.getKeys(false)) {
-                Plot.Line line = new Plot.Line();
-                line.input = lines.getInt(lineId + ".input");
-                line.output = lines.getInt(lineId + ".output");
-                line.progress = lines.getDouble(lineId + ".progress");
-                p.lines.put(lineId, line);
+        ConfigurationSection legacy = s.getConfigurationSection("factory.lines");
+        if (legacy != null) {
+            for (String lineId : legacy.getKeys(false)) {
+                p.legacyLines.put(lineId, new int[] {legacy.getInt(lineId + ".input"), legacy.getInt(lineId + ".output")});
             }
         }
+        ConfigurationSection machines = s.getConfigurationSection("machines");
+        if (machines != null) {
+            for (String key : machines.getKeys(false)) {
+                Plot.MachineState state = new Plot.MachineState();
+                state.recipe = machines.getString(key + ".recipe");
+                state.progress = machines.getDouble(key + ".progress");
+                state.output = machines.getInt(key + ".output");
+                p.machineStates.put(key.replace(':', ','), state);
+            }
+        }
+        ConfigurationSection stock = s.getConfigurationSection("stock");
+        if (stock != null) {
+            for (String m : stock.getKeys(false)) {
+                org.bukkit.Material material = org.bukkit.Material.matchMaterial(m);
+                if (material != null && stock.getInt(m) > 0) {
+                    p.stock.put(material, stock.getInt(m));
+                }
+            }
+        }
+        p.rawChests.addAll(s.getStringList("raw-chests"));
+        p.productChests.addAll(s.getStringList("product-chests"));
         ConfigurationSection offers = s.getConfigurationSection("offers");
         if (offers != null) {
             for (String key : offers.getKeys(false)) {
@@ -337,10 +354,24 @@ public final class PlotManager {
             yml.set(k + "max-room-rate", p.maxRoomRate);
             yml.set(k + "doors", p.doors.stream().map(d -> d[0] + "," + d[1] + "," + d[2]).toList());
             yml.set(k + "factory.level", p.level);
-            for (var l : p.lines.entrySet()) {
-                yml.set(k + "factory.lines." + l.getKey() + ".input", l.getValue().input);
-                yml.set(k + "factory.lines." + l.getKey() + ".output", l.getValue().output);
-                yml.set(k + "factory.lines." + l.getKey() + ".progress", l.getValue().progress);
+            for (var m : p.machineStates.entrySet()) {
+                String mk = k + "machines." + m.getKey().replace(',', ':') + ".";
+                yml.set(mk + "recipe", m.getValue().recipe);
+                yml.set(mk + "progress", m.getValue().progress);
+                yml.set(mk + "output", m.getValue().output);
+            }
+            for (var st : p.stock.entrySet()) {
+                yml.set(k + "stock." + st.getKey().name(), st.getValue());
+            }
+            if (!p.rawChests.isEmpty()) {
+                yml.set(k + "raw-chests", p.rawChests);
+            }
+            if (!p.productChests.isEmpty()) {
+                yml.set(k + "product-chests", p.productChests);
+            }
+            for (var l : p.legacyLines.entrySet()) {
+                yml.set(k + "factory.lines." + l.getKey() + ".input", l.getValue()[0]);
+                yml.set(k + "factory.lines." + l.getKey() + ".output", l.getValue()[1]);
             }
             for (var o : p.offers.entrySet()) {
                 yml.set(k + "offers." + o.getKey() + ".enabled", o.getValue().enabled);

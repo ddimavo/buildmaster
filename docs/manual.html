@@ -85,11 +85,11 @@ footer { max-width:980px; margin:50px auto 0; color:var(--muted); font-size:13px
 }
 </style>
 </head>
-<body data-version="1.16.0.">
+<body data-version="1.17.0.">
 <div class="topbar"><button id="menu">☰ Разделы</button><b>BuildMaster</b></div>
 <div class="layout">
 <aside id="side">
-  <div class="brand"><div class="logo">🏙️</div><div><b>BuildMaster</b><small>Руководство 1.16.0.</small></div></div>
+  <div class="brand"><div class="logo">🏙️</div><div><b>BuildMaster</b><small>Руководство 1.17.0.</small></div></div>
   <input id="search" type="search" placeholder="Поиск по разделам…" autocomplete="off">
   <nav id="nav">
 <a class="l2" href="#1-что-такое-buildmaster">1. Что такое BuildMaster</a>
@@ -126,7 +126,7 @@ footer { max-width:980px; margin:50px auto 0; color:var(--muted); font-size:13px
 <a class="l3" href="#61-тариф">6.1. Тариф</a>
 <a class="l3" href="#62-что-происходит-при-нуле">6.2. Что происходит при нуле</a>
 <a class="l3" href="#63-команды-управляющего">6.3. Команды управляющего</a>
-<a class="l3" href="#64-производственные-линии">6.4. Производственные линии</a>
+<a class="l3" href="#64-производство-станки-с-заданиями-склад-и-сундуки">6.4. Производство: станки с заданиями, склад и сундуки</a>
 <a class="l3" href="#65-улучшения">6.5. Улучшения</a>
 <a class="l3" href="#66-голограммы-станков-и-панель-мастерской">6.6. Голограммы станков и панель мастерской</a>
 <a class="l2" href="#7-услуги-мастерских-заказы">7. Услуги мастерских (заказы)</a>
@@ -183,12 +183,12 @@ footer { max-width:980px; margin:50px auto 0; color:var(--muted); font-size:13px
   <div class="hero">
     <h1>BuildMaster</h1>
     <p>Район коммерции для Minecraft: участки, аренда, мастерские и электричество, отели, работники и зарплаты, банк, общий аукцион и участки игроков на WorldGuard.</p>
-    <div class="chips"><span>Paper 1.21.6 – 26.x</span><span>Java 21</span><span>Vault</span><span>WorldGuard · ChestShop · zAuctionHouse (по желанию)</span><span>Руководство 1.16.0.</span></div>
+    <div class="chips"><span>Paper 1.21.6 – 26.x</span><span>Java 21</span><span>Vault</span><span>WorldGuard · ChestShop · zAuctionHouse (по желанию)</span><span>Руководство 1.17.0.</span></div>
   </div>
   <div class="content">
 
 <blockquote class="callout">
-<p>Версия руководства: 1.16.0. Плагин: Paper 1.21.6 – 26.x, Java 21+. Все команды начинаются с <code>/district</code> (псевдонимы <code>/dt</code>, <code>/uchastok</code>).
+<p>Версия руководства: 1.17.0. Плагин: Paper 1.21.6 – 26.x, Java 21+. Все команды начинаются с <code>/district</code> (псевдонимы <code>/dt</code>, <code>/uchastok</code>).
 Если вы только начинаете, прочитайте разделы 1–3 и сразу переходите к нужной роли: <strong>игрок</strong> (раздел 4), <strong>управляющий предприятием</strong> (5–8), <strong>владелец региона WorldGuard</strong> (9), <strong>администратор</strong> (13–14).</p>
 </blockquote>
 
@@ -706,77 +706,70 @@ footer { max-width:980px; margin:50px auto 0; color:var(--muted); font-size:13px
 /district power deposit &lt;сумма&gt; [номер]   пополнить счёт
 /district power calc smelter:2 anvil:1    калькулятор тарифа (право buildmaster.grid)
 </code></pre>
-<h3 id="64-производственные-линии">6.4. Производственные линии</h3>
-<p>Линия перерабатывает сырьё со склада в продукцию и работает сама, пока есть электричество. Сырьё не появляется из ничего.</p>
+<h3 id="64-производство-станки-с-заданиями-склад-и-сундуки">6.4. Производство: станки с заданиями, склад и сундуки</h3>
+<p><strong>Станок получает задание.</strong> Управляющий делает <strong>shift+ПКМ по станку пустой рукой</strong> (или смотрит на станок и вводит <code>/district machine</code>) и выбирает, что станок будет делать:</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
-<th>Линия (по умолчанию)</th>
 <th>Станок</th>
-<th>Вход → выход</th>
-<th>Время партии</th>
-<th>Установка</th>
+<th>Что делает</th>
+<th>Откуда рецепты</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Выплавка железа</td>
-<td>smelter</td>
-<td>сырое железо / блок руды → слиток</td>
-<td>10 с</td>
-<td>500</td>
+<td>Печь</td>
+<td>плавит руды, песок, булыжник и т. д.</td>
+<td>рецепты печи из реестра игры</td>
 </tr>
 <tr>
-<td>Выплавка золота</td>
-<td>smelter</td>
-<td>сырое золото / блок руды → слиток</td>
-<td>10 с</td>
-<td>800</td>
+<td>Плавильная печь</td>
+<td>быстрее плавит руды и металлические предметы</td>
+<td>рецепты плавильной печи</td>
 </tr>
 <tr>
-<td>Выплавка меди</td>
-<td>smelter</td>
-<td>сырая медь / блок руды → слиток</td>
-<td>10 с</td>
-<td>400</td>
+<td>Коптильня</td>
+<td>готовит еду</td>
+<td>рецепты коптильни</td>
 </tr>
 <tr>
-<td>Стекло</td>
-<td>smelter</td>
-<td>песок → стекло</td>
-<td>8 с</td>
-<td>300</td>
+<td>Наковальня</td>
+<td><strong>собирает</strong> блоки, инструменты, оружие, броню, еду и другое</td>
+<td>рецепты верстака из реестра игры</td>
 </tr>
 <tr>
-<td>Гладкий камень</td>
-<td>smelter</td>
-<td>булыжник → камень</td>
-<td>6 с</td>
-<td>200</td>
-</tr>
-<tr>
-<td>Укрепление железа</td>
-<td>anvil</td>
-<td>9 слитков → блок</td>
-<td>12 с</td>
-<td>600</td>
+<td>Стол зачарований</td>
+<td>накладывает зачарования</td>
+<td>только рецепты, одобренные администратором (готовится)</td>
 </tr>
 </tbody>
 </table></div>
-<p><strong>Сырьё.</strong> Принимается и сама руда (<code>RAW_IRON</code>, <code>RAW_GOLD</code>, <code>RAW_COPPER</code>), и блоки руды (обычные и глубинные). Виды можно смешивать на одном складе:
-сначала берётся основное сырьё линии (первое в <code>inputs</code>). При снятии линии сырьё возвращается в основном виде. Принимаются только обычные предметы
-без названий и свойств. Сырьё линии настраивается списком <code>inputs</code> (одиночный <code>input</code> тоже работает).</p>
-<p>Команды: <code>/district factory [menu|info|levels|install|remove|load|collect|upgrade]</code></p>
-<pre><code class="language-text">/district factory install &lt;мастерская&gt; &lt;линия&gt;        установить (оплата со счёта предприятия, деньги в казну)
-/district factory load &lt;мастерская&gt; &lt;линия&gt; [N|all]   загрузить сырьё из инвентаря
-/district factory collect &lt;мастерская&gt; [линия]        забрать продукцию (излишек – в хранилище)
-/district factory upgrade [мастерская]                повысить уровень
-/district factory remove &lt;мастерская&gt; &lt;линия&gt;         снять линию
+<p>Например: две печи плавят железо, одна золото, одна медь; одна наковальня собирает железные блоки, другая железные инструменты.
+<strong>Все руды (включая сырую руду и глубинные), все блоки, инструменты, оружие и броня доступны автоматически</strong>: расход и выход берутся из реестра игры, поэтому баланс
+сохраняется и одобрение не нужно. Меню выбора рецепта: категории (блоки, инструменты, оружие, броня, еда, прочее), поиск по названию результата или сырья, подсказка,
+сколько нужного сырья уже на складе. Опасные предметы запрещены (<code>production.banned-outputs</code>, например TNT).</p>
+<p><strong>Склад и сундуки.</strong></p>
+<ul>
+<li><strong>Склад сырья</strong> общий для всех станков мастерской. Он ограничен (<code>production.stock-items</code>, растёт с уровнем).</li>
+<li><strong>Сундук сырья</strong>: посмотрите на сундук внутри мастерской и выполните <code>/district chest raw</code>. Всё подходящее (нужное станкам с заданием, обычные предметы без названий) само
+  переезжает из сундука на склад; ненужное остаётся. Больше не нужно открывать меню и искать мастерскую.</li>
+<li><strong>Сундук продукции</strong>: <code>/district chest product</code>. Готовая продукция станков выкладывается в него; если он полон, продукция ждёт в буфере станка.
+  Снять пометку: <code>/district chest unmark</code>. Сундуков каждого вида не больше <code>production.chests-max</code> (4). Если сундук сломан, пометка снимается сама.</li>
+<li><strong>Заказы игроков в продукцию не попадают.</strong> Станок без задания обслуживает заказы клиентов (раздел 7), а готовые заказы хранятся отдельно, и игроки забирают их сами.</li>
+</ul>
+<p><strong>Голограмма станка</strong> (раздел 6.6) показывает задание, статус (работает / нет сырья / обесточен / нет места), полоску прогресса, сырьё на складе и продукцию в буфере.</p>
+<p>Команды: <code>/district factory [menu|info|levels|load|collect|upgrade] [мастерская]</code>, <code>/district machine [menu|info|set &lt;рецепт&gt;|clear]</code>, <code>/district chest &lt;raw|product|unmark&gt;</code>.</p>
+<pre><code class="language-text">/district machine set IRON_INGOT         # станок, на который смотрите, плавит железо (рецепт furnace:IRON_INGOT)
+/district machine set craft:IRON_BLOCK   # то же с полным идентификатором
+/district factory load                   # вручную загрузить сырьё из инвентаря на склад
+/district factory collect                # забрать продукцию из буферов в инвентарь
 </code></pre>
 <ul>
-<li>Время партии = <code>seconds / число станков нужного типа / скорость уровня</code>.</li>
-<li>Склад сырья (<code>stock-items</code>, 256) и буфер продукции (<code>buffer-batches</code>, 64) ограничены; при полном буфере или без сырья линия простаивает, время не копится.</li>
-<li>Нужны станки нужного типа и электричество; в режиме <code>USAGE</code> партия платная.</li>
+<li>Время партии берётся из игры (печь 10 секунд, плавильная печь и коптильня 5) или рассчитывается для сборки: база плюс секунды за каждый предмет сырья
+  (<code>assembly-seconds-base</code>, <code>assembly-seconds-per-item</code>), и делится на скорость улучшений.</li>
+<li>Станок работает только при электричестве; в режиме <code>USAGE</code> каждая партия платная.</li>
+<li>Сколько станков одновременно может иметь задание, зависит от уровня мастерской (<code>upgrades</code>, <code>max-lines</code>).</li>
+<li>Старые производственные линии (до версии 1.17) переносятся автоматически: сырьё уходит на склад, продукция возвращается управляющему.</li>
 </ul>
 <h3 id="65-улучшения">6.5. Улучшения</h3>
 <div class="table-wrap"><table>
@@ -1749,7 +1742,7 @@ footer { max-width:980px; margin:50px auto 0; color:var(--muted); font-size:13px
 </tr>
 <tr>
 <td><code>production</code>, <code>upgrades</code></td>
-<td>линии, склад, буфер, уровни улучшений</td>
+<td>склад, буфер, время сборки, сундуки, запрещённая продукция, уровни улучшений</td>
 </tr>
 <tr>
 <td><code>player-plots</code></td>

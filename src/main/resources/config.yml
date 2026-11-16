@@ -277,86 +277,40 @@ services:
       default-price: 1.0
       max-price: 20.0
 
-# ---- Производство и улучшения мастерских ----
-# Линия перерабатывает сырьё со склада в продукцию, работает сама, пока есть электричество.
-# Сырьё не появляется из ничего: каждая партия потребляет сырьё. Сырьё линии - список inputs (или одиночный input);
-# принимается и сама руда (RAW_IRON), и блок руды. Управляющий устанавливает линии
-# (оплата со счёта предприятия), загружает сырьё и забирает продукцию.
+# ---- Производство мастерских ----
+# Каждый станок мастерской получает задание от управляющего (/district machine или shift+ПКМ по станку пустой рукой):
+# печи плавят, наковальни собирают блоки, инструменты, оружие, броню и еду, стол зачарований накладывает одобренные
+# администратором зачарования. Рецепты берутся из реестра игры, поэтому расход и выход такие же, как в игре.
+# Сырьё лежит на общем складе мастерской; его пополняет сундук сырья (/district chest raw), продукция выкладывается в сундук
+# продукции (/district chest product). Станки без задания обслуживают заказы игроков, а заказы в продукцию не попадают.
 production:
-  # множитель времени партии (1.0 - как указано в seconds)
+  # множитель времени партии (1.0 - как в игре; 0.5 - вдвое быстрее)
   time-factor: 1.0
-  # вместимость склада сырья на линию (в предметах) и буфера продукции (в партиях); улучшения умножают
-  stock-items: 256
+  # вместимость склада сырья мастерской (в предметах) и буфера продукции каждого станка (в партиях); улучшения умножают
+  stock-items: 1024
   buffer-batches: 64
-  lines:
-    iron-ingots:
-      title: Выплавка железа
-      station: smelter
-      inputs: [RAW_IRON, IRON_ORE, DEEPSLATE_IRON_ORE]   # сырое железо и блоки руды; первое - основное
-      input-amount: 1
-      output: IRON_INGOT
-      output-amount: 1
-      seconds: 10
-      install-price: 500
-    gold-ingots:
-      title: Выплавка золота
-      station: smelter
-      inputs: [RAW_GOLD, GOLD_ORE, DEEPSLATE_GOLD_ORE, NETHER_GOLD_ORE]
-      input-amount: 1
-      output: GOLD_INGOT
-      output-amount: 1
-      seconds: 10
-      install-price: 800
-    copper-ingots:
-      title: Выплавка меди
-      station: smelter
-      inputs: [RAW_COPPER, COPPER_ORE, DEEPSLATE_COPPER_ORE]
-      input-amount: 1
-      output: COPPER_INGOT
-      output-amount: 1
-      seconds: 10
-      install-price: 400
-    glass:
-      title: Стекло
-      station: smelter
-      input: SAND
-      input-amount: 1
-      output: GLASS
-      output-amount: 1
-      seconds: 8
-      install-price: 300
-    stone:
-      title: Гладкий камень
-      station: smelter
-      input: COBBLESTONE
-      input-amount: 1
-      output: STONE
-      output-amount: 1
-      seconds: 6
-      install-price: 200
-    tool-repair:
-      title: Укрепление железа
-      station: anvil
-      input: IRON_INGOT
-      input-amount: 9
-      output: IRON_BLOCK
-      output-amount: 1
-      seconds: 12
-      install-price: 600
+  # сундуков сырья и сундуков продукции на мастерскую не больше
+  chests-max: 4
+  # время сборки: база + за каждый предмет сырья (секунды)
+  assembly-seconds-base: 4
+  assembly-seconds-per-item: 0.5
+  # предметы, которые нельзя производить (чтобы не получить оружие массового поражения)
+  banned-outputs: [TNT, TNT_MINECART, END_CRYSTAL, RESPAWN_ANCHOR]
 
 # Улучшения: уровни платные (со счёта предприятия, деньги уходят в казну).
+# max-lines - сколько станков мастерской могут одновременно иметь задание.
 # Незаданные значения уровня наследуются от предыдущего. При освобождении мастерской уровень сбрасывается.
 upgrades:
   base:
-    max-lines: 1          # сколько линий можно установить
+    max-lines: 4          # сколько станков может иметь задание
     speed: 1.0            # скорость линий и выполнения заказов
     stock: 1.0            # множитель склада сырья
     buffer: 1.0           # множитель буфера продукции
     order-queue: 0        # прибавка к очереди заказов клиентов
   levels:
-    1: {price: 3000, max-lines: 2, speed: 1.25, stock: 2.0, buffer: 2.0, order-queue: 10}
-    2: {price: 8000, max-lines: 3, speed: 1.5, stock: 4.0, buffer: 4.0, order-queue: 20}
-    3: {price: 20000, max-lines: 5, speed: 2.0, stock: 8.0, buffer: 8.0, order-queue: 40}
+    1: {price: 3000, max-lines: 6, speed: 1.25, stock: 2.0, buffer: 2.0, order-queue: 10}
+    2: {price: 8000, max-lines: 9, speed: 1.5, stock: 4.0, buffer: 4.0, order-queue: 20}
+    3: {price: 20000, max-lines: 14, speed: 2.0, stock: 8.0, buffer: 8.0, order-queue: 40}
 
 # ---- Отели ----
 # Отель - участок типа hotel; номера - вложенные участки типа room (создаёт администратор:

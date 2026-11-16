@@ -831,7 +831,6 @@ public final class PlotService {
         plugin.power().tick();
         plugin.treasuryAuction().tick();
         plugin.orders().tick();
-        plugin.factory().tick();
         plugin.grid().tick();
         plugin.bank().tick();
         plugin.holograms().updateAll();

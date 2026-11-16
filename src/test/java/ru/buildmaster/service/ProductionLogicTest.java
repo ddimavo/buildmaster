@@ -130,26 +130,4 @@ class ProductionLogicTest {
         assertEquals(1.0, c.base().speed(), 1e-9);
         assertNull(c.next(new Plot("w", "w", new ru.buildmaster.model.Box(0, 0, 0, 1, 1, 1))));
     }
-
-    @Test
-    void productionLinesAreReadFromTheConfigAndBrokenOnesSkipped() {
-        YamlConfiguration cfg = new YamlConfiguration();
-        try {
-            cfg.loadFromString("""
-                    production:
-                      lines:
-                        ok: {title: Железо, station: smelter, input: IRON_ORE, output: IRON_INGOT, seconds: 12, install-price: 100}
-                        broken: {input: NOT_A_BLOCK, output: IRON_INGOT}
-                        multi: {station: anvil, input: IRON_INGOT, input-amount: 9, output: IRON_BLOCK}
-                    """);
-        } catch (Exception e) {
-            fail(e);
-        }
-        ProductionCatalog p = new ProductionCatalog(() -> cfg);
-        assertEquals(2, p.lines().size());
-        assertEquals(12, p.get("ok").seconds(), 1e-9);
-        assertEquals(100, p.get("OK").installPrice(), 1e-9, "id без учёта регистра");
-        assertEquals(9, p.get("multi").inputAmount());
-        assertNull(p.get("broken"));
-    }
 }

@@ -12,10 +12,10 @@ import ru.buildmaster.service.BlockRules;
 import ru.buildmaster.service.BankService;
 import ru.buildmaster.service.BuildService;
 import ru.buildmaster.service.DistrictManager;
-import ru.buildmaster.service.FactoryService;
+import ru.buildmaster.service.ProductionService;
+import ru.buildmaster.service.RecipeBook;
 import ru.buildmaster.service.GridService;
 import ru.buildmaster.service.HotelService;
-import ru.buildmaster.service.ProductionCatalog;
 import ru.buildmaster.service.UpgradeCatalog;
 import ru.buildmaster.service.EconomyHook;
 import ru.buildmaster.service.PlotManager;
@@ -59,8 +59,8 @@ public class BuildMasterPlugin extends JavaPlugin {
     private ServiceCatalog catalog;
     private OrderService orders;
     private UpgradeCatalog upgrades;
-    private ProductionCatalog production;
-    private FactoryService factory;
+    private RecipeBook recipes;
+    private ProductionService factory;
     private HotelService hotels;
     private RegionAccess regions;
     private PlayerPlotService playerPlots;
@@ -107,8 +107,8 @@ public class BuildMasterPlugin extends JavaPlugin {
         orders = new OrderService(this);
         orders.load();
         upgrades = new UpgradeCatalog(this::getConfig);
-        production = new ProductionCatalog(this::getConfig);
-        factory = new FactoryService(this);
+        recipes = new RecipeBook(this);
+        factory = new ProductionService(this);
         hotels = new HotelService(this);
         regions = new WorldGuardRegions(getLogger());
         playerPlots = new PlayerPlotService(this);
@@ -125,6 +125,7 @@ public class BuildMasterPlugin extends JavaPlugin {
         plots.load();
         service = new PlotService(this);
         build = new BuildService(this);
+        factory.migrate();
         chatPrompt = new ChatPrompt(this);
         selection = new SelectionListener(this);
 
@@ -157,6 +158,7 @@ public class BuildMasterPlugin extends JavaPlugin {
         // проверка сроков аренды, автопродление и продолжение незавершённых сбросов зданий
         getServer().getScheduler().runTaskTimer(this, service::tick, 100L, 400L);
         getServer().getScheduler().runTaskTimer(this, jobs::minuteTick, 1200L, 1200L);
+        getServer().getScheduler().runTaskTimer(this, factory::tick, 60L, 20L);
         getServer().getScheduler().runTaskTimer(this, machineHolograms::tick, 60L, 20L);
         getServer().getScheduler().runTaskTimer(this, managerPanels::tick, 80L, 40L);
         getServer().getScheduler().runTaskTimer(this, visualizer::tick, 40L, 10L);
@@ -275,8 +277,8 @@ public class BuildMasterPlugin extends JavaPlugin {
         return upgrades;
     }
 
-    public ProductionCatalog production() {
-        return production;
+    public RecipeBook recipes() {
+        return recipes;
     }
 
     /** Доступ к регионам WorldGuard (по умолчанию через рефлексию). */
@@ -329,7 +331,7 @@ public class BuildMasterPlugin extends JavaPlugin {
         return hotels;
     }
 
-    public FactoryService factory() {
+    public ProductionService factory() {
         return factory;
     }
 

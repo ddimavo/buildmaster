@@ -109,6 +109,9 @@ public final class ProtectionListener implements Listener {
             event.setCancelled(true);
             return;
         }
+        if (plot.category == ru.buildmaster.model.Category.WORKSHOP) {
+            plugin.factory().chestBroken(plot, block.getX(), block.getY(), block.getZ());
+        }
         Station broken = Station.fromName(block.getType().name());
         if (broken != null) {
             plugin.stations().removeMachine(plot, block.getX(), block.getY(), block.getZ());
@@ -240,6 +243,17 @@ public final class ProtectionListener implements Listener {
             return;
         }
         Player player = event.getPlayer();
+        // shift+ПКМ по станку мастерской пустой рукой: настройка станка (задание)
+        if (action == Action.RIGHT_CLICK_BLOCK && player.isSneaking() && event.getHand() == org.bukkit.inventory.EquipmentSlot.HAND
+                && (event.getItem() == null || event.getItem().getType().isAir())
+                && plot.category == ru.buildmaster.model.Category.WORKSHOP && !plot.isFree()
+                && (plot.isOwner(player.getUniqueId()) || player.hasPermission("buildmaster.admin"))
+                && plugin.stations().machines(plot).containsKey(ru.buildmaster.service.StationService.posKey(block.getX(), block.getY(), block.getZ()))) {
+            event.setCancelled(true);
+            new ru.buildmaster.gui.MachineMenu(plugin, player, plot, ru.buildmaster.service.StationService.posKey(block.getX(), block.getY(), block.getZ()),
+                    null, 0, "").open();
+            return;
+        }
         if (player.hasPermission("buildmaster.bypass")) {
             return;
         }
