@@ -28,10 +28,10 @@ public final class Html {
             .head img { width: 56px; height: 56px; border-radius: 10px; }
             .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
             .num { font-family: Inter, sans-serif; }
-            .stats { display: flex; gap: 10px; flex-wrap: wrap; }
+            .stats { display: flex; gap: 10px; flex-wrap: wrap; margin: 8px 0; }
             .stat { flex: 1; min-width: 120px; background: #23274a; border-radius: 10px; padding: 8px 12px; border: 1px solid #343a68; }
             .stat b { display: block; font-size: 19px; color: #fff; }
-            .stat span { font-size: 12px; color: #9aa0c0; }
+            .stat > span { font-size: 12px; color: #9aa0c0; }
             .card { display: block; background: linear-gradient(180deg, #2b3160, #202450); border: 2px solid #424a86; border-radius: 14px;
                     padding: 10px 14px; color: #fff; text-decoration: none; cursor: pointer; }
             .card:hover { background: linear-gradient(180deg, #3a4284, #2a306a); border-color: #ffcf5a; }

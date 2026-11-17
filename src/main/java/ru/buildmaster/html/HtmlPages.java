@@ -8,7 +8,11 @@ import java.util.List;
 import org.bukkit.entity.Player;
 import ru.buildmaster.BuildMasterPlugin;
 import ru.buildmaster.model.Category;
+import ru.buildmaster.model.Employee;
+import ru.buildmaster.model.JobApplication;
 import ru.buildmaster.model.Plot;
+import ru.buildmaster.model.ServiceOrder;
+import ru.buildmaster.model.Vacancy;
 import ru.buildmaster.service.Journal;
 import ru.buildmaster.service.PlotFilter;
 import ru.buildmaster.service.ProductionService;
@@ -90,6 +94,10 @@ public final class HtmlPages {
         if (hotels > 0) {
             b.append(link("hotel-" + suffix + ".html", "Мои отели", "Номера, гости, цены: " + hotels));
         }
+        if (plugin.jobs().enabled()) {
+            b.append(link("jobs-" + suffix + ".html", "Работа", "Вакансий: " + plugin.jobs().board().size() + " · работаю: " + jobs));
+        }
+        b.append(link("orders-" + suffix + ".html", "Мои заказы", "Заказов: " + plugin.orders().ofClient(id).size()));
         b.append(link("storage-" + suffix + ".html", "Хранилище", "Вещей: " + stored));
         b.append(link("journal-" + suffix + ".html", "Журнал", "История ваших участков"));
         b.append(link("warnings-" + suffix + ".html", "Уведомления", unread > 0 ? "Непрочитанных: <span class=\"warn\">" + unread + "</span>" : "Непрочитанных нет"));
@@ -441,6 +449,7 @@ public final class HtmlPages {
             if (p.category == Category.WORKSHOP) {
                 workshopBlock(b, p);
             }
+            staffBlock(b, p);
             goodsBlock(b, p);
             b.append("</div></details>");
         }
@@ -612,5 +621,145 @@ public final class HtmlPages {
             b.append("<div class=\"muted\">У вас нет отелей.</div>");
         }
         return Html.page("Мои отели", b.append(nav(suffix, true)).toString());
+    }
+
+    // ------------------------------------------------------------ работа и заказы
+
+    private void staffBlock(StringBuilder b, Plot p) {
+        if (!plugin.jobs().enabled() || !plugin.jobs().categoryAllowed(p.category)) {
+            return;
+        }
+        List<Vacancy> vacancies = plugin.jobs().vacanciesOf(p.id);
+        List<JobApplication> applications = plugin.jobs().applicationsFor(p.id);
+        List<Employee> staff = plugin.jobs().employeesOf(p.id);
+        b.append("<h2>Работники</h2>");
+        if (vacancies.isEmpty() && applications.isEmpty() && staff.isEmpty()) {
+            b.append("<div class=\"muted\">Вакансий и работников нет. Создать вакансию: /district job post ").append(Html.esc(p.id))
+                    .append(" &lt;должность&gt; &lt;мест&gt; &lt;ставка&gt;</div>");
+            return;
+        }
+        for (Vacancy v : vacancies) {
+            b.append("<div class=\"sub\">Вакансия №").append(v.id).append(": ").append(Html.esc(v.role.title())).append(", мест ")
+                    .append(plugin.jobs().freeSlots(v)).append(" из ").append(v.slots).append(", ").append(Html.esc(plugin.jobs().describePay(v)))
+                    .append(v.open ? "" : " <span class=\"warn\">(набор закрыт)</span>").append("</div>")
+                    .append(cmdBtn("district job " + (v.open ? "close " : "open ") + v.id, v.open ? "Закрыть набор" : "Открыть набор", "gray"))
+                    .append(cmdBtn("district job delete " + v.id, "Удалить вакансию", "red"));
+        }
+        if (!applications.isEmpty()) {
+            b.append("<table><tr><th>Отклик</th><th>Должность</th><th></th></tr>");
+            for (JobApplication a : applications) {
+                Vacancy v = plugin.jobs().vacancy(a.vacancyId);
+                b.append("<tr><td>").append(Html.esc(a.applicantName)).append("</td><td>").append(v == null ? "-" : Html.esc(v.role.title()))
+                        .append("</td><td>").append(cmdBtn("district job accept " + a.id, "Принять", ""))
+                        .append(cmdBtn("district job decline " + a.id, "Отклонить", "red")).append("</td></tr>");
+            }
+            b.append("</table>");
+        }
+        if (!staff.isEmpty()) {
+            b.append("<table><tr><th>Работник</th><th>Должность</th><th>К выплате</th><th>Выплачено</th><th></th></tr>");
+            for (Employee e : staff) {
+                Vacancy v = plugin.jobs().vacancy(e.vacancyId);
+                b.append("<tr><td>").append(Html.esc(e.name)).append("</td><td>").append(v == null ? "-" : Html.esc(v.role.title()))
+                        .append("</td><td>").append(money(e.accrued)).append("</td><td>").append(money(e.totalPaid)).append("</td><td>")
+                        .append(cmdBtn("district job fire " + p.id + " " + e.name, "Уволить", "red")).append("</td></tr>");
+            }
+            b.append("</table>");
+        }
+    }
+
+    /** Доска объявлений, мои работы и отклики. */
+    public String jobs(Player player, String suffix) {
+        var id = player.getUniqueId();
+        StringBuilder b = new StringBuilder("<h1>Работа</h1><div class=\"sub\">Зарплата идёт, пока вы находитесь на участке работодателя</div>\n");
+        if (!plugin.jobs().enabled()) {
+            return Html.page("Работа", b.append("<div class=\"muted\">Работа на этом сервере отключена.</div>").append(nav(suffix, true)).toString());
+        }
+        List<Employee> mine = plugin.jobs().jobsOf(id);
+        b.append("<h2>Я работаю</h2>");
+        if (mine.isEmpty()) {
+            b.append("<div class=\"muted\">Вы нигде не работаете.</div>");
+        } else {
+            b.append("<table><tr><th>Предприятие</th><th>Должность</th><th>К выплате</th><th>Выплачено</th><th>Сегодня</th><th></th></tr>");
+            for (Employee e : mine) {
+                Vacancy v = plugin.jobs().vacancy(e.vacancyId);
+                Plot plot = plugin.plots().get(e.plotId);
+                b.append("<tr><td>").append(Html.esc(plot == null ? e.plotId : plot.displayName())).append("</td><td>")
+                        .append(v == null ? "-" : Html.esc(v.role.title())).append("</td><td>").append(money(e.accrued)).append("</td><td>")
+                        .append(money(e.totalPaid)).append("</td><td>").append(e.todayMinutes).append(" мин</td><td>")
+                        .append(cmdBtn("district job quit " + e.plotId, "Уволиться", "red")).append("</td></tr>");
+            }
+            b.append("</table>");
+        }
+        List<JobApplication> apps = plugin.jobs().applicationsBy(id);
+        if (!apps.isEmpty()) {
+            b.append("<h2>Мои отклики</h2><table><tr><th>Предприятие</th><th>Должность</th><th></th></tr>");
+            for (JobApplication a : apps) {
+                Vacancy v = plugin.jobs().vacancy(a.vacancyId);
+                b.append("<tr><td>").append(Html.esc(a.plotId)).append("</td><td>").append(v == null ? "вакансия снята" : Html.esc(v.role.title()))
+                        .append("</td><td>").append(cmdBtn("district job withdraw " + a.id, "Отозвать", "gray")).append("</td></tr>");
+            }
+            b.append("</table>");
+        }
+        List<Vacancy> board = plugin.jobs().board();
+        b.append("<h2>Вакансии (").append(board.size()).append(")</h2>");
+        if (board.isEmpty()) {
+            b.append("<div class=\"muted\">Сейчас вакансий нет.</div>");
+        } else {
+            b.append("<table><tr><th>Должность</th><th>Предприятие</th><th>Работодатель</th><th>Зарплата</th><th>Места</th><th></th></tr>");
+            for (Vacancy v : board) {
+                Plot plot = plugin.plots().get(v.plotId);
+                if (plot == null) {
+                    continue;
+                }
+                JobApplication my = apps.stream().filter(a -> a.vacancyId == v.id).findFirst().orElse(null);
+                boolean working = plugin.jobs().employee(v.plotId, id) != null;
+                b.append("<tr><td>").append(Html.esc(v.role.title())).append("</td><td>").append(Html.esc(plot.displayName()))
+                        .append(" <span class=\"muted\">№ ").append(Html.esc(plot.id)).append("</span></td><td>").append(Html.esc(String.valueOf(plot.ownerName)))
+                        .append("</td><td class=\"plus\">").append(Html.esc(plugin.jobs().describePay(v))).append("</td><td>")
+                        .append(plugin.jobs().freeSlots(v)).append("/").append(v.slots).append("</td><td>");
+                if (working) {
+                    b.append("<span class=\"plus\">вы здесь работаете</span>");
+                } else if (my != null) {
+                    b.append(cmdBtn("district job withdraw " + my.id, "Отозвать отклик", "gray"));
+                } else {
+                    b.append(cmdBtn("district job apply " + v.id, "Откликнуться", ""));
+                }
+                b.append("</td></tr>");
+            }
+            b.append("</table>");
+        }
+        return Html.page("Работа", b.append(nav(suffix, true)).toString());
+    }
+
+    /** Заказы игрока во всех мастерских: готовые забрать, ожидающие отменить. */
+    public String orders(Player player, String suffix) {
+        List<ServiceOrder> orders = plugin.orders().ofClient(player.getUniqueId());
+        StringBuilder b = new StringBuilder("<h1>Мои заказы</h1><div class=\"sub\">Услуги мастерских: переплавка, ремонт и другие</div>\n");
+        if (orders.isEmpty()) {
+            b.append("<div class=\"muted\">Заказов нет. Откройте мастерскую и закажите услугу: /district service order.</div>");
+        } else {
+            b.append("<table><tr><th>Услуга</th><th>Мастерская</th><th>Объём</th><th>Оплачено</th><th>Статус</th><th></th></tr>");
+            for (ServiceOrder o : orders) {
+                var def = plugin.catalog().get(o.offerKey);
+                b.append("<tr><td>").append(Html.esc(def == null ? o.offerKey : def.title())).append(" <span class=\"muted\">№ ").append(Html.esc(o.shortId()))
+                        .append("</span></td><td>").append(Html.esc(o.plotId)).append("</td><td>").append(o.units).append("</td><td>")
+                        .append(money(o.paid)).append("</td><td>");
+                switch (o.state) {
+                    case PENDING -> b.append("<span class=\"warn\">в очереди</span> <span class=\"muted\">").append(Html.esc(plugin.orders().eta(o))).append("</span>");
+                    case ACTIVE -> b.append("<span class=\"plus\">выполняется ").append(o.unitsDone).append("/").append(o.units)
+                            .append("</span> <span class=\"muted\">").append(Html.esc(plugin.orders().eta(o))).append("</span>");
+                    case READY -> b.append("<span class=\"plus\">готов</span>");
+                }
+                b.append("</td><td>");
+                if (o.state == ServiceOrder.State.READY) {
+                    b.append(cmdBtn("district service collect " + o.shortId(), "Забрать", ""));
+                } else if (o.state == ServiceOrder.State.PENDING) {
+                    b.append(cmdBtn("district service cancel " + o.shortId(), "Отменить", "red"));
+                }
+                b.append("</td></tr>");
+            }
+            b.append("</table>");
+        }
+        return Html.page("Мои заказы", b.append(nav(suffix, true)).toString());
     }
 }

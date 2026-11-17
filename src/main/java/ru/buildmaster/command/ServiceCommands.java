@@ -52,7 +52,12 @@ final class ServiceCommands {
         String sub = args.length == 0 ? "orders" : args[0].toLowerCase(Locale.ROOT);
         String[] rest = args.length == 0 ? new String[0] : Arrays.copyOfRange(args, 1, args.length);
         switch (sub) {
-            case "orders", "menu" -> new MyOrdersMenu(plugin, player(sender), 0).open();
+            case "orders", "menu" -> {
+                Player p = player(sender);
+                if (rest.length > 0 && rest[0].equalsIgnoreCase("classic") || !plugin.htmlMenus().open(p, ru.buildmaster.html.HtmlMenus.Kind.ORDERS)) {
+                    new MyOrdersMenu(plugin, p, 0).open();
+                }
+            }
             case "list" -> list(player(sender));
             case "offers" -> offers(sender, rest.length > 0 ? rest[0] : null);
             case "order" -> {

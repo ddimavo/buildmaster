@@ -75,7 +75,12 @@ final class JobCommands {
         String sub = args.length == 0 ? "board" : args[0].toLowerCase(Locale.ROOT);
         String[] rest = args.length == 0 ? new String[0] : Arrays.copyOfRange(args, 1, args.length);
         switch (sub) {
-            case "board" -> new JobBoardMenu(plugin, player(sender), 0).open();
+            case "board" -> {
+                Player p = player(sender);
+                if (rest.length > 0 && rest[0].equalsIgnoreCase("classic") || !plugin.htmlMenus().open(p, ru.buildmaster.html.HtmlMenus.Kind.JOBS)) {
+                    new JobBoardMenu(plugin, p, 0).open();
+                }
+            }
             case "list" -> list(sender);
             case "apply" -> {
                 need(rest, 1, "/district job apply <№ вакансии>");

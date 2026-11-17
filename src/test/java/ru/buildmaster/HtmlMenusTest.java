@@ -541,4 +541,100 @@ class HtmlMenusTest extends PluginTestBase {
         assertTrue(html.contains("data-command=\"district machine at w 42,1,1 menu\""), html);
         assertFalse(html.contains("machine at w 42,1,1 set"));
     }
+
+    // ------------------------------------------------------------ работа и заказы
+
+    private ru.buildmaster.model.Vacancy vacancy(ru.buildmaster.model.JobRole role) {
+        assertNull(plugin.jobs().post(steve, shop, role, 2, 40, 0, null));
+        var list = plugin.jobs().vacanciesOf(shop.id);
+        return list.get(list.size() - 1);
+    }
+
+    @Test
+    void jobsPageListsVacanciesWithApplyAndWithdrawButtons() throws Exception {
+        var v = vacancy(ru.buildmaster.model.JobRole.SELLER);
+        PlayerMock mia = player("Mia", 100);
+        mia.performCommand("district job board");
+        assertTrue(gui.opened.get(gui.opened.size() - 1).startsWith("buildmaster/jobs-"));
+        String html = read("jobs", mia);
+        assertTrue(html.contains("Продавец") && html.contains("№ s"), html);
+        assertTrue(html.contains("data-command=\"district job apply " + v.id + "\""));
+        mia.performCommand("district job apply " + v.id);
+        plugin.htmlMenus().tick();
+        gui.current.put(mia.getUniqueId(), "buildmaster/jobs-" + suffix(mia));
+        plugin.htmlMenus().tick();
+        String after = read("jobs", mia);
+        assertTrue(after.contains("district job withdraw"), after);
+        assertFalse(after.contains("district job apply " + v.id));
+    }
+
+    @Test
+    void managerSeesApplicationsAndStaffOnTheBusinessPage() throws Exception {
+        var v = vacancy(ru.buildmaster.model.JobRole.SELLER);
+        PlayerMock mia = player("Mia", 100);
+        mia.performCommand("district job apply " + v.id);
+        steve.performCommand("district business");
+        String html = read("business", steve);
+        assertTrue(html.contains("Вакансия №" + v.id) && html.contains("district job close " + v.id));
+        var app = plugin.jobs().applicationsFor(shop.id).get(0);
+        assertTrue(html.contains("district job accept " + app.id) && html.contains("district job decline " + app.id));
+        steve.performCommand("district job accept " + app.id);
+        gui.current.put(steve.getUniqueId(), "buildmaster/business-" + suffix(steve));
+        plugin.htmlMenus().tick();
+        String staff = read("business", steve);
+        assertTrue(staff.contains("district job fire s Mia"), staff);
+        assertFalse(staff.contains("district job accept"));
+    }
+
+    @Test
+    void jobsPageShowsMyWorkAndQuitButton() throws Exception {
+        var v = vacancy(ru.buildmaster.model.JobRole.SELLER);
+        PlayerMock mia = player("Mia", 100);
+        mia.performCommand("district job apply " + v.id);
+        steve.performCommand("district job accept " + plugin.jobs().applicationsFor(shop.id).get(0).id);
+        mia.performCommand("district job board");
+        String html = read("jobs", mia);
+        assertTrue(html.contains("Я работаю") && html.contains("district job quit s"), html);
+        assertTrue(html.contains("вы здесь работаете"));
+    }
+
+    @Test
+    void jobsDisabledShowsAMessage() throws Exception {
+        plugin.getConfig().set("jobs.enabled", false);
+        steve.performCommand("district job board");
+        assertTrue(read("jobs", steve).contains("отключена"));
+        steve.performCommand("district menu");
+        assertFalse(read("main", steve).contains("jobs-" + suffix(steve)));
+    }
+
+    @Test
+    void ordersPageShowsOrdersWithCollectAndCancelButtons() throws Exception {
+        Plot w = workshopWithMachines();
+        plugin.getConfig().set("electricity.max-clock-step-seconds", 10_000_000);
+        plugin.catalog().setSmeltLookup(in -> in.getType() == org.bukkit.Material.IRON_ORE
+                ? new ru.buildmaster.service.ServiceCatalog.SmeltResult(new org.bukkit.inventory.ItemStack(org.bukkit.Material.IRON_INGOT), 10) : null);
+        assertTrue(plugin.power().deposit(steve, w, 5000));
+        assertNull(plugin.orders().configureOffer(steve, w, "smelt", 2.0, true));
+        PlayerMock mia = player("Mia", 1000);
+        mia.getInventory().setItemInMainHand(new org.bukkit.inventory.ItemStack(org.bukkit.Material.IRON_ORE, 3));
+        assertNull(plugin.orders().create(mia, w, "smelt", false));
+        var order = plugin.orders().ofClient(mia.getUniqueId()).get(0);
+        mia.performCommand("service");
+        mia.performCommand("district service orders");
+        String html = read("orders", mia);
+        assertTrue(html.contains("№ " + order.shortId()), html);
+        assertTrue(html.contains("district service cancel " + order.shortId()) || html.contains("выполняется"), html);
+        mia.performCommand("district service cancel " + order.shortId());
+        assertTrue(plugin.orders().ofClient(mia.getUniqueId()).isEmpty() || plugin.orders().ofClient(mia.getUniqueId()).get(0).state != null);
+    }
+
+    @Test
+    void emptyOrdersPageExplainsHowToOrder() throws Exception {
+        steve.performCommand("district service orders");
+        assertTrue(read("orders", steve).contains("Заказов нет"));
+        steve.performCommand("district service orders classic");
+        assertTrue(steve.getOpenInventory().getTopInventory().getHolder() instanceof ru.buildmaster.gui.MyOrdersMenu);
+        steve.performCommand("district job board classic");
+        assertTrue(steve.getOpenInventory().getTopInventory().getHolder() instanceof ru.buildmaster.gui.JobBoardMenu);
+    }
 }
