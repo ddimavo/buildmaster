@@ -38,7 +38,6 @@ class PersistenceTest extends PluginTestBase {
         p.spawnX = 4;
         p.spawnY = 5;
         p.spawnZ = 6;
-        p.zones.put("фасад", new Plot.Zone("фасад", new Box(0, 0, 0, 9, 3, 0), "BRICKS"));
         p.restorePending = true;
         p.restoreFor = owner;
         p.restoreMode = Plot.RestoreMode.ITEMS_ONLY;
@@ -69,7 +68,6 @@ class PersistenceTest extends PluginTestBase {
         assertFalse(q.resetOnRelease);
         assertEquals(999L, q.graceUntil);
         assertTrue(q.hasSpawn);
-        assertEquals("BRICKS", q.zones.get("фасад").icon());
         assertTrue(q.restorePending);
         assertEquals(owner, q.restoreFor);
         assertEquals(Plot.RestoreMode.ITEMS_ONLY, q.restoreMode);

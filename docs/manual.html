@@ -85,11 +85,11 @@ footer { max-width:980px; margin:50px auto 0; color:var(--muted); font-size:13px
 }
 </style>
 </head>
-<body data-version="2.0.0.">
+<body data-version="2.1.0.">
 <div class="topbar"><button id="menu">☰ Разделы</button><b>IndustryReborn</b></div>
 <div class="layout">
 <aside id="side">
-  <div class="brand"><div class="logo">🏙️</div><div><b>IndustryReborn</b><small>Руководство 2.0.0.</small></div></div>
+  <div class="brand"><div class="logo">🏙️</div><div><b>IndustryReborn</b><small>Руководство 2.1.0.</small></div></div>
   <input id="search" type="search" placeholder="Поиск по разделам…" autocomplete="off">
   <nav id="nav">
 <a class="l2" href="#1-что-такое-industryreborn">1. Что такое IndustryReborn</a>
@@ -191,12 +191,12 @@ footer { max-width:980px; margin:50px auto 0; color:var(--muted); font-size:13px
   <div class="hero">
     <h1>IndustryReborn</h1>
     <p>Район коммерции для Minecraft: участки, аренда, мастерские и электричество, отели, работники и зарплаты, банк, общий аукцион и участки игроков на WorldGuard.</p>
-    <div class="chips"><span>Paper 1.21.6 – 26.x</span><span>Java 21</span><span>Vault</span><span>WorldGuard · ChestShop · zAuctionHouse (по желанию)</span><span>Руководство 2.0.0.</span></div>
+    <div class="chips"><span>Paper 1.21.6 – 26.x</span><span>Java 21</span><span>Vault</span><span>WorldGuard · ChestShop · zAuctionHouse (по желанию)</span><span>Руководство 2.1.0.</span></div>
   </div>
   <div class="content">
 
 <blockquote class="callout">
-<p>Версия руководства: 2.0.0. Плагин: Paper 1.21.6 – 26.x, Java 21+. Все команды начинаются с <code>/district</code> (псевдонимы <code>/dt</code>, <code>/uchastok</code>).
+<p>Версия руководства: 2.1.0. Плагин: Paper 1.21.6 – 26.x, Java 21+. Все команды начинаются с <code>/district</code> (псевдонимы <code>/dt</code>, <code>/uchastok</code>).
 Если вы только начинаете, прочитайте разделы 1–3 и сразу переходите к нужной роли: <strong>игрок</strong> (раздел 4), <strong>управляющий предприятием</strong> (5–8), <strong>владелец региона WorldGuard</strong> (9), <strong>администратор</strong> (13–14).</p>
 </blockquote>
 
@@ -513,12 +513,9 @@ footer { max-width:980px; margin:50px auto 0; color:var(--muted); font-size:13px
 <p><code>/district release [номер] confirm</code> или кнопка «Отказаться» в меню. Ваши вещи вернутся в хранилище. Если включён
 <strong>сброс здания при отказе</strong> (<code>/district autoreset on|off</code>), здание вернётся к исходному виду. Администрация вправе сбросить здание в любой момент.</p>
 <h3 id="45-изменение-здания">4.5. Изменение здания</h3>
-<ul>
-<li><strong>Меню «Изменить здание»</strong> или <code>/district replace &lt;зона|все&gt; &lt;из&gt; &lt;в&gt;</code>, например <code>/district replace фасад oak_planks bricks</code>.</li>
-<li><strong>Зоны</strong> (<code>/district zones</code>) – части здания (фасад, крыша), которые заранее задал администратор.</li>
-<li>Запрещены блоки из списка <code>replace-banned</code> (TNT, лава, вода, огонь, командные блоки, бедрок и др.) и все станки: станки ставятся только руками.</li>
-<li>Нельзя менять участки игроков (здание принадлежит арендодателю) и стены/двери номеров отелей.</li>
-</ul>
+<p>Менять материалы здания из меню или командой больше нельзя: функция «Изменить здание» (замена фасада, зоны) удалена. Строить и ломать внутри своего
+участка можно как обычно, пока не нарушены запреты (<code>place-banned</code>, станки ставятся только руками). Нельзя менять участки игроков (здание принадлежит
+арендодателю) и стены и двери номеров отелей.</p>
 <h3 id="46-названия-и-описания">4.6. Названия и описания</h3>
 <p><code>/district name [номер] &lt;текст&gt;</code> и <code>/district desc [номер] &lt;текст&gt;</code> или кнопки в меню. Текст проверяется (длина, запрещённые символы)
 и уходит администратору. Решение придёт в чат; если вы были не в сети – при входе. При отказе вы увидите причину.</p>
@@ -1405,9 +1402,6 @@ footer { max-width:980px; margin:50px auto 0; color:var(--muted); font-size:13px
 /district setprice|setrent &lt;номер&gt; &lt;цена|-&gt;
 /district setspawn [номер]              точка телепорта
 /district holo [номер]                  перенести голограмму в вашу позицию (сразу)
-/district zone add &lt;номер&gt; &lt;имя&gt; [блок]   зона для замены материалов (фасад, крыша...)
-/district zone remove &lt;номер&gt; &lt;имя&gt;
-/district zone list [номер]
 /district resnapshot &lt;номер&gt;            запомнить текущий вид как исходный
 /district delete &lt;номер&gt;                удалить свободный участок
 </code></pre>
@@ -1565,14 +1559,6 @@ footer { max-width:980px; margin:50px auto 0; color:var(--muted); font-size:13px
 <td>права</td>
 </tr>
 <tr>
-<td><code>replace &lt;зона|все&gt; &lt;из&gt; &lt;в&gt;</code></td>
-<td>заменить материал</td>
-</tr>
-<tr>
-<td><code>zones [номер]</code></td>
-<td>части здания</td>
-</tr>
-<tr>
 <td><code>tp &lt;номер&gt;</code></td>
 <td>телепорт</td>
 </tr>
@@ -1674,10 +1660,6 @@ footer { max-width:980px; margin:50px auto 0; color:var(--muted); font-size:13px
 <tr>
 <td><code>holo [номер]</code></td>
 <td>перенести голограмму в вашу позицию</td>
-</tr>
-<tr>
-<td><code>zone add|remove|list</code></td>
-<td>зоны здания</td>
 </tr>
 <tr>
 <td><code>resnapshot &lt;номер&gt;</code></td>
@@ -1804,8 +1786,8 @@ footer { max-width:980px; margin:50px auto 0; color:var(--muted); font-size:13px
 <td>защита</td>
 </tr>
 <tr>
-<td><code>replace-banned</code>, <code>place-banned</code></td>
-<td>запрещённые блоки при замене и стройке (маски <code>*TORCH*</code>, <code>*_SAPLING</code>)</td>
+<td><code>place-banned</code></td>
+<td>запрещённые блоки при стройке (маски <code>*TORCH*</code>, <code>*_SAPLING</code>)</td>
 </tr>
 <tr>
 <td><code>original-blocks-drop-nothing</code></td>

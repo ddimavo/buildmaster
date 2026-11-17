@@ -69,7 +69,6 @@ public final class Plot {
     }
 
     /** Именованная часть здания (фасад, крыша, интерьер...), внутри участка. */
-    public record Zone(String name, Box box, String icon) { }
 
     public final String id;
     public final String world;
@@ -201,7 +200,6 @@ public final class Plot {
     public double discountPercent;
     /** Выручка предприятия за всё время: оплата номеров, продажи магазина, оплаченные заказы услуг. */
     public double revenue;
-    public final Map<String, Zone> zones = new LinkedHashMap<>();
 
     public boolean hasSpawn;
     public double spawnX, spawnY, spawnZ;

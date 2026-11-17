@@ -10,7 +10,6 @@ import ru.industryreborn.listener.ProtectionListener;
 import ru.industryreborn.listener.SelectionListener;
 import ru.industryreborn.service.BlockRules;
 import ru.industryreborn.service.BankService;
-import ru.industryreborn.service.BuildService;
 import ru.industryreborn.service.DistrictManager;
 import ru.industryreborn.service.ProductionService;
 import ru.industryreborn.service.RecipeBook;
@@ -40,7 +39,6 @@ public class IndustryRebornPlugin extends JavaPlugin {
 
     private PlotManager plots;
     private PlotService service;
-    private BuildService build;
     private BlockRules rules;
     private EconomyHook economy;
     private StorageService storage;
@@ -168,7 +166,6 @@ public class IndustryRebornPlugin extends JavaPlugin {
         plots = new PlotManager(this);
         plots.load();
         service = new PlotService(this);
-        build = new BuildService(this);
         factory.migrate();
         chatPrompt = new ChatPrompt(this);
         selection = new SelectionListener(this);
@@ -275,9 +272,6 @@ public class IndustryRebornPlugin extends JavaPlugin {
         return service;
     }
 
-    public BuildService build() {
-        return build;
-    }
 
     public BlockRules rules() {
         return rules;

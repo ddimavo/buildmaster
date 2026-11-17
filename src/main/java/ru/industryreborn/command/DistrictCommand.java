@@ -38,15 +38,13 @@ import ru.industryreborn.util.Text;
 public final class DistrictCommand implements CommandExecutor, TabCompleter {
 
     private static final Pattern ID = Pattern.compile("^[A-Za-z0-9_-]{1,32}$");
-    private static final Pattern ZONE = Pattern.compile("^[\\p{L}\\p{N}_-]{1,24}$");
-    private static final int MAX_ZONES = 18;
     private static final int MAX_TRUSTED = 10;
 
     private static final List<String> PLAYER_SUBS = List.of("menu", "list", "info", "buy", "rent", "extend",
-            "autorenew", "autoreset", "release", "trust", "untrust", "perm", "account", "power", "warnings", "tp", "replace",
-            "zones", "storage", "claim", "journal", "name", "desc", "bank", "service", "factory", "room", "region", "job", "hologram", "machine", "chest", "shop", "goods", "storefront", "link", "unlink", "enchant", "ui", "plots", "business", "hotel", "admin", "help");
+            "autorenew", "autoreset", "release", "trust", "untrust", "perm", "account", "power", "warnings", "tp",
+            "storage", "claim", "journal", "name", "desc", "bank", "service", "factory", "room", "region", "job", "hologram", "machine", "chest", "shop", "goods", "storefront", "link", "unlink", "enchant", "ui", "plots", "business", "hotel", "admin", "help");
     private static final List<String> ADMIN_SUBS = List.of("wand", "pos1", "pos2", "create", "delete", "evict",
-            "setprice", "setrent", "setspawn", "zone", "resnapshot", "reload", "seize", "reset", "holo", "category",
+            "setprice", "setrent", "setspawn", "resnapshot", "reload", "seize", "reset", "holo", "category",
             "moderation", "arrest", "auction", "show");
     /** Команды банка и электросети: отдельные права industryreborn.bank и industryreborn.grid. */
     private static final List<String> GRID_SUBS = List.of("grid", "area");
@@ -97,8 +95,6 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
                 case "trust" -> withPlayer(sender, p -> trust(p, rest, true));
                 case "untrust" -> withPlayer(sender, p -> trust(p, rest, false));
                 case "tp" -> withPlayer(sender, p -> teleport(p, rest));
-                case "replace" -> withPlayer(sender, p -> replace(p, rest));
-                case "zones" -> withPlayer(sender, p -> zones(p, rest.length > 0 ? rest[0] : null));
                 case "storage", "claim" -> withPlayer(sender, p -> {
                     String arg = rest.length > 0 ? rest[0].toLowerCase(Locale.ROOT) : "";
                     if (arg.equals("take")) {
@@ -215,7 +211,6 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
                 case "setprice" -> setPrice(sender, rest, true);
                 case "setrent" -> setPrice(sender, rest, false);
                 case "setspawn" -> withPlayer(sender, p -> setSpawn(p, rest));
-                case "zone" -> withPlayer(sender, p -> zone(p, rest));
                 case "resnapshot" -> withPlayer(sender, p -> resnapshot(p, rest));
                 case "reload" -> {
                     plugin.reload();
@@ -308,8 +303,6 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
                 "/district autorenew <on|off> [номер] - автопродление",
                 "/district release [номер] confirm - отказаться от участка",
                 "/district trust|untrust <игрок> [номер] - доверенные игроки",
-                "/district replace <зона|все> <из> <в> - заменить материал в здании",
-                "/district zones [номер] - части здания",
                 "/district tp <номер> - телепорт к участку",
                 "/district storage - хранилище (вещи, возвращённые с участков)",
                 "/district journal - журнал ваших участков и решений администрации",
@@ -356,7 +349,6 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
                     "/district delete <номер> - удалить свободный участок",
                     "/district setprice|setrent <номер> <цена|-> - изменить цены",
                     "/district setspawn [номер] - точка телепорта",
-                    "/district zone add <номер> <имя> [блок-иконка] | remove <номер> <имя> | list [номер]",
                     "/district resnapshot <номер> - запомнить текущий вид как исходный",
                     "/district reload - перезагрузка"};
             for (String l : admin) {
@@ -406,9 +398,6 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
                 lines.add("<gray> Осталось: <white>" + Text.duration(plot.rentedUntil - System.currentTimeMillis())
                         + "<gray>, автопродление: " + (plot.autoRenew ? "<green>вкл" : "<red>выкл"));
             }
-        }
-        if (!plot.zones.isEmpty()) {
-            lines.add("<gray> Зоны: <white>" + Text.esc(String.join(", ", plot.zones.keySet())));
         }
         return lines;
     }
@@ -846,57 +835,6 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
         plugin.service().teleport(p, plot);
     }
 
-    private void replace(Player p, String[] args) {
-        if (args.length < 3) {
-            throw new CommandError("Использование: /district replace <зона|все> <из> <в>  (например: /district replace фасад oak_planks bricks)");
-        }
-        Plot plot = plugin.plots().at(p.getLocation());
-        if (plot == null) {
-            throw new CommandError("Встаньте внутрь своего участка.");
-        }
-        if (!plot.isOwner(p.getUniqueId())) {
-            throw new CommandError("Менять здание может только владелец участка.");
-        }
-        Box area;
-        if (args[0].equalsIgnoreCase("все") || args[0].equalsIgnoreCase("all")) {
-            area = plot.box;
-        } else {
-            Plot.Zone zone = findZone(plot, args[0]);
-            if (zone == null) {
-                throw new CommandError("Зона «" + args[0] + "» не найдена. Доступно: все"
-                        + (plot.zones.isEmpty() ? "" : ", " + String.join(", ", plot.zones.keySet())));
-            }
-            area = zone.box();
-        }
-        Material from = Material.matchMaterial(args[1]);
-        Material to = Material.matchMaterial(args[2]);
-        if (from == null || !from.isBlock()) {
-            throw new CommandError("Неизвестный блок: " + args[1]);
-        }
-        if (to == null || !to.isBlock()) {
-            throw new CommandError("Неизвестный блок: " + args[2]);
-        }
-        plugin.build().replace(p, plot, area, from, to);
-    }
-
-    private static Plot.Zone findZone(Plot plot, String name) {
-        for (Plot.Zone z : plot.zones.values()) {
-            if (z.name().equalsIgnoreCase(name)) {
-                return z;
-            }
-        }
-        return null;
-    }
-
-    private void zones(Player p, String id) {
-        Plot plot = plotOrHere(p, id);
-        if (plot.zones.isEmpty()) {
-            Text.send(p, "<gray>У участка нет отдельных зон. Можно заменять во всём здании: /district replace все ...");
-            return;
-        }
-        Text.send(p, "<yellow>Зоны участка " + plot.id + ": <white>все, " + Text.esc(String.join(", ", plot.zones.keySet())));
-    }
-
     /** name|desc [номер] <текст...>: текст уходит на проверку администратору. */
     private void submitText(Player p, String[] args, Request.Type type) {
         if (args.length < 1) {
@@ -1307,61 +1245,6 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
         plugin.service().resnapshot(p, plot);
     }
 
-    private void zone(Player p, String[] args) {
-        if (args.length < 1) {
-            throw new CommandError("Использование: /district zone <add|remove|list> ...");
-        }
-        switch (args[0].toLowerCase(Locale.ROOT)) {
-            case "add" -> {
-                if (args.length < 3) {
-                    throw new CommandError("Использование: /district zone add <номер> <имя> [блок-иконка]");
-                }
-                Plot plot = requirePlot(args[1]);
-                String name = args[2].toLowerCase(Locale.ROOT);
-                if (!ZONE.matcher(name).matches()) {
-                    throw new CommandError("Имя зоны: буквы, цифры, _ и -, до 24 символов.");
-                }
-                if (name.equals("все") || name.equals("all")) {
-                    throw new CommandError("Это имя зарезервировано.");
-                }
-                if (plot.zones.size() >= MAX_ZONES && !plot.zones.containsKey(name)) {
-                    throw new CommandError("Не больше " + MAX_ZONES + " зон на участок.");
-                }
-                Material icon = Material.BRICKS;
-                if (args.length > 3) {
-                    icon = Material.matchMaterial(args[3]);
-                    if (icon == null || !icon.isItem()) {
-                        throw new CommandError("Неизвестный предмет для иконки: " + args[3]);
-                    }
-                }
-                SelectionListener.Selection sel = plugin.selection().get(p);
-                Box box = sel == null ? null : sel.box();
-                if (box == null || !plot.world.equals(sel.world)) {
-                    throw new CommandError("Сначала выделите область зоны внутри участка.");
-                }
-                if (!plot.box.contains(box)) {
-                    throw new CommandError("Зона должна целиком находиться внутри участка " + plot.id + ".");
-                }
-                plot.zones.put(name, new Plot.Zone(name, box, icon.name()));
-                plugin.plots().save();
-                Text.ok(p, "Зона «" + name + "» (" + box.describe() + ") добавлена к участку " + plot.id + ".");
-            }
-            case "remove" -> {
-                if (args.length < 3) {
-                    throw new CommandError("Использование: /district zone remove <номер> <имя>");
-                }
-                Plot plot = requirePlot(args[1]);
-                if (plot.zones.remove(args[2].toLowerCase(Locale.ROOT)) == null) {
-                    throw new CommandError("Такой зоны нет.");
-                }
-                plugin.plots().save();
-                Text.ok(p, "Зона удалена.");
-            }
-            case "list" -> zones(p, args.length > 1 ? args[1] : null);
-            default -> throw new CommandError("Использование: /district zone <add|remove|list> ...");
-        }
-    }
-
     // ---------------------------------------------------------------- автодополнение
 
     @Override
@@ -1429,7 +1312,7 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
         String current = args[n - 1];
         Plot here = sender instanceof Player p ? plugin.plots().at(p.getLocation()) : null;
         switch (sub) {
-            case "info", "buy", "tp", "zones", "resnapshot", "setspawn", "delete", "evict", "seize", "reset", "holo" -> {
+            case "info", "buy", "tp", "resnapshot", "setspawn", "delete", "evict", "seize", "reset", "holo" -> {
                 if (n == 2) {
                     result.addAll(plotIds(sub.equals("buy") ? Plot.Status.FREE : null));
                 }
@@ -1464,18 +1347,6 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
                     Bukkit.getOnlinePlayers().forEach(pl -> result.add(pl.getName()));
                 } else if (n == 3) {
                     result.addAll(plotIds(null));
-                }
-            }
-            case "replace" -> {
-                if (n == 2) {
-                    result.add("все");
-                    if (here != null) {
-                        result.addAll(here.zones.keySet());
-                    }
-                } else if (n == 3) {
-                    addMaterials(result, false);
-                } else if (n == 4) {
-                    addMaterials(result, true);
                 }
             }
             case "create" -> {
@@ -1553,20 +1424,6 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
                     Bukkit.getOnlinePlayers().forEach(pl -> result.add(pl.getName()));
                 }
             }
-            case "zone" -> {
-                if (n == 2) {
-                    result.addAll(List.of("add", "remove", "list"));
-                } else if (n == 3) {
-                    result.addAll(plotIds(null));
-                } else if (n == 4 && args[1].equalsIgnoreCase("remove")) {
-                    Plot plot = plugin.plots().get(args[2]);
-                    if (plot != null) {
-                        result.addAll(plot.zones.keySet());
-                    }
-                } else if (n == 5 && args[1].equalsIgnoreCase("add")) {
-                    addMaterials(result, false);
-                }
-            }
             default -> { }
         }
         return filter(result, current);
@@ -1580,20 +1437,6 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
             }
         }
         return ids;
-    }
-
-    private void addMaterials(List<String> out, boolean targets) {
-        if (targets) {
-            for (Material m : plugin.rules().replaceTargets()) {
-                out.add(m.getKey().getKey());
-            }
-        } else {
-            for (Material m : Material.values()) {
-                if (!m.isLegacy() && m.isBlock() && !m.isAir()) {
-                    out.add(m.getKey().getKey());
-                }
-            }
-        }
     }
 
     private static List<String> filter(List<String> options, String prefix) {

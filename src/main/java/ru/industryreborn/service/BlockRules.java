@@ -13,21 +13,10 @@ import org.bukkit.configuration.file.FileConfiguration;
 /** Правила: какими блоками можно заменять материалы и что можно ставить при стройке. */
 public final class BlockRules {
 
-    private List<Pattern> replaceBanned = List.of();
     private List<Pattern> placeBanned = List.of();
-    private List<Material> replaceTargets = List.of();
 
     public void reload(FileConfiguration cfg) {
-        replaceBanned = compile(cfg.getStringList("replace-banned"));
         placeBanned = compile(cfg.getStringList("place-banned"));
-        List<Material> list = new ArrayList<>();
-        for (Material m : Material.values()) {
-            if (canReplaceWith(m)) {
-                list.add(m);
-            }
-        }
-        list.sort(Comparator.comparing(m -> m.getKey().getKey()));
-        replaceTargets = list;
     }
 
     private static List<Pattern> compile(List<String> globs) {
@@ -49,17 +38,8 @@ public final class BlockRules {
         return false;
     }
 
-    /** Материал можно использовать как цель замены (в меню и командой). */
-    public boolean canReplaceWith(Material m) {
-        return !m.isLegacy() && m.isBlock() && m.isItem() && !m.isAir() && !matches(replaceBanned, m);
-    }
-
     public boolean canPlace(Material m) {
         return !matches(placeBanned, m);
-    }
-
-    public List<Material> replaceTargets() {
-        return replaceTargets;
     }
 
     /** Блоки с данными (сундуки, таблички, кровати...) нельзя заменять: данные пропадут. */

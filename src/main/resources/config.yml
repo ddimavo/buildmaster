@@ -30,47 +30,6 @@ fire-protection: true
 explosion-protection: true
 liquid-protection: true
 
-# Запрещённые блоки при ЗАМЕНЕ материала.
-# Поддерживаются точные имена и маски со звёздочкой: *TORCH*, *_SAPLING
-replace-banned:
-  - TNT
-  - "*LAVA*"
-  - "*WATER*"
-  - FIRE
-  - SOUL_FIRE
-  - "*TORCH*"
-  - "*_SAPLING"
-  - "*PROPAGULE"
-  - "*FUNGUS"
-  - "*SPAWNER"
-  - VAULT
-  - "*COMMAND_BLOCK*"
-  - BARRIER
-  - STRUCTURE_BLOCK
-  - STRUCTURE_VOID
-  - JIGSAW
-  - BEDROCK
-  - "END_PORTAL*"
-  - NETHER_PORTAL
-  - END_GATEWAY
-  - REINFORCED_DEEPSLATE
-  - DRAGON_EGG
-  - RESPAWN_ANCHOR
-  - SAND
-  - RED_SAND
-  - GRAVEL
-  - "*_CONCRETE_POWDER"
-  - "*ANVIL"
-  - "SUSPICIOUS_*"
-  - MAGMA_BLOCK
-  - CACTUS
-  - WITHER_ROSE
-  - SWEET_BERRY_BUSH
-  - POWDER_SNOW
-  - "*CAMPFIRE"
-  - "*SCULK*"
-  - CREAKING_HEART
-
 # Запрещённые предметы при обычной СТРОЙКЕ владельцем внутри участка
 place-banned:
   - TNT

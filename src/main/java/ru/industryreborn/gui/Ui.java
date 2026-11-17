@@ -15,9 +15,6 @@ final class Ui {
             Map.entry("PlotListMenu", Material.LIGHT_BLUE_STAINED_GLASS_PANE),
             Map.entry("PlotMenu", Material.LIGHT_BLUE_STAINED_GLASS_PANE),
             Map.entry("RoomsMenu", Material.LIGHT_BLUE_STAINED_GLASS_PANE),
-            Map.entry("ZoneMenu", Material.LIGHT_BLUE_STAINED_GLASS_PANE),
-            Map.entry("SourceMenu", Material.LIGHT_BLUE_STAINED_GLASS_PANE),
-            Map.entry("TargetMenu", Material.LIGHT_BLUE_STAINED_GLASS_PANE),
             Map.entry("RightsMenu", Material.LIGHT_BLUE_STAINED_GLASS_PANE),
             Map.entry("PlayerRightsMenu", Material.LIGHT_BLUE_STAINED_GLASS_PANE),
             // деньги

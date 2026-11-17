@@ -315,13 +315,6 @@ public final class PlotManager {
         p.taxDebt = s.getDouble("tax.debt");
         p.account.setUnitsPerDay(s.getDouble("account.units"));
         p.account.restore(s.getDouble("account.balance"), s.getDouble("account.rate"), s.getLong("account.updated"));
-        ConfigurationSection zones = s.getConfigurationSection("zones");
-        if (zones != null) {
-            for (String name : zones.getKeys(false)) {
-                ConfigurationSection z = zones.getConfigurationSection(name);
-                p.zones.put(name, new Plot.Zone(name, Box.parse(z.getString("box")), z.getString("icon", "BRICKS")));
-            }
-        }
         if (s.contains("spawn")) {
             p.hasSpawn = true;
             p.spawnX = s.getDouble("spawn.x");
@@ -448,10 +441,6 @@ public final class PlotManager {
             yml.set(k + "account.balance", p.account.rawBalance());
             yml.set(k + "account.rate", p.account.ratePerDay());
             yml.set(k + "account.updated", p.account.updatedAtSec());
-            for (Plot.Zone z : p.zones.values()) {
-                yml.set(k + "zones." + z.name() + ".box", z.box().serialize());
-                yml.set(k + "zones." + z.name() + ".icon", z.icon());
-            }
             if (p.hasSpawn) {
                 yml.set(k + "spawn.x", p.spawnX);
                 yml.set(k + "spawn.y", p.spawnY);

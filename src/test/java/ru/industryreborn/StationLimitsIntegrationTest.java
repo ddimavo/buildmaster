@@ -186,15 +186,6 @@ class StationLimitsIntegrationTest extends PluginTestBase {
     }
 
     @Test
-    void replaceMenuCannotBeUsedToSneakStationsIn() {
-        Plot shop = rented("s", Category.SHOP, 0);
-        plugin.build().replace(steve, shop, shop.box, Material.STONE, Material.FURNACE);
-        plugin.build().replace(steve, shop, shop.box, Material.ANVIL, Material.STONE);
-        assertFalse(shop.busy, "замена даже не началась");
-        assertEquals(0, plugin.stations().count(shop, Station.FURNACE));
-    }
-
-    @Test
     void stationsAreCountedByRescanOfRealBlocks() {
         Plot shop = rented("s", Category.SHOP, 0);
         server.getWorld("world").getBlockAt(2, 1, 1).setType(Material.ANVIL);
