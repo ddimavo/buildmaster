@@ -74,6 +74,7 @@ public class IndustryRebornPlugin extends JavaPlugin {
     private ru.industryreborn.html.HtmlMenus htmlMenus;
     private ru.industryreborn.holo.HoloFactory holoFactory;
     private ru.industryreborn.service.ModuleService modules;
+    private ru.industryreborn.service.BalanceService balance;
     private ru.industryreborn.service.LinkService links;
     private ru.industryreborn.service.ServicesHolograms servicesHolograms;
     private ru.industryreborn.service.BankHolograms bankHolograms;
@@ -129,6 +130,7 @@ public class IndustryRebornPlugin extends JavaPlugin {
         moderation = new ModerationService(this);
         moderation.load();
         modules = new ru.industryreborn.service.ModuleService(this);
+        balance = new ru.industryreborn.service.BalanceService(this);
         holoFactory = new ru.industryreborn.holo.HoloFactory(this);
         holograms = new HologramService(this);
         stations = new StationService(this);
@@ -211,6 +213,7 @@ public class IndustryRebornPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(htmlMenus, this);
         getServer().getScheduler().runTaskLater(this, htmlMenus::cleanUp, 100L);
         getServer().getScheduler().runTaskTimer(this, htmlMenus::tick, 200L, 60L);
+        getServer().getScheduler().runTaskTimer(this, balance::minuteTick, 1200L, 1200L);
         getServer().getScheduler().runTaskLater(this, () -> {
             stations.rescanAll();
             holograms.updateAll();
@@ -343,6 +346,10 @@ public class IndustryRebornPlugin extends JavaPlugin {
     /** Только для тестов: подмена доступа к WorldGuard. */
     public void setRegions(RegionAccess access) {
         this.regions = access;
+    }
+
+    public ru.industryreborn.service.BalanceService balance() {
+        return balance;
     }
 
     public ru.industryreborn.service.ModuleService modules() {

@@ -118,7 +118,16 @@ public final class PowerService {
 
     public double base() {
         Double o = overrides.base();
-        return o != null ? o : plugin.getConfig().getDouble("electricity.base-rate-per-day", 100);
+        if (o != null) {
+            return o;
+        }
+        Double auto = plugin.balance().applied("electricity");
+        return auto != null ? auto : plugin.getConfig().getDouble("electricity.base-rate-per-day", 100);
+    }
+
+    /** Цена электричества задана администратором вручную: автокорректировка её не трогает. */
+    public boolean baseIsManual() {
+        return overrides.base() != null;
     }
 
     public double progression() {

@@ -76,7 +76,8 @@ public final class GoodsService {
     }
 
     public double salesTaxPercent() {
-        return Math.max(0, Math.min(100, plugin.getConfig().getDouble("goods.sales-tax-percent", 0)));
+        Double auto = plugin.balance().applied("sales-tax");
+        return Math.max(0, Math.min(100, auto != null ? auto : plugin.getConfig().getDouble("goods.sales-tax-percent", 0)));
     }
 
     private String checkManager(Player manager, Plot plot) {

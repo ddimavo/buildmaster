@@ -66,13 +66,30 @@ public final class BankService {
     /** Налог на доход от сдачи в аренду (процент выручки, платит арендодатель). */
     public double rentTax() {
         Double o = settings.rentTax();
-        return o != null ? o : plugin.getConfig().getDouble("bank.rent-tax-percent", 0);
+        if (o != null) {
+            return o;
+        }
+        Double auto = plugin.balance().applied("rent-tax");
+        return auto != null ? auto : plugin.getConfig().getDouble("bank.rent-tax-percent", 0);
+    }
+
+    /** Налог на аренду задан администратором вручную: автокорректировка его не трогает. */
+    public boolean rentTaxIsManual() {
+        return settings.rentTax() != null;
     }
 
     /** Недельный налог на имущество для типа участка (сумма за период, 0 - не взимается). */
     public double propertyTax(Category category) {
         Double o = settings.propertyTax(category.key());
-        return o != null ? o : plugin.getConfig().getDouble("bank.property-tax." + category.key(), 0);
+        if (o != null) {
+            return o;
+        }
+        Double auto = plugin.balance().applied("property-tax." + category.key());
+        return auto != null ? auto : plugin.getConfig().getDouble("bank.property-tax." + category.key(), 0);
+    }
+
+    public boolean propertyTaxIsManual(Category category) {
+        return settings.propertyTax(category.key()) != null;
     }
 
     public boolean onlyInBank() {

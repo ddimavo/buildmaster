@@ -37,6 +37,7 @@ public final class Journal {
         TREASURY("Операция с казной"),
         SUBSIDY("Субсидия из казны"),
         MODULE("Функция плагина"),
+        BALANCE("Автокорректировка экономики"),
         PRIZE("Приз из казны"),
         ACCOUNT_DEPOSIT("Пополнение счёта"),
         ACCOUNT_WITHDRAW("Снятие со счёта"),

@@ -18,6 +18,9 @@ public final class Treasury {
 
     private double balance;
     private final List<Tx> log = new ArrayList<>();
+    /** Приход и расход по часам (индекс часа - время / 3 600 000): для расчётов, не зависит от длины журнала. */
+    private final java.util.TreeMap<Long, double[]> hourly = new java.util.TreeMap<>();
+    private static final int MAX_HOURS = 24 * 14;
 
     public synchronized double balance() {
         return balance;
@@ -45,7 +48,32 @@ public final class Treasury {
         return true;
     }
 
+    /** Приход в казну с момента since (мс). */
+    public synchronized double incomeSince(long since) {
+        long from = Math.floorDiv(since, 3_600_000L);
+        double sum = 0;
+        for (var e : hourly.tailMap(from, true).entrySet()) {
+            sum += e.getValue()[0];
+        }
+        return sum;
+    }
+
+    /** Расход из казны с момента since (мс). */
+    public synchronized double expenseSince(long since) {
+        long from = Math.floorDiv(since, 3_600_000L);
+        double sum = 0;
+        for (var e : hourly.tailMap(from, true).entrySet()) {
+            sum += e.getValue()[1];
+        }
+        return sum;
+    }
+
     private void record(long time, double amount, String actor, String reason) {
+        double[] bucket = hourly.computeIfAbsent(Math.floorDiv(time, 3_600_000L), k -> new double[2]);
+        bucket[amount >= 0 ? 0 : 1] += Math.abs(amount);
+        while (hourly.size() > MAX_HOURS) {
+            hourly.pollFirstEntry();
+        }
         log.add(new Tx(time, amount, actor, reason));
         while (log.size() > MAX_LOG) {
             log.remove(0);
@@ -60,6 +88,9 @@ public final class Treasury {
             lines.add(tx.time() + "|" + tx.amount() + "|" + esc(tx.actor()) + "|" + esc(tx.reason()));
         }
         yml.set("log", lines);
+        List<String> hours = new ArrayList<>();
+        hourly.forEach((h, v) -> hours.add(h + "|" + v[0] + "|" + v[1]));
+        yml.set("hourly", hours);
         file.getParentFile().mkdirs();
         yml.save(file);
     }
@@ -71,6 +102,12 @@ public final class Treasury {
         }
         YamlConfiguration yml = YamlConfiguration.loadConfiguration(file);
         t.balance = yml.getDouble("balance");
+        for (String line : yml.getStringList("hourly")) {
+            String[] p = line.split("\\|");
+            if (p.length == 3) {
+                t.hourly.put(Long.parseLong(p[0]), new double[] {Double.parseDouble(p[1]), Double.parseDouble(p[2])});
+            }
+        }
         for (String line : yml.getStringList("log")) {
             String[] p = line.split("\\|", 4);
             if (p.length == 4) {

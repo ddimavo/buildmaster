@@ -434,3 +434,38 @@ modules:
   webhooks: false
   plan: true
   holo-shop: true
+
+# ---- Автокорректировка экономики ----
+# Включается функцией auto-balance (modules: выше, /district module auto-balance on). Раз в interval-hours плагин сравнивает приток денег
+# (заработок игроков за пределами плагина: игрок-часы × income-per-player-hour, либо фиксированное faucet-per-day) со стоком
+# (приход в казну за сутки) и считает индекс цен = 1 + strength × (target-ratio - сток/приток) / target-ratio, в пределах index-min..index-max.
+# Деньги копятся (сток мал) - индекс выше единицы: цена электричества, налоги и цены растут; изымаются слишком сильно - снижаются.
+# Значения двигаются к «база × индекс» шагом не больше max-step-percent процентов базы за один запуск. База - значения из этого config.yml.
+# Заданное администратором вручную (/district power admin base, /district bank admin ...) автокорректировка не трогает.
+auto-balance:
+  interval-hours: 24
+  min-sample-hours: 6          # сколько часов данных об онлайне нужно для первого запуска
+  target-ratio: 0.95
+  strength: 0.8
+  index-min: 0.7
+  index-max: 1.5
+  max-step-percent: 10
+  income-per-player-hour: 600  # сколько игрок в среднем зарабатывает за час игры (работы, аукцион)
+  faucet-per-day: 0            # либо фиксированный приток в сутки (0 - считать по игрокам)
+  notify: admins               # кому писать в чат об изменениях: admins, all, none
+  # что корректировать
+  adjust:
+    electricity: true
+    rent-tax: true
+    sales-tax: true
+    property-tax: true
+    services: true
+    auction: true
+  # пределы
+  limits:
+    electricity-min: 5
+    electricity-max: 500
+    rent-tax-min: 0
+    rent-tax-max: 20
+    sales-tax-min: 0
+    sales-tax-max: 12

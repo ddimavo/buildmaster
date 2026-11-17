@@ -45,7 +45,7 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
             "storage", "claim", "journal", "name", "desc", "bank", "service", "factory", "room", "region", "job", "hologram", "machine", "chest", "shop", "goods", "storefront", "link", "unlink", "enchant", "ui", "plots", "business", "hotel", "admin", "help");
     private static final List<String> ADMIN_SUBS = List.of("wand", "pos1", "pos2", "create", "delete", "evict",
             "setprice", "setrent", "setspawn", "resnapshot", "reload", "seize", "reset", "holo", "category",
-            "moderation", "arrest", "auction", "show", "module");
+            "moderation", "arrest", "auction", "show", "module", "balance");
     /** Команды банка и электросети: отдельные права industryreborn.bank и industryreborn.grid. */
     private static final List<String> GRID_SUBS = List.of("grid", "area");
 
@@ -67,7 +67,8 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
             java.util.Map.entry("region", ru.industryreborn.service.Module.PLAYER_PLOTS),
             java.util.Map.entry("auction", ru.industryreborn.service.Module.AUCTION),
             java.util.Map.entry("grid", ru.industryreborn.service.Module.ELECTRICITY),
-            java.util.Map.entry("area", ru.industryreborn.service.Module.ELECTRICITY));
+            java.util.Map.entry("area", ru.industryreborn.service.Module.ELECTRICITY),
+            java.util.Map.entry("balance", ru.industryreborn.service.Module.AUTO_BALANCE));
 
     private final IndustryRebornPlugin plugin;
 
@@ -105,6 +106,7 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
         try {
             switch (sub) {
                 case "module" -> withPlayer(sender, p -> modules(p, rest));
+                case "balance" -> balance(sender, rest);
                 case "menu" -> withPlayer(sender, p -> {
                     if (rest.length > 0 && rest[0].equalsIgnoreCase("classic") || !plugin.htmlMenus().open(p, ru.industryreborn.html.HtmlMenus.Kind.MAIN)) {
                         new MainMenu(plugin, p).open();
@@ -1103,6 +1105,49 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
     }
 
     /** treasury | menu | report [дни] | subsidy <участок> <сумма> <причина> | prize <игрок> <сумма> <мероприятие> | pay ... */
+    /** balance [status|preview|run|reset|history]: автокорректировка экономики. */
+    private void balance(CommandSender sender, String[] args) {
+        var svc = plugin.balance();
+        String sub = args.length == 0 ? "status" : args[0].toLowerCase(Locale.ROOT);
+        switch (sub) {
+            case "status" -> {
+                if (sender instanceof Player p && plugin.htmlMenus().open(p, ru.industryreborn.html.HtmlMenus.Kind.BALANCE)) {
+                    return;
+                }
+                var s = svc.measure();
+                Text.send(sender, "<yellow>Автокорректировка экономики: <white>сток " + plugin.economy().format(s.sink()) + ", приток "
+                        + plugin.economy().format(s.faucet()) + ", отношение " + String.format(Locale.ROOT, "%.2f", s.ratio()) + ", индекс "
+                        + String.format(Locale.ROOT, "%.2f", s.index()) + (s.enough() ? "" : " <gray>(данных мало)"));
+                svc.appliedValues().forEach((k, v) -> sender.sendMessage(Text.mm("<gray> " + Text.esc(k) + " = <white>" + v)));
+                Text.send(sender, "<gray>Следующий запуск: " + (svc.lastRun() == 0 ? "после накопления данных" : Text.date(svc.nextRun())));
+            }
+            case "preview", "run" -> {
+                var changes = svc.run(sub.equals("preview"), sender.getName());
+                if (changes.isEmpty()) {
+                    Text.send(sender, "<gray>Менять нечего или данных пока мало.");
+                }
+                for (var c : changes) {
+                    sender.sendMessage(Text.mm("<gray> " + Text.esc(c.title()) + ": <white>" + c.from() + c.unit() + " → " + c.to() + c.unit()));
+                }
+                Text.ok(sender, sub.equals("preview") ? "Это предварительный расчёт, ничего не применено." : "Корректировка выполнена.");
+            }
+            case "reset" -> Text.ok(sender, "Сброшено значений: " + svc.reset(sender.getName()) + ". Действуют значения из config.yml.");
+            case "history" -> {
+                if (svc.history().isEmpty()) {
+                    Text.send(sender, "<gray>Запусков ещё не было.");
+                }
+                for (String h : svc.history()) {
+                    String[] p = h.split("\\|");
+                    if (p.length == 4) {
+                        sender.sendMessage(Text.mm("<gray> " + Text.date(Long.parseLong(p[0])) + " отношение <white>" + p[1] + "<gray>, индекс <white>" + p[2]
+                                + "<gray>, изменений <white>" + p[3]));
+                    }
+                }
+            }
+            default -> throw new CommandError("Использование: /district balance [status|preview|run|reset|history]");
+        }
+    }
+
     /** module [<функция> on|off|reset]: включение и выключение функций плагина. */
     private void modules(Player p, String[] args) {
         var svc = plugin.modules();
@@ -1352,6 +1397,9 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
         }
         if (sub.equals("plots") && args.length == 2) {
             return filter(List.of("free", "mine"), args[1]);
+        }
+        if (sub.equals("balance") && args.length == 2) {
+            return filter(List.of("status", "preview", "run", "reset", "history"), args[1]);
         }
         if (sub.equals("module")) {
             if (args.length == 2) {

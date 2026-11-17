@@ -794,6 +794,10 @@ public final class HtmlPages {
             b.append(link("moderation-" + suffix + ".html", "Модерация", "Заявок ожидает: " + (pending > 0 ? "<span class=\"warn\">" + pending + "</span>" : "0")));
             b.append(link("arrests-" + suffix + ".html", "Арестованные вещи", "Игроков: " + plugin.arrests().players().size()));
         }
+        if (admin && plugin.modules().enabled(ru.industryreborn.service.Module.AUTO_BALANCE)) {
+            var snap = plugin.balance().measure();
+            b.append(link("balance-" + suffix + ".html", "Экономика", "Индекс цен: " + String.format(java.util.Locale.ROOT, "%.2f", snap.index())));
+        }
         if (admin) {
             long off = java.util.Arrays.stream(ru.industryreborn.service.Module.values()).filter(m -> !plugin.modules().enabled(m)).count();
             b.append(link("modules-" + suffix + ".html", "Функции плагина", off == 0 ? "Все включены" : "Отключено: <span class=\"warn\">" + off + "</span>"));
@@ -973,5 +977,44 @@ public final class HtmlPages {
         }
         b.append("</table>");
         return Html.page("Функции плагина", b.append(adminNav(suffix)).toString());
+    }
+
+    /** Автокорректировка экономики: показатели, предварительный расчёт, применённые значения. */
+    public String balance(Player player, String suffix) {
+        if (!player.hasPermission("industryreborn.admin")) {
+            return denied("Экономика", suffix);
+        }
+        var svc = plugin.balance();
+        var s = svc.measure();
+        StringBuilder b = new StringBuilder("<h1>Автокорректировка экономики</h1><div class=\"sub\">Сток (приход в казну) к притоку (заработок игроков) задаёт индекс цен</div>\n");
+        b.append("<div class=\"stats\">").append(stat(money(s.sink()), "Сток за сутки"))
+                .append(stat(money(s.faucet()), "Приток за сутки"))
+                .append(stat(String.format(java.util.Locale.ROOT, "%.2f", s.ratio()), "Отношение"))
+                .append(stat("<span class=\"" + (s.index() > 1.02 ? "warn" : s.index() < 0.98 ? "plus" : "") + "\">" + String.format(java.util.Locale.ROOT, "%.2f", s.index()) + "</span>", "Индекс цен"))
+                .append(stat(s.enough() ? "<span class=\"plus\">достаточно</span>" : "<span class=\"warn\">мало</span>", "Данных"))
+                .append("</div>");
+        b.append(cmdBtn("district balance run", "Применить сейчас", "")).append(cmdBtn("district balance reset", "Сбросить к config.yml", "red"));
+        b.append("<div class=\"sub\">Следующий запуск: ").append(svc.lastRun() == 0 ? "после накопления данных" : Html.esc(Text.date(svc.nextRun()))).append("</div>");
+        var plan = svc.plan(s);
+        b.append("<h2>Предварительный расчёт</h2>");
+        if (plan.isEmpty()) {
+            b.append("<div class=\"muted\">Изменений не требуется.</div>");
+        } else {
+            b.append("<table><tr><th>Параметр</th><th>Сейчас</th><th>Станет</th></tr>");
+            for (var c : plan) {
+                b.append("<tr><td>").append(Html.esc(c.title())).append("</td><td>").append(num(c.from())).append(Html.esc(c.unit())).append("</td><td class=\"warn\">")
+                        .append(num(c.to())).append(Html.esc(c.unit())).append("</td></tr>");
+            }
+            b.append("</table>");
+        }
+        b.append("<h2>Действуют сейчас</h2>");
+        if (svc.appliedValues().isEmpty()) {
+            b.append("<div class=\"muted\">Значения из config.yml.</div>");
+        } else {
+            b.append("<table>");
+            svc.appliedValues().forEach((k, v) -> b.append("<tr><td>").append(Html.esc(k)).append("</td><td>").append(num(v)).append("</td></tr>"));
+            b.append("</table>");
+        }
+        return Html.page("Экономика", b.append(adminNav(suffix)).toString());
     }
 }

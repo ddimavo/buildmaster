@@ -89,11 +89,13 @@ public final class ServiceCatalog {
     public List<Offer> offers() {
         List<Offer> list = new ArrayList<>();
         var cfg = plugin.getConfig();
+        Double scaleOverride = plugin.balance().applied("services");
+        double k = scaleOverride == null ? 1.0 : scaleOverride;
         list.add(new Offer("smelt", Kind.SMELT, cfg.getString("services.smelt.title", "Переплавка"), "smelter",
-                cfg.getDouble("services.smelt.default-price", 1.0), cfg.getDouble("services.smelt.max-price", 20.0),
+                cfg.getDouble("services.smelt.default-price", 1.0) * k, cfg.getDouble("services.smelt.max-price", 20.0) * k,
                 0, null, 0, null, 0));
         list.add(new Offer("repair", Kind.REPAIR, cfg.getString("services.repair.title", "Ремонт"), "anvil",
-                cfg.getDouble("services.repair.default-price", 10.0), cfg.getDouble("services.repair.max-price", 100.0),
+                cfg.getDouble("services.repair.default-price", 10.0) * k, cfg.getDouble("services.repair.max-price", 100.0) * k,
                 cfg.getDouble("services.repair.seconds-per-item", 5.0), null, 0, null, 0));
         ConfigurationSection recipes = cfg.getConfigurationSection("services.recipes");
         if (recipes != null) {
@@ -106,7 +108,7 @@ public final class ServiceCatalog {
                     continue;
                 }
                 list.add(new Offer("recipe:" + id, Kind.RECIPE, r.getString("title", id), r.getString("station", "smelter"),
-                        r.getDouble("default-price", 1.0), r.getDouble("max-price", 100.0), r.getDouble("seconds", 5.0),
+                        r.getDouble("default-price", 1.0) * k, r.getDouble("max-price", 100.0) * k, r.getDouble("seconds", 5.0),
                         in, Math.max(1, r.getInt("input-amount", 1)), out, Math.max(1, r.getInt("output-amount", 1))));
             }
         }

@@ -96,7 +96,10 @@ public final class TreasuryAuction {
     }
 
     private void submit(UUID owner, StorageEntry entry, ItemStack stack) {
-        BigDecimal price = AuctionPricing.price(plugin.getConfig().getConfigurationSection("auction"), stack);
+        BigDecimal basePrice = AuctionPricing.price(plugin.getConfig().getConfigurationSection("auction"), stack);
+        Double auctionScale = plugin.balance().applied("auction");
+        final BigDecimal price = auctionScale == null ? basePrice
+                : basePrice.multiply(BigDecimal.valueOf(auctionScale)).setScale(2, java.math.RoundingMode.HALF_UP);
         int days = plugin.getConfig().getInt("auction.listing-days", 0);
         long expiredAt = days > 0 ? System.currentTimeMillis() + days * 86_400_000L : 0;
         String what = stack.getType().name() + " x" + stack.getAmount();
