@@ -42,7 +42,7 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
 
     private static final List<String> PLAYER_SUBS = List.of("menu", "list", "info", "buy", "rent", "extend",
             "autorenew", "autoreset", "release", "trust", "untrust", "perm", "account", "power", "warnings", "tp",
-            "storage", "claim", "journal", "name", "desc", "bank", "service", "factory", "room", "region", "job", "hologram", "machine", "chest", "shop", "goods", "storefront", "link", "unlink", "enchant", "ui", "plots", "business", "hotel", "admin", "help");
+            "storage", "claim", "journal", "name", "desc", "bank", "service", "factory", "room", "region", "job", "hologram", "machine", "chest", "shop", "goods", "storefront", "link", "unlink", "enchant", "ui", "plots", "business", "hotel", "admin", "holoshop", "help");
     private static final List<String> ADMIN_SUBS = List.of("wand", "pos1", "pos2", "create", "delete", "evict",
             "setprice", "setrent", "setspawn", "resnapshot", "reload", "seize", "reset", "holo", "category",
             "moderation", "arrest", "auction", "show", "module", "balance", "webhook");
@@ -69,7 +69,8 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
             java.util.Map.entry("grid", ru.industryreborn.service.Module.ELECTRICITY),
             java.util.Map.entry("area", ru.industryreborn.service.Module.ELECTRICITY),
             java.util.Map.entry("balance", ru.industryreborn.service.Module.AUTO_BALANCE),
-            java.util.Map.entry("webhook", ru.industryreborn.service.Module.WEBHOOKS));
+            java.util.Map.entry("webhook", ru.industryreborn.service.Module.WEBHOOKS),
+            java.util.Map.entry("holoshop", ru.industryreborn.service.Module.HOLO_SHOP));
 
     private final IndustryRebornPlugin plugin;
 
@@ -109,6 +110,7 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
                 case "module" -> withPlayer(sender, p -> modules(p, rest));
                 case "balance" -> balance(sender, rest);
                 case "webhook" -> webhook(sender, rest);
+                case "holoshop" -> withPlayer(sender, p -> holoShop(p, rest));
                 case "menu" -> withPlayer(sender, p -> {
                     if (rest.length > 0 && rest[0].equalsIgnoreCase("classic") || !plugin.htmlMenus().open(p, ru.industryreborn.html.HtmlMenus.Kind.MAIN)) {
                         new MainMenu(plugin, p).open();
@@ -1107,6 +1109,46 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
     }
 
     /** treasury | menu | report [дни] | subsidy <участок> <сумма> <причина> | prize <игрок> <сумма> <мероприятие> | pay ... */
+    /** holoshop create <участок> | remove <номер> | list [участок]: торговля через голограммы. */
+    private void holoShop(Player p, String[] args) {
+        var svc = plugin.holoShops();
+        String sub = args.length == 0 ? "list" : args[0].toLowerCase(Locale.ROOT);
+        switch (sub) {
+            case "create" -> {
+                Plot plot = plotOrHere(p, args.length > 1 ? args[1] : null);
+                String error = svc.create(p, plot);
+                if (error != null) {
+                    throw new CommandError(error);
+                }
+                Text.ok(p, "Витрина-голограмма создана на вашем месте. Покупатели видят её, глядя со стороны, куда вы смотрите. ПКМ по товару - купить, по стрелкам - листать.");
+            }
+            case "remove" -> {
+                if (args.length < 2) {
+                    throw new CommandError("Использование: /district holoshop remove <номер>");
+                }
+                String error = svc.remove(p, args[1]);
+                if (error != null) {
+                    throw new CommandError(error);
+                }
+                Text.ok(p, "Витрина удалена.");
+            }
+            case "list" -> {
+                var list = args.length > 1 ? svc.ofPlot(args[1]) : svc.all();
+                if (list.isEmpty()) {
+                    Text.send(p, "<gray>Витрин-голограмм нет. Создать: /district holoshop create <участок>");
+                }
+                for (var s : list) {
+                    Plot plot = plugin.plots().get(s.plotId);
+                    if (plot != null && (plot.isOwner(p.getUniqueId()) || p.hasPermission("industryreborn.admin"))) {
+                        Text.send(p, "<yellow>" + Text.esc(s.id) + " <gray>(участок " + Text.esc(s.plotId) + ", " + s.world + " " + Math.round(s.x) + " "
+                                + Math.round(s.y) + " " + Math.round(s.z) + ")");
+                    }
+                }
+            }
+            default -> throw new CommandError("Использование: /district holoshop [create <участок>|remove <номер>|list]");
+        }
+    }
+
     /** webhook [list|send <имя>|test <имя>]: вебхуки со статистикой. */
     private void webhook(CommandSender sender, String[] args) {
         var svc = plugin.webhooks();
@@ -1433,6 +1475,9 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
         }
         if (sub.equals("plots") && args.length == 2) {
             return filter(List.of("free", "mine"), args[1]);
+        }
+        if (sub.equals("holoshop") && args.length == 2) {
+            return filter(List.of("create", "remove", "list"), args[1]);
         }
         if (sub.equals("webhook")) {
             if (args.length == 2) {

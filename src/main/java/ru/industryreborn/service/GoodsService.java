@@ -265,6 +265,7 @@ public final class GoodsService {
 
     /** Предприятие освобождается: товары возвращаются управляющему (при изъятии арестовываются), цены и связи сбрасываются. */
     public void closePlot(Plot plot, UUID manager, boolean arrest, String reason) {
+        plugin.holoShops().removeOfPlot(plot.id);
         if (!plot.goods.isEmpty() && manager != null) {
             List<ItemStack> items = new ArrayList<>();
             for (var e : plot.goods.entrySet()) {

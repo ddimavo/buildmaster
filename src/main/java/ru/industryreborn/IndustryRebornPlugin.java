@@ -78,6 +78,8 @@ public class IndustryRebornPlugin extends JavaPlugin {
     private ru.industryreborn.service.StatsService stats;
     private ru.industryreborn.webhook.WebhookService webhooks;
     private ru.industryreborn.plan.PlanHook planHook;
+    private ru.industryreborn.holo.ClickZones clickZones;
+    private ru.industryreborn.holoshop.HoloShopService holoShops;
     private ru.industryreborn.service.LinkService links;
     private ru.industryreborn.service.ServicesHolograms servicesHolograms;
     private ru.industryreborn.service.BankHolograms bankHolograms;
@@ -137,6 +139,8 @@ public class IndustryRebornPlugin extends JavaPlugin {
         stats = new ru.industryreborn.service.StatsService(this);
         webhooks = new ru.industryreborn.webhook.WebhookService(this);
         planHook = new ru.industryreborn.plan.PlanHook(this);
+        clickZones = new ru.industryreborn.holo.ClickZones(this);
+        holoShops = new ru.industryreborn.holoshop.HoloShopService(this);
         holoFactory = new ru.industryreborn.holo.HoloFactory(this);
         holograms = new HologramService(this);
         stations = new StationService(this);
@@ -221,6 +225,9 @@ public class IndustryRebornPlugin extends JavaPlugin {
         getServer().getScheduler().runTaskTimer(this, htmlMenus::tick, 200L, 60L);
         getServer().getScheduler().runTaskTimer(this, balance::minuteTick, 1200L, 1200L);
         getServer().getScheduler().runTaskTimer(this, webhooks::minuteTick, 1300L, 1200L);
+        getServer().getPluginManager().registerEvents(clickZones, this);
+        getServer().getScheduler().runTaskLater(this, clickZones::cleanLeftovers, 60L);
+        getServer().getScheduler().runTaskTimer(this, holoShops::tick, 80L, 20L);
         getServer().getScheduler().runTaskTimer(this, planHook::tick, 100L, 100L);
         getServer().getScheduler().runTaskLater(this, () -> {
             stations.rescanAll();
@@ -254,6 +261,12 @@ public class IndustryRebornPlugin extends JavaPlugin {
         }
         if (doorHolograms != null) {
             doorHolograms.removeAll();
+        }
+        if (holoShops != null) {
+            holoShops.removeAll();
+        }
+        if (clickZones != null) {
+            clickZones.removeAll();
         }
         if (htmlMenus != null) {
             htmlMenus.cleanUp();
@@ -358,6 +371,14 @@ public class IndustryRebornPlugin extends JavaPlugin {
 
     public ru.industryreborn.service.StatsService stats() {
         return stats;
+    }
+
+    public ru.industryreborn.holo.ClickZones clickZones() {
+        return clickZones;
+    }
+
+    public ru.industryreborn.holoshop.HoloShopService holoShops() {
+        return holoShops;
     }
 
     public ru.industryreborn.plan.PlanHook planHook() {

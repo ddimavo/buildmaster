@@ -40,6 +40,31 @@ public final class HoloFactory {
         this.fancyRetryAt = 0;
     }
 
+    private java.util.function.BiFunction<Location, java.util.function.Consumer<org.bukkit.entity.ItemDisplay>, org.bukkit.entity.ItemDisplay> itemSpawner;
+
+    /** Только для тестов: подмена создания ItemDisplay. */
+    public void setItemSpawner(java.util.function.BiFunction<Location, java.util.function.Consumer<org.bukkit.entity.ItemDisplay>, org.bukkit.entity.ItemDisplay> spawner) {
+        this.itemSpawner = spawner;
+    }
+
+    /** Предмет, висящий в воздухе (иконка товара). */
+    public Holo spawnItem(String name, Location at, org.bukkit.inventory.ItemStack item, float scale, float viewRange) {
+        if (fancyActive()) {
+            try {
+                return FancyItemHolo.create(fancyName(name), at, item, scale, viewRange);
+            } catch (LinkageError e) {
+                fancyBroken = true;
+                plugin.getLogger().log(Level.WARNING, "API FancyHolograms не подошёл: голограммы остаются на сущностях", e);
+            } catch (RuntimeException e) {
+                fancyRetryAt = System.currentTimeMillis() + 60_000L;
+                plugin.getLogger().log(Level.WARNING, "Не удалось создать голограмму-предмет в FancyHolograms, на минуту переключаюсь на сущности", e);
+            }
+        }
+        Consumer<org.bukkit.entity.ItemDisplay> init = d -> EntityItemHolo.apply(d, item, scale, viewRange);
+        org.bukkit.entity.ItemDisplay display = itemSpawner != null ? itemSpawner.apply(at, init) : at.getWorld().spawn(at, org.bukkit.entity.ItemDisplay.class, init);
+        return new EntityItemHolo(plugin, display);
+    }
+
     public NamespacedKey markerKey() {
         return markerKey;
     }
