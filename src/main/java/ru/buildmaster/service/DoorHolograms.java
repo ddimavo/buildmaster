@@ -23,9 +23,8 @@ import ru.buildmaster.util.Text;
 public final class DoorHolograms {
 
     private final BuildMasterPlugin plugin;
-    private final Map<String, TextDisplay> spawned = new HashMap<>();
+    private final Map<String, ru.buildmaster.holo.Holo> spawned = new HashMap<>();
     private final Map<String, String> lastText = new HashMap<>();
-    private BiFunction<Location, Consumer<TextDisplay>, TextDisplay> spawner;
 
     public DoorHolograms(BuildMasterPlugin plugin) {
         this.plugin = plugin;
@@ -33,7 +32,7 @@ public final class DoorHolograms {
 
     /** Только для тестов: MockBukkit не умеет TextDisplay. */
     public void setSpawner(BiFunction<Location, Consumer<TextDisplay>, TextDisplay> spawner) {
-        this.spawner = spawner;
+        plugin.holoFactory().setSpawner(spawner);
     }
 
     public boolean enabled() {
@@ -91,7 +90,7 @@ public final class DoorHolograms {
                 show(key, at, String.join("\n", lines));
             }
         }
-        Iterator<Map.Entry<String, TextDisplay>> it = spawned.entrySet().iterator();
+        Iterator<Map.Entry<String, ru.buildmaster.holo.Holo>> it = spawned.entrySet().iterator();
         while (it.hasNext()) {
             var e = it.next();
             if (!alive.contains(e.getKey())) {
@@ -103,31 +102,22 @@ public final class DoorHolograms {
     }
 
     private void show(String key, Location at, String text) {
-        TextDisplay existing = spawned.get(key);
-        if (existing != null && existing.isValid()) {
+        ru.buildmaster.holo.Holo existing = spawned.get(key);
+        if (existing != null && existing.valid()) {
             if (!text.equals(lastText.get(key))) {
-                existing.text(Text.mm(text));
+                existing.text(text);
                 lastText.put(key, text);
             }
             return;
         }
-        Consumer<TextDisplay> init = d -> {
-            d.setPersistent(false);
-            d.setBillboard(Display.Billboard.VERTICAL);
-            d.setAlignment(TextDisplay.TextAlignment.CENTER);
-            d.setLineWidth(180);
-            d.setViewRange(0.25f);
-            d.setBackgroundColor(Color.fromARGB(120, 0, 0, 0));
-            d.setDefaultBackground(false);
-            d.text(Text.mm(text));
-        };
-        TextDisplay display = spawner != null ? spawner.apply(at, init) : at.getWorld().spawn(at, TextDisplay.class, init);
-        spawned.put(key, display);
+        var spec = new ru.buildmaster.holo.HoloSpec(at, text).billboard(org.bukkit.entity.Display.Billboard.VERTICAL)
+                .style(180, 0.25f, 0x78000000);
+        spawned.put(key, plugin.holoFactory().spawn("door_" + key, spec));
         lastText.put(key, text);
     }
 
     private void removeOne(String key) {
-        TextDisplay d = spawned.remove(key);
+        ru.buildmaster.holo.Holo d = spawned.remove(key);
         lastText.remove(key);
         if (d != null) {
             d.remove();

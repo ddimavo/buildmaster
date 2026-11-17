@@ -35,8 +35,7 @@ public final class MachineHolograms {
     private static final double VIEW_DISTANCE = 12;
 
     private final BuildMasterPlugin plugin;
-    private final Map<String, TextDisplay> spawned = new HashMap<>();
-    private java.util.function.BiFunction<Location, java.util.function.Consumer<TextDisplay>, TextDisplay> spawner;
+    private final Map<String, ru.buildmaster.holo.Holo> spawned = new HashMap<>();
     private final Map<String, String> lastText = new HashMap<>();
 
     public MachineHolograms(BuildMasterPlugin plugin) {
@@ -45,7 +44,7 @@ public final class MachineHolograms {
 
     /** Только для тестов: подмена создания голограмм (MockBukkit не умеет TextDisplay). */
     public void setSpawner(java.util.function.BiFunction<Location, java.util.function.Consumer<TextDisplay>, TextDisplay> spawner) {
-        this.spawner = spawner;
+        plugin.holoFactory().setSpawner(spawner);
     }
 
     public boolean enabled() {
@@ -79,7 +78,7 @@ public final class MachineHolograms {
             }
         }
         // голограммы станков, которых больше нет в реестре (участок освобождён и т.п.)
-        Iterator<Map.Entry<String, TextDisplay>> it = spawned.entrySet().iterator();
+        Iterator<Map.Entry<String, ru.buildmaster.holo.Holo>> it = spawned.entrySet().iterator();
         while (it.hasNext()) {
             var entry = it.next();
             String key = entry.getKey();
@@ -121,34 +120,21 @@ public final class MachineHolograms {
             return;
         }
         String text = String.join("\n", lines(plot, block, expected));
-        TextDisplay existing = spawned.get(key);
-        if (existing != null && existing.isValid()) {
-            TextDisplay display = existing;
+        ru.buildmaster.holo.Holo existing = spawned.get(key);
+        if (existing != null && existing.valid()) {
             if (!text.equals(lastText.get(key))) {
-                display.text(Text.mm(text));
+                existing.text(text);
                 lastText.put(key, text);
             }
             return;
         }
-        java.util.function.Consumer<TextDisplay> init = d -> {
-            d.setPersistent(false);
-            d.setBillboard(Display.Billboard.CENTER);
-            d.setAlignment(TextDisplay.TextAlignment.CENTER);
-            d.setLineWidth(200);
-            d.setViewRange(0.3f);
-            d.setBackgroundColor(Color.fromARGB(90, 0, 0, 0));
-            d.setDefaultBackground(false);
-            d.setTransformation(new Transformation(new Vector3f(), new AxisAngle4f(), new Vector3f(0.5f, 0.5f, 0.5f),
-                    new AxisAngle4f()));
-            d.text(Text.mm(text));
-        };
-        TextDisplay display = spawner != null ? spawner.apply(at, init) : world.spawn(at, TextDisplay.class, init);
-        spawned.put(key, display);
+        var spec = new ru.buildmaster.holo.HoloSpec(at, text).style(200, 0.3f, 0x5A000000).scale(0.5f);
+        spawned.put(key, plugin.holoFactory().spawn("machine_" + key, spec));
         lastText.put(key, text);
     }
 
     private void removeOne(String key) {
-        TextDisplay display = spawned.remove(key);
+        ru.buildmaster.holo.Holo display = spawned.remove(key);
         lastText.remove(key);
         if (display != null) {
             display.remove();

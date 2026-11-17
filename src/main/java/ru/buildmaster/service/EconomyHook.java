@@ -5,19 +5,21 @@ import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.plugin.RegisteredServiceProvider;
 
-/** Обёртка над Vault. Провайдер экономики ищется лениво - он может зарегистрироваться позже. */
+/**
+ * Обёртка над Vault. Провайдер (ExcellentEconomy, Essentials и т.п.) запрашивается при каждом обращении: он может
+ * зарегистрироваться позже или быть заменён (например, при перезагрузке экономического плагина или смене валюты).
+ */
 public final class EconomyHook {
 
-    private Economy economy;
-
     private Economy eco() {
-        if (economy == null) {
-            RegisteredServiceProvider<Economy> rsp = Bukkit.getServicesManager().getRegistration(Economy.class);
-            if (rsp != null) {
-                economy = rsp.getProvider();
-            }
-        }
-        return economy;
+        RegisteredServiceProvider<Economy> rsp = Bukkit.getServicesManager().getRegistration(Economy.class);
+        return rsp == null ? null : rsp.getProvider();
+    }
+
+    /** Название плагина-провайдера экономики (для сообщений и диагностики) либо null. */
+    public String providerName() {
+        RegisteredServiceProvider<Economy> rsp = Bukkit.getServicesManager().getRegistration(Economy.class);
+        return rsp == null ? null : rsp.getPlugin().getName();
     }
 
     public boolean available() {

@@ -3,11 +3,13 @@ plugins {
 }
 
 group = 'ru.buildmaster'
-version = project.hasProperty('pluginVersion') ? project.property('pluginVersion') : '1.27.0-SNAPSHOT'
+version = project.hasProperty('pluginVersion') ? project.property('pluginVersion') : '1.28.0-SNAPSHOT'
 
 repositories {
     mavenCentral()
     maven { url = 'https://repo.papermc.io/repository/maven-public/' }
+    // API FancyHolograms (необязательный плагин): только для компиляции и тестов, в jar не попадает
+    maven { url = 'https://repo.fancyinnovations.com/releases' }
 }
 
 sourceSets {
@@ -25,6 +27,8 @@ dependencies {
     zahStubCompileOnly 'io.papermc.paper:paper-api:1.21.6-R0.1-SNAPSHOT'
     compileOnly sourceSets.zahStub.output
 
+    compileOnly 'de.oliver:FancyHolograms:2.10.0'
+    testImplementation 'de.oliver:FancyHolograms:2.10.0'
     testImplementation 'io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT'
     testImplementation sourceSets.vaultStub.output
     testImplementation sourceSets.zahStub.output

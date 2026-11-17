@@ -74,6 +74,7 @@ public class BuildMasterPlugin extends JavaPlugin {
     private ru.buildmaster.service.EnchantService enchants;
     private ru.buildmaster.service.TreasuryPayouts payouts;
     private ru.buildmaster.html.HtmlMenus htmlMenus;
+    private ru.buildmaster.holo.HoloFactory holoFactory;
     private ru.buildmaster.service.LinkService links;
     private ru.buildmaster.service.ServicesHolograms servicesHolograms;
     private ru.buildmaster.service.BankHolograms bankHolograms;
@@ -100,6 +101,7 @@ public class BuildMasterPlugin extends JavaPlugin {
         treasury = Treasury.load(new java.io.File(getDataFolder(), "treasury.yml"));
         moderation = new ModerationService(this);
         moderation.load();
+        holoFactory = new ru.buildmaster.holo.HoloFactory(this);
         holograms = new HologramService(this);
         stations = new StationService(this);
         power = new PowerService(this);
@@ -317,6 +319,10 @@ public class BuildMasterPlugin extends JavaPlugin {
     /** Только для тестов: подмена доступа к WorldGuard. */
     public void setRegions(RegionAccess access) {
         this.regions = access;
+    }
+
+    public ru.buildmaster.holo.HoloFactory holoFactory() {
+        return holoFactory;
     }
 
     public ru.buildmaster.html.HtmlMenus htmlMenus() {

@@ -27,16 +27,15 @@ public final class BankHolograms {
     private static final double VIEW_DISTANCE = 20;
 
     private final BuildMasterPlugin plugin;
-    private final Map<String, TextDisplay> spawned = new HashMap<>();
+    private final Map<String, ru.buildmaster.holo.Holo> spawned = new HashMap<>();
     private final Map<String, String> lastText = new HashMap<>();
-    private BiFunction<Location, Consumer<TextDisplay>, TextDisplay> spawner;
 
     public BankHolograms(BuildMasterPlugin plugin) {
         this.plugin = plugin;
     }
 
     public void setSpawner(BiFunction<Location, Consumer<TextDisplay>, TextDisplay> spawner) {
-        this.spawner = spawner;
+        plugin.holoFactory().setSpawner(spawner);
     }
 
     public boolean enabled() {
@@ -105,32 +104,22 @@ public final class BankHolograms {
     }
 
     private void show(String key, Location at, String text) {
-        TextDisplay existing = spawned.get(key);
-        if (existing != null && existing.isValid()) {
+        ru.buildmaster.holo.Holo existing = spawned.get(key);
+        if (existing != null && existing.valid()) {
             if (!text.equals(lastText.get(key))) {
-                existing.text(Text.mm(text));
+                existing.text(text);
                 lastText.put(key, text);
             }
             existing.teleport(at);
             return;
         }
-        Consumer<TextDisplay> init = d -> {
-            d.setPersistent(false);
-            d.setBillboard(Display.Billboard.CENTER);
-            d.setAlignment(TextDisplay.TextAlignment.CENTER);
-            d.setLineWidth(260);
-            d.setViewRange(0.5f);
-            d.setBackgroundColor(Color.fromARGB(140, 20, 20, 0));
-            d.setDefaultBackground(false);
-            d.text(Text.mm(text));
-        };
-        TextDisplay display = spawner != null ? spawner.apply(at, init) : at.getWorld().spawn(at, TextDisplay.class, init);
-        spawned.put(key, display);
+        var spec = new ru.buildmaster.holo.HoloSpec(at, text).style(260, 0.5f, 0x8C141400);
+        spawned.put(key, plugin.holoFactory().spawn("bank_" + key, spec));
         lastText.put(key, text);
     }
 
     private void remove(String key) {
-        TextDisplay d = spawned.remove(key);
+        ru.buildmaster.holo.Holo d = spawned.remove(key);
         lastText.remove(key);
         if (d != null) {
             d.remove();

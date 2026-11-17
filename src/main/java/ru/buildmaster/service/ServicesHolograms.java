@@ -24,16 +24,15 @@ public final class ServicesHolograms {
     private static final double VIEW_DISTANCE = 16;
 
     private final BuildMasterPlugin plugin;
-    private final Map<String, TextDisplay> spawned = new HashMap<>();
+    private final Map<String, ru.buildmaster.holo.Holo> spawned = new HashMap<>();
     private final Map<String, String> lastText = new HashMap<>();
-    private BiFunction<Location, Consumer<TextDisplay>, TextDisplay> spawner;
 
     public ServicesHolograms(BuildMasterPlugin plugin) {
         this.plugin = plugin;
     }
 
     public void setSpawner(BiFunction<Location, Consumer<TextDisplay>, TextDisplay> spawner) {
-        this.spawner = spawner;
+        plugin.holoFactory().setSpawner(spawner);
     }
 
     public boolean enabled() {
@@ -95,32 +94,22 @@ public final class ServicesHolograms {
     }
 
     private void show(String key, Location at, String text) {
-        TextDisplay existing = spawned.get(key);
-        if (existing != null && existing.isValid()) {
+        ru.buildmaster.holo.Holo existing = spawned.get(key);
+        if (existing != null && existing.valid()) {
             if (!text.equals(lastText.get(key))) {
-                existing.text(Text.mm(text));
+                existing.text(text);
                 lastText.put(key, text);
             }
             existing.teleport(at);
             return;
         }
-        Consumer<TextDisplay> init = d -> {
-            d.setPersistent(false);
-            d.setBillboard(Display.Billboard.CENTER);
-            d.setAlignment(TextDisplay.TextAlignment.CENTER);
-            d.setLineWidth(240);
-            d.setViewRange(0.4f);
-            d.setBackgroundColor(Color.fromARGB(130, 0, 30, 20));
-            d.setDefaultBackground(false);
-            d.text(Text.mm(text));
-        };
-        TextDisplay display = spawner != null ? spawner.apply(at, init) : at.getWorld().spawn(at, TextDisplay.class, init);
-        spawned.put(key, display);
+        var spec = new ru.buildmaster.holo.HoloSpec(at, text).style(240, 0.4f, 0x82001E14);
+        spawned.put(key, plugin.holoFactory().spawn("svc_" + key, spec));
         lastText.put(key, text);
     }
 
     private void remove(String key) {
-        TextDisplay d = spawned.remove(key);
+        ru.buildmaster.holo.Holo d = spawned.remove(key);
         lastText.remove(key);
         if (d != null) {
             d.remove();

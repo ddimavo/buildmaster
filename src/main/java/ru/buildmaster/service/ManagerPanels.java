@@ -27,8 +27,7 @@ public final class ManagerPanels {
     private static final double VIEW_DISTANCE = 24;
 
     private final BuildMasterPlugin plugin;
-    private final Map<String, TextDisplay> spawned = new HashMap<>();
-    private java.util.function.BiFunction<Location, java.util.function.Consumer<TextDisplay>, TextDisplay> spawner;
+    private final Map<String, ru.buildmaster.holo.Holo> spawned = new HashMap<>();
     private final Map<String, Set<UUID>> viewers = new HashMap<>();
     private final Map<String, String> lastText = new HashMap<>();
 
@@ -38,7 +37,7 @@ public final class ManagerPanels {
 
     /** Только для тестов: подмена создания голограмм (MockBukkit не умеет TextDisplay). */
     public void setSpawner(java.util.function.BiFunction<Location, java.util.function.Consumer<TextDisplay>, TextDisplay> spawner) {
-        this.spawner = spawner;
+        plugin.holoFactory().setSpawner(spawner);
     }
 
     public boolean enabled() {
@@ -100,32 +99,18 @@ public final class ManagerPanels {
         double y = plot.managerPos != null ? base.getY() : base.getY() + (publicLines + lines.size()) * 0.125 + 0.2;
         Location at = new Location(world, base.getX(), y, base.getZ());
         String text = String.join("\n", lines);
-        TextDisplay existing = spawned.get(key);
-        TextDisplay display;
-        if (existing != null && existing.isValid()) {
+        ru.buildmaster.holo.Holo existing = spawned.get(key);
+        ru.buildmaster.holo.Holo display;
+        if (existing != null && existing.valid()) {
             display = existing;
             if (!text.equals(lastText.get(key))) {
-                display.text(Text.mm(text));
+                display.text(text);
                 lastText.put(key, text);
             }
             display.teleport(at);
         } else {
-            java.util.function.Consumer<TextDisplay> init = d -> {
-                d.setPersistent(false);
-                d.setBillboard(Display.Billboard.CENTER);
-                d.setAlignment(TextDisplay.TextAlignment.LEFT);
-                d.setLineWidth(260);
-                d.setViewRange(0.5f);
-                d.setBackgroundColor(Color.fromARGB(150, 10, 20, 40));
-                d.setDefaultBackground(false);
-                d.text(Text.mm(text));
-                try {
-                    d.setVisibleByDefault(false);
-                } catch (RuntimeException ignored) {
-                    // сервер без поддержки индивидуальной видимости: панель увидят все рядом
-                }
-            };
-            display = spawner != null ? spawner.apply(at, init) : world.spawn(at, TextDisplay.class, init);
+            var spec = new ru.buildmaster.holo.HoloSpec(at, text).left(true).style(260, 0.5f, 0x960A1428).perViewer(true);
+            display = plugin.holoFactory().spawn("panel_" + key, spec);
             spawned.put(key, display);
             lastText.put(key, text);
             viewers.remove(key);
@@ -134,7 +119,7 @@ public final class ManagerPanels {
         for (Player p : nearby) {
             if (shown.add(p.getUniqueId())) {
                 try {
-                    p.showEntity(plugin, display);
+                    display.show(p);
                 } catch (RuntimeException ignored) {
                     // см. выше
                 }
@@ -146,7 +131,7 @@ public final class ManagerPanels {
                 shown.remove(id);
                 if (p != null) {
                     try {
-                        p.hideEntity(plugin, display);
+                        display.hide(p);
                     } catch (RuntimeException ignored) {
                         // см. выше
                     }
@@ -156,7 +141,7 @@ public final class ManagerPanels {
     }
 
     private void remove(String key) {
-        TextDisplay display = spawned.remove(key);
+        ru.buildmaster.holo.Holo display = spawned.remove(key);
         viewers.remove(key);
         lastText.remove(key);
         if (display != null) {

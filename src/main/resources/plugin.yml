@@ -5,7 +5,7 @@ api-version: '1.21'
 description: Район коммерции - участки, покупка, аренда и изменение зданий
 authors: [BuildMaster]
 depend: [Vault]
-softdepend: [WorldGuard, ChestShop, MCGUI]
+softdepend: [WorldGuard, ChestShop, MCGUI, FancyHolograms, ExcellentEconomy]
 # загружаться раньше аукциона: экономика казны должна быть зарегистрирована до чтения лотов из базы
 loadbefore: [zAuctionHouse]
 commands:
