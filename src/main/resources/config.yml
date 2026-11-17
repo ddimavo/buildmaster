@@ -505,3 +505,11 @@ webhooks:
   #    type: json
   #    url: "https://example.com/hook"
   #    auth-header: "Bearer TOKEN"
+
+# ---- Интеграция с Plan ----
+# Если установлен Plan (https://github.com/plan-player-analytics/Plan) и включена функция plan, его панель получает вкладки
+# IndustryReborn: район, экономика, электросеть, производство, отели, работа и заказы, товары, таблицы, а на страницах игроков - их участки,
+# предприятия, выручка, аренда, работа и заказы. Данные обновляются раз в refresh-seconds.
+plan:
+  enabled: true
+  refresh-seconds: 60

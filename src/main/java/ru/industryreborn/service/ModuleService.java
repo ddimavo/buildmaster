@@ -111,6 +111,7 @@ public final class ModuleService {
             }
         }
         plugin.holograms().updateAll();
+        plugin.planHook().sync();
     }
 
     /** Сброс к значению из config.yml. */
