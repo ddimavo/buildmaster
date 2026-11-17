@@ -1,0 +1,123 @@
+{
+ "format": 1,
+ "name": "restaurant-small",
+ "title": "Ресторан",
+ "category": "restaurant",
+ "description": "Ресторан с залом, барной стойкой и летней террасой.",
+ "size": [
+  13,
+  7,
+  11
+ ],
+ "foundation": "minecraft:stone_bricks",
+ "palette": {
+  "s": "minecraft:stone_bricks",
+  "f": "minecraft:oak_fence",
+  "w": "minecraft:white_concrete",
+  "g": "minecraft:glass",
+  "^": "minecraft:oak_stairs[facing=east,half=bottom,shape=straight]",
+  "k": "minecraft:barrel[facing=up]",
+  "0": "minecraft:oak_door[facing=south,half=lower,hinge=left,open=false]",
+  "B": "minecraft:bookshelf",
+  "N": "minecraft:lantern[hanging=true]",
+  "D": "minecraft:dark_oak_log[axis=y]",
+  "r": "minecraft:red_concrete",
+  "p": "minecraft:oak_planks",
+  "1": "minecraft:oak_door[facing=south,half=upper,hinge=left,open=false]",
+  "!": "minecraft:oak_stairs[facing=west,half=bottom,shape=straight]",
+  "@": "minecraft:oak_pressure_plate"
+ },
+ "layers": [
+  [
+   "sssssssssssss",
+   "sssssssssssss",
+   "sssssssssssss",
+   "sssssssssssss",
+   "sssssssssssss",
+   "sssssssssssss",
+   "sssssssssssss",
+   "sssssssssssss",
+   "sssssssssssss",
+   "sssssssssssss",
+   "sssssssssssss"
+  ],
+  [
+   ".............",
+   ".DwwwwwwwD...",
+   ".wpppppppw...",
+   ".wpppppppwppp",
+   ".wpppppppwppp",
+   ".wpppppppwppp",
+   ".wpppppppwppp",
+   ".wpppppppwppp",
+   ".DwwwpwwwDppp",
+   ".............",
+   "............."
+  ],
+  [
+   ".............",
+   ".DwwwwwwwD...",
+   ".wkkkkkkkw...",
+   ".w.......w..f",
+   ".w.......w..f",
+   ".w^f!.^f!w.ff",
+   ".w.......w..f",
+   ".w^f!.^f!w..f",
+   ".Dwww0wwwDfff",
+   ".............",
+   "............."
+  ],
+  [
+   ".............",
+   ".DwggwggwD...",
+   ".wBBBBBBBw...",
+   ".g.......g...",
+   ".g.......g...",
+   ".w.@...@.w.@.",
+   ".g.......g...",
+   ".w.@...@.w...",
+   ".Dwgg1ggwD...",
+   ".............",
+   "............."
+  ],
+  [
+   ".............",
+   ".DwwwwwwwD...",
+   ".w.......w...",
+   ".w.......w...",
+   ".w...N...w...",
+   ".w.......w...",
+   ".w.......w...",
+   ".w.......w...",
+   ".DwwwwwwwD...",
+   ".............",
+   "............."
+  ],
+  [
+   "rrrrrrrrrrr..",
+   "rrrrrrrrrrr..",
+   "rrrrrrrrrrr..",
+   "rrrrrrrrrrr..",
+   "rrrrrrrrrrr..",
+   "rrrrrrrrrrr..",
+   "rrrrrrrrrrr..",
+   "rrrrrrrrrrr..",
+   "rrrrrrrrrrr..",
+   "rrrrrrrrrrr..",
+   "............."
+  ],
+  [
+   ".............",
+   ".rrrrrrrrr...",
+   ".rrrrrrrrr...",
+   ".rrrrrrrrr...",
+   ".rrrrrrrrr...",
+   ".rrrrrrrrr...",
+   ".rrrrrrrrr...",
+   ".rrrrrrrrr...",
+   ".rrrrrrrrr...",
+   ".............",
+   "............."
+  ]
+ ]
+}

@@ -1,0 +1,144 @@
+{
+ "format": 1,
+ "name": "house-large",
+ "title": "Дом с мансардой",
+ "category": "house",
+ "description": "Двухэтажный дом: гостиная внизу, спальня и балкон наверху.",
+ "size": [
+  11,
+  10,
+  9
+ ],
+ "foundation": "minecraft:stone_bricks",
+ "palette": {
+  "s": "minecraft:stone_bricks",
+  "$": "minecraft:blue_bed[facing=south,part=head]",
+  "2": "minecraft:oak_stairs[facing=south,half=bottom,shape=straight]",
+  "f": "minecraft:oak_fence",
+  "w": "minecraft:white_concrete",
+  "g": "minecraft:glass",
+  "#": "minecraft:blue_bed[facing=south,part=foot]",
+  "c": "minecraft:cobblestone",
+  "0": "minecraft:oak_door[facing=south,half=lower,hinge=left,open=false]",
+  "B": "minecraft:bookshelf",
+  "N": "minecraft:lantern[hanging=true]",
+  "D": "minecraft:dark_oak_log[axis=y]",
+  "8": "minecraft:dark_oak_stairs[facing=north,half=bottom,shape=straight]",
+  "7": "minecraft:dark_oak_stairs[facing=south,half=bottom,shape=straight]",
+  "p": "minecraft:oak_planks",
+  "1": "minecraft:oak_door[facing=south,half=upper,hinge=left,open=false]",
+  "!": "minecraft:oak_stairs[facing=west,half=bottom,shape=straight]"
+ },
+ "layers": [
+  [
+   "sssssssssss",
+   "sssssssssss",
+   "sssssssssss",
+   "sssssssssss",
+   "sssssssssss",
+   "sssssssssss",
+   "sssssssssss",
+   "sssssssssss",
+   "sssssssssss"
+  ],
+  [
+   "...........",
+   ".ccccccccc.",
+   ".cpppppppc.",
+   ".cpppppp.c.",
+   ".cpppppppc.",
+   ".cpppppppc.",
+   ".cpppppppc.",
+   ".ccccpcccc.",
+   "..........."
+  ],
+  [
+   "...........",
+   ".DwgwwwgwD.",
+   ".w......2w.",
+   ".g.......g.",
+   ".w.......w.",
+   ".g......!g.",
+   ".w.......w.",
+   ".Dwgw0wgwD.",
+   "..........."
+  ],
+  [
+   "...........",
+   ".DwwwwwwwD.",
+   ".w.......w.",
+   ".w......2w.",
+   ".w...N...w.",
+   ".w.......w.",
+   ".w.......w.",
+   ".Dwww1wwwD.",
+   "..........."
+  ],
+  [
+   "...........",
+   ".DwwwwwwwD.",
+   ".wpppppppw.",
+   ".wpppppp.w.",
+   ".wpppppp2w.",
+   ".wpppppppw.",
+   ".wpppppppw.",
+   ".DwwwwwwwD.",
+   "..ppppppp.."
+  ],
+  [
+   "...........",
+   ".DwgwwwgwD.",
+   ".w.......w.",
+   ".g.#.....g.",
+   ".w.$.....w.",
+   ".g.B.....g.",
+   ".w.......w.",
+   ".DwwwwwwwD.",
+   "..fffffff.."
+  ],
+  [
+   "...........",
+   ".DwwwwwwwD.",
+   ".w.......w.",
+   ".w.......w.",
+   ".w...N...w.",
+   ".w.......w.",
+   ".w.......w.",
+   ".DwwwwwwwD.",
+   "..........."
+  ],
+  [
+   "77777777777",
+   "...........",
+   "...........",
+   "...........",
+   "...........",
+   "...........",
+   "...........",
+   "...........",
+   "88888888888"
+  ],
+  [
+   "...........",
+   "77777777777",
+   "...........",
+   "...........",
+   "...........",
+   "...........",
+   "...........",
+   "88888888888",
+   "..........."
+  ],
+  [
+   "...........",
+   "...........",
+   "77777777777",
+   "...........",
+   "...........",
+   "...........",
+   "88888888888",
+   "...........",
+   "..........."
+  ]
+ ]
+}

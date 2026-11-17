@@ -1,0 +1,118 @@
+{
+ "format": 1,
+ "name": "house-small",
+ "title": "Небольшой дом",
+ "category": "house",
+ "description": "Уютный дом с двускатной крышей, спальней и камином.",
+ "size": [
+  9,
+  8,
+  9
+ ],
+ "foundation": "minecraft:stone_bricks",
+ "palette": {
+  "s": "minecraft:stone_bricks",
+  "2": "minecraft:oak_stairs[facing=south,half=bottom,shape=straight]",
+  "g": "minecraft:glass",
+  "c": "minecraft:cobblestone",
+  "6": "minecraft:red_bed[facing=south,part=head]",
+  "0": "minecraft:oak_door[facing=south,half=lower,hinge=left,open=false]",
+  "3": "minecraft:oak_stairs[facing=north,half=bottom,shape=straight]",
+  "B": "minecraft:bookshelf",
+  "N": "minecraft:lantern[hanging=true]",
+  "p": "minecraft:oak_planks",
+  "1": "minecraft:oak_door[facing=south,half=upper,hinge=left,open=false]",
+  "5": "minecraft:red_bed[facing=south,part=foot]",
+  "l": "minecraft:oak_log[axis=y]"
+ },
+ "layers": [
+  [
+   "sssssssss",
+   "sssssssss",
+   "sssssssss",
+   "sssssssss",
+   "sssssssss",
+   "sssssssss",
+   "sssssssss",
+   "sssssssss",
+   "sssssssss"
+  ],
+  [
+   ".........",
+   ".ccccccc.",
+   ".cpppppc.",
+   ".cpppppc.",
+   ".cpppppc.",
+   ".cpppppc.",
+   ".cpppppc.",
+   ".cccpccc.",
+   "....s...."
+  ],
+  [
+   ".........",
+   ".lpppppl.",
+   ".pB..5.p.",
+   ".p...6.p.",
+   ".p.....p.",
+   ".p.....p.",
+   ".p.....p.",
+   ".lpp0ppl.",
+   "........."
+  ],
+  [
+   ".........",
+   ".lpgpgpl.",
+   ".pB....p.",
+   ".g.....g.",
+   ".p.....p.",
+   ".gc....g.",
+   ".p.....p.",
+   ".lpg1gpl.",
+   "........."
+  ],
+  [
+   ".........",
+   ".lpppppl.",
+   ".p.....p.",
+   ".p.....p.",
+   ".p.N...p.",
+   ".pc....p.",
+   ".p.....p.",
+   ".lpppppl.",
+   "........."
+  ],
+  [
+   "222222222",
+   ".p.....p.",
+   ".p.....p.",
+   ".p.....p.",
+   ".p.....p.",
+   ".p....cp.",
+   ".p.....p.",
+   ".p.....p.",
+   "333333333"
+  ],
+  [
+   ".........",
+   "222222222",
+   ".p.....p.",
+   ".p.....p.",
+   ".p.....p.",
+   ".p....cp.",
+   ".p.....p.",
+   "333333333",
+   "........."
+  ],
+  [
+   ".........",
+   ".........",
+   "222222222",
+   ".p.....p.",
+   ".p.....p.",
+   ".p....cp.",
+   "333333333",
+   ".........",
+   "........."
+  ]
+ ]
+}

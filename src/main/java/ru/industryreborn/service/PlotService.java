@@ -77,6 +77,41 @@ public final class PlotService {
 
     /** Создаёт административный участок: снимает исходный вид здания и ставит голограмму в позиции админа. */
     public void create(Player admin, String id, Category category, Box box, double price, double rent) {
+        create(admin, id, category, box, price, rent, null, false);
+    }
+
+    /**
+     * То же, но перед снимком исходного вида на пустой участок ставится здание из шаблона (template; null - без здания).
+     * explicit: шаблон выбран администратором - если здание поставить нельзя, участок не создаётся; иначе (автоподбор) участок создаётся пустым.
+     */
+    public void create(Player admin, String id, Category category, Box box, double price, double rent,
+                       ru.industryreborn.building.BuildingTemplate template, boolean explicit) {
+        String key = id.toLowerCase();
+        World world = admin.getWorld();
+        if (template != null) {
+            Object planned = plugin.buildings().plan(world, box, template, -1, false);
+            if (planned instanceof String error) {
+                Text.err(admin, (explicit ? "Здание не поставлено: " : "Автостроительство пропущено: ") + error);
+                if (explicit) {
+                    return;
+                }
+            } else if (planned instanceof ru.industryreborn.building.BuildingService.Placement placement) {
+                creating.add(key);
+                Text.send(admin, "<yellow>Строю здание «" + Text.esc(template.title()) + "» (" + template.blockCount() + " блоков)...");
+                plugin.buildings().build(world, template, placement, () -> {
+                    creating.remove(key);
+                    createSnapshotAndPlot(admin, id, category, box, price, rent);
+                }, error -> {
+                    creating.remove(key);
+                    Text.err(admin, "Не удалось построить здание: " + error);
+                });
+                return;
+            }
+        }
+        createSnapshotAndPlot(admin, id, category, box, price, rent);
+    }
+
+    private void createSnapshotAndPlot(Player admin, String id, Category category, Box box, double price, double rent) {
         String key = id.toLowerCase();
         World world = admin.getWorld();
         File dir = plugin.plots().snapshotDir(id);

@@ -1,0 +1,131 @@
+{
+ "format": 1,
+ "name": "warehouse-small",
+ "title": "Малый склад",
+ "category": "warehouse",
+ "description": "Склад с широкими воротами, рядами бочек и сеном.",
+ "size": [
+  15,
+  8,
+  11
+ ],
+ "foundation": "minecraft:stone_bricks",
+ "palette": {
+  "s": "minecraft:stone_bricks",
+  "+": "minecraft:spruce_stairs[facing=south,half=bottom,shape=straight]",
+  "g": "minecraft:glass",
+  "h": "minecraft:hay_block",
+  "k": "minecraft:barrel[facing=up]",
+  "E": "minecraft:spruce_log[axis=y]",
+  "N": "minecraft:lantern[hanging=true]",
+  "=": "minecraft:spruce_stairs[facing=north,half=bottom,shape=straight]",
+  "t": "minecraft:smooth_stone",
+  "e": "minecraft:spruce_planks"
+ },
+ "layers": [
+  [
+   "sssssssssssssss",
+   "sssssssssssssss",
+   "sssssssssssssss",
+   "sssssssssssssss",
+   "sssssssssssssss",
+   "sssssssssssssss",
+   "sssssssssssssss",
+   "sssssssssssssss",
+   "sssssssssssssss",
+   "sssssssssssssss",
+   "sssssssssssssss"
+  ],
+  [
+   "...............",
+   ".EeeeeeeeeeeeE.",
+   ".ettttttttttte.",
+   ".ettttttttttte.",
+   ".ettttttttttte.",
+   ".ettttttttttte.",
+   ".ettttttttttte.",
+   ".ettttttttttte.",
+   ".ettttttttttte.",
+   ".Eeeee...eeeeE.",
+   ".....sssss....."
+  ],
+  [
+   "...............",
+   ".EeeeeeeeeeeeE.",
+   ".ek.k.k..hhhhe.",
+   ".ek.k.k......e.",
+   ".e...........e.",
+   ".e........kkke.",
+   ".e........kkke.",
+   ".e........kkke.",
+   ".e...........e.",
+   ".Eeeee...eeeeE.",
+   "..............."
+  ],
+  [
+   "...............",
+   ".EeeeeeeeeeeeE.",
+   ".ek.k.k..hhhhe.",
+   ".ek.k.k......e.",
+   ".e...........e.",
+   ".e...........e.",
+   ".e...........e.",
+   ".e...........e.",
+   ".e...........e.",
+   ".Eeeee...eeeeE.",
+   "..............."
+  ],
+  [
+   "...............",
+   ".EegegegegegeE.",
+   ".e...........e.",
+   ".e...........e.",
+   ".e...........e.",
+   ".e...........e.",
+   ".e...........e.",
+   ".e...........e.",
+   ".e...........e.",
+   ".Eegeg.g.gegeE.",
+   "..............."
+  ],
+  [
+   "...............",
+   ".EeeeeeeeeeeeE.",
+   ".e...........e.",
+   ".e...........e.",
+   ".e...........e.",
+   ".e.....N.....e.",
+   ".e...........e.",
+   ".e...........e.",
+   ".e...........e.",
+   ".EeeeeEEEeeeeE.",
+   "..............."
+  ],
+  [
+   "+++++++++++++++",
+   "...............",
+   "...............",
+   "...............",
+   "...............",
+   "...............",
+   "...............",
+   "...............",
+   "...............",
+   "...............",
+   "==============="
+  ],
+  [
+   "...............",
+   "+++++++++++++++",
+   "...............",
+   "...............",
+   "...............",
+   "...............",
+   "...............",
+   "...............",
+   "...............",
+   "===============",
+   "..............."
+  ]
+ ]
+}

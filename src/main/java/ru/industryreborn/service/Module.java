@@ -18,6 +18,7 @@ public enum Module {
     AUTO_BALANCE("auto-balance", "Автокорректировка экономики", "автоматический расчёт цен, налогов и коэффициентов"),
     WEBHOOKS("webhooks", "Вебхуки", "статистика в Discord, XenForo, Invision"),
     PLAN("plan", "Интеграция с Plan", "показатели на панели Plan"),
+    AUTO_BUILD("auto-build", "Автостроительство", "здание из шаблона ставится на пустой участок при создании"),
     HOLO_SHOP("holo-shop", "Торговля через голограммы", "голограммы-витрины с листанием и покупкой");
 
     private final String key;

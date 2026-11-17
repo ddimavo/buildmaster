@@ -79,6 +79,7 @@ public class IndustryRebornPlugin extends JavaPlugin {
     private ru.industryreborn.webhook.WebhookService webhooks;
     private ru.industryreborn.plan.PlanHook planHook;
     private ru.industryreborn.holo.ClickZones clickZones;
+    private ru.industryreborn.building.BuildingService buildings;
     private ru.industryreborn.holoshop.HoloShopService holoShops;
     private ru.industryreborn.service.LinkService links;
     private ru.industryreborn.service.ServicesHolograms servicesHolograms;
@@ -140,6 +141,8 @@ public class IndustryRebornPlugin extends JavaPlugin {
         webhooks = new ru.industryreborn.webhook.WebhookService(this);
         planHook = new ru.industryreborn.plan.PlanHook(this);
         clickZones = new ru.industryreborn.holo.ClickZones(this);
+        buildings = new ru.industryreborn.building.BuildingService(this);
+        buildings.load();
         holoShops = new ru.industryreborn.holoshop.HoloShopService(this);
         holoFactory = new ru.industryreborn.holo.HoloFactory(this);
         holograms = new HologramService(this);
@@ -371,6 +374,10 @@ public class IndustryRebornPlugin extends JavaPlugin {
 
     public ru.industryreborn.service.StatsService stats() {
         return stats;
+    }
+
+    public ru.industryreborn.building.BuildingService buildings() {
+        return buildings;
     }
 
     public ru.industryreborn.holo.ClickZones clickZones() {

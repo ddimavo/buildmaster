@@ -45,7 +45,7 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
             "storage", "claim", "journal", "name", "desc", "bank", "service", "factory", "room", "region", "job", "hologram", "machine", "chest", "shop", "goods", "storefront", "link", "unlink", "enchant", "ui", "plots", "business", "hotel", "admin", "holoshop", "help");
     private static final List<String> ADMIN_SUBS = List.of("wand", "pos1", "pos2", "create", "delete", "evict",
             "setprice", "setrent", "setspawn", "resnapshot", "reload", "seize", "reset", "holo", "category",
-            "moderation", "arrest", "auction", "show", "module", "balance", "webhook");
+            "moderation", "arrest", "auction", "show", "module", "balance", "webhook", "build");
     /** Команды банка и электросети: отдельные права industryreborn.bank и industryreborn.grid. */
     private static final List<String> GRID_SUBS = List.of("grid", "area");
 
@@ -70,7 +70,8 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
             java.util.Map.entry("area", ru.industryreborn.service.Module.ELECTRICITY),
             java.util.Map.entry("balance", ru.industryreborn.service.Module.AUTO_BALANCE),
             java.util.Map.entry("webhook", ru.industryreborn.service.Module.WEBHOOKS),
-            java.util.Map.entry("holoshop", ru.industryreborn.service.Module.HOLO_SHOP));
+            java.util.Map.entry("holoshop", ru.industryreborn.service.Module.HOLO_SHOP),
+            java.util.Map.entry("build", ru.industryreborn.service.Module.AUTO_BUILD));
 
     private final IndustryRebornPlugin plugin;
 
@@ -108,6 +109,7 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
         try {
             switch (sub) {
                 case "module" -> withPlayer(sender, p -> modules(p, rest));
+                case "build" -> withPlayer(sender, p -> build(p, rest));
                 case "balance" -> balance(sender, rest);
                 case "webhook" -> webhook(sender, rest);
                 case "holoshop" -> withPlayer(sender, p -> holoShop(p, rest));
@@ -950,7 +952,29 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
         if (overlap != null) {
             throw new CommandError("Область пересекается с участком " + overlap.id + ".");
         }
-        plugin.service().create(p, id, category, box, price, rent);
+        ru.industryreborn.building.BuildingTemplate template = null;
+        boolean explicit = false;
+        if (args.length > 4 && args[4].equalsIgnoreCase("build")) {
+            if (!plugin.buildings().enabled()) {
+                throw new CommandError("Автостроительство отключено.");
+            }
+            if (args.length > 5) {
+                template = plugin.buildings().get(args[5]);
+                if (template == null) {
+                    throw new CommandError("Здание «" + args[5] + "» не найдено: /district build list");
+                }
+            } else {
+                template = plugin.buildings().defaultFor(category, box);
+                if (template == null) {
+                    throw new CommandError("Для типа «" + category.title() + "» нет подходящего здания: /district build list");
+                }
+            }
+            explicit = true;
+        } else if (!(args.length > 4 && args[4].equalsIgnoreCase("nobuild")) && plugin.buildings().enabled()
+                && plugin.getConfig().getBoolean("auto-build.on-create", true)) {
+            template = plugin.buildings().defaultFor(category, box);
+        }
+        plugin.service().create(p, id, category, box, price, rent, template, explicit);
     }
 
     private Plot requirePlot(String id) {
@@ -1109,6 +1133,47 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
     }
 
     /** treasury | menu | report [дни] | subsidy <участок> <сумма> <причина> | prize <игрок> <сумма> <мероприятие> | pay ... */
+    /** build list | build <участок> <здание> [поворот 0-3|force]: здание из шаблона на свободный пустой участок. */
+    private void build(Player p, String[] args) {
+        var svc = plugin.buildings();
+        if (args.length == 0 || args[0].equalsIgnoreCase("list")) {
+            Text.send(p, "<yellow>Здания для автостроительства:");
+            for (var t : svc.all()) {
+                p.sendMessage(Text.mm("<gray> <white>" + Text.esc(t.name()) + "</white> - " + Text.esc(t.title()) + " (" + t.category() + ", "
+                        + t.sizeX() + "×" + t.sizeY() + "×" + t.sizeZ() + ", " + t.blockCount() + " блоков)"));
+            }
+            Text.send(p, "<gray>Поставить: /district build <участок> <здание> [force]; при создании: /district create ... build [здание] или nobuild");
+            return;
+        }
+        if (args[0].equalsIgnoreCase("reload")) {
+            svc.load();
+            Text.ok(p, "Здания перечитаны: " + svc.all().size() + ".");
+            return;
+        }
+        if (args.length < 2) {
+            throw new CommandError("Использование: /district build <участок> <здание> [force]");
+        }
+        Plot plot = requirePlot(args[0]);
+        var template = svc.get(args[1]);
+        if (template == null) {
+            throw new CommandError("Здание «" + args[1] + "» не найдено: /district build list");
+        }
+        if (!plot.isFree() || plugin.service().isLocked(plot)) {
+            throw new CommandError("Строить можно только на свободном участке, который сейчас не обрабатывается.");
+        }
+        boolean force = args.length > 2 && args[2].equalsIgnoreCase("force");
+        org.bukkit.World world = Bukkit.getWorld(plot.world);
+        Object planned = svc.plan(world, plot.box, template, -1, force);
+        if (planned instanceof String error) {
+            throw new CommandError(error);
+        }
+        Text.send(p, "<yellow>Строю здание «" + Text.esc(template.title()) + "» на участке " + plot.id + "...");
+        svc.build(world, template, (ru.industryreborn.building.BuildingService.Placement) planned, () -> {
+            Text.ok(p, "Здание построено. Сохраняю его как исходный вид участка.");
+            plugin.service().resnapshot(p, plot);
+        }, error -> Text.err(p, "Не удалось построить здание: " + error));
+    }
+
     /** holoshop create <участок> | remove <номер> | list [участок]: торговля через голограммы. */
     private void holoShop(Player p, String[] args) {
         var svc = plugin.holoShops();
@@ -1475,6 +1540,16 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
         }
         if (sub.equals("plots") && args.length == 2) {
             return filter(List.of("free", "mine"), args[1]);
+        }
+        if (sub.equals("build")) {
+            if (args.length == 2) {
+                List<String> list = new ArrayList<>(List.of("list", "reload"));
+                list.addAll(plotIds(Plot.Status.FREE));
+                return filter(list, args[1]);
+            }
+            if (args.length == 3) {
+                return filter(plugin.buildings().all().stream().map(ru.industryreborn.building.BuildingTemplate::name).toList(), args[2]);
+            }
         }
         if (sub.equals("holoshop") && args.length == 2) {
             return filter(List.of("create", "remove", "list"), args[1]);

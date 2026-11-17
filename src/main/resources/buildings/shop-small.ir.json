@@ -1,0 +1,96 @@
+{
+ "format": 1,
+ "name": "shop-small",
+ "title": "Небольшой магазин",
+ "category": "shop",
+ "description": "Лавка с полосатым навесом, прилавком и стеллажами.",
+ "size": [
+  11,
+  6,
+  9
+ ],
+ "foundation": "minecraft:stone_bricks",
+ "palette": {
+  "s": "minecraft:stone_bricks",
+  "g": "minecraft:glass",
+  "b": "minecraft:bricks",
+  "W": "minecraft:white_wool",
+  "k": "minecraft:barrel[facing=up]",
+  "0": "minecraft:oak_door[facing=south,half=lower,hinge=left,open=false]",
+  "B": "minecraft:bookshelf",
+  "N": "minecraft:lantern[hanging=true]",
+  "p": "minecraft:oak_planks",
+  "1": "minecraft:oak_door[facing=south,half=upper,hinge=left,open=false]",
+  "R": "minecraft:red_wool",
+  "x": "minecraft:light_gray_concrete",
+  "l": "minecraft:oak_log[axis=y]"
+ },
+ "layers": [
+  [
+   "sssssssssss",
+   "sssssssssss",
+   "sssssssssss",
+   "sssssssssss",
+   "sssssssssss",
+   "sssssssssss",
+   "sssssssssss",
+   "sssssssssss",
+   "sssssssssss"
+  ],
+  [
+   "...........",
+   ".bbbbbbbbb.",
+   ".bpppppppb.",
+   ".bpppppppb.",
+   ".bpppppppb.",
+   ".bpppppppb.",
+   "lbpppppppb.",
+   ".bbbbpbbbb.",
+   "..........."
+  ],
+  [
+   "...........",
+   ".bbbbbbbbb.",
+   ".bBBBBBBBb.",
+   ".bkkkkkkkb.",
+   ".b.......b.",
+   ".b.......b.",
+   "lb.......b.",
+   ".bgg.0.ggb.",
+   "..........."
+  ],
+  [
+   "...........",
+   ".bbbbbbbbb.",
+   ".bBBBBBBBb.",
+   ".b.......b.",
+   ".b.......b.",
+   ".b.......b.",
+   "lb.......b.",
+   ".bgg.1.ggb.",
+   "..........."
+  ],
+  [
+   "...........",
+   ".bbbbbbbbb.",
+   ".b.......b.",
+   ".b.......b.",
+   ".b.N...N.b.",
+   ".b.......b.",
+   ".b.......b.",
+   ".bbbbbbbbb.",
+   "..........."
+  ],
+  [
+   "...........",
+   ".xxxxxxxxx.",
+   ".xxxxxxxxx.",
+   ".xxxxxxxxx.",
+   ".xxxxxxxxx.",
+   ".xxxxxxxxx.",
+   ".xxxxxxxxx.",
+   "xxxxxxxxxxx",
+   "RWRWRWRWRWR"
+  ]
+ ]
+}
