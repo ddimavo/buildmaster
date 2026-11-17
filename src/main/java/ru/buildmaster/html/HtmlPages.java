@@ -21,7 +21,7 @@ public final class HtmlPages {
     }
 
     private String money(double v) {
-        return Html.esc(plugin.economy().format(v));
+        return "<span class=\"num\">" + Html.esc(plugin.economy().format(v)) + "</span>";
     }
 
     private static String stat(String value, String label) {
