@@ -2,7 +2,7 @@ package net.milkbowl.vault.economy;
 
 import org.bukkit.OfflinePlayer;
 
-/** Заглушка для компиляции: только методы, которые использует BuildMaster. */
+/** Заглушка для компиляции: только методы, которые использует IndustryReborn. */
 public interface Economy {
     String format(double amount);
 

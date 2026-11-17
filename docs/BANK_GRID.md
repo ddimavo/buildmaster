@@ -2,7 +2,7 @@
 
 Административные здания: **Банк** и **Электростанция**. Создаёт только администратор
 (`/district create <номер> bank - -` и `/district create <номер> power_plant - -`), купить или арендовать их нельзя.
-Права: `buildmaster.bank` (банк) и `buildmaster.grid` (электросеть) - отдельные; оба входят в `buildmaster.admin`.
+Права: `industryreborn.bank` (банк) и `industryreborn.grid` (электросеть) - отдельные; оба входят в `industryreborn.admin`.
 
 ## Банк
 
@@ -14,7 +14,7 @@
 | Штраф при изъятии | `bank admin penalty <процент>`; процент от остатка счёта, остальное возвращается управляющему |
 | Налог на аренду | `bank admin tax rent <процент>`; арендодатель платит из выручки (см. ограничения) |
 | Налог на имущество | `bank admin tax property <тип> <сумма>`; раз в `bank.property-tax-period-days` (7) суток |
-| Только в банке | `bank admin only-in-bank on\|off`; сотрудники банка (право `buildmaster.bank`) не ограничены |
+| Только в банке | `bank admin only-in-bank on\|off`; сотрудники банка (право `industryreborn.bank`) не ограничены |
 | Долг по налогу | `bank admin forgive <номер> <причина>` |
 
 Значения: команда или меню администратора (`bank.yml`) важнее `config.yml`; `reset` возвращает значение из конфига.

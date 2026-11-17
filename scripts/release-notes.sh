@@ -35,5 +35,5 @@ fi
 
 echo
 echo "---"
-echo "Установка: положите \`BuildMaster-$VERSION.jar\` в папку \`plugins/\`. Нужны Paper 1.21.6+ и Vault."
+echo "Установка: положите \`IndustryReborn-$VERSION.jar\` в папку \`plugins/\`. Нужны Paper 1.21.6+ и Vault."
 echo "Контрольная сумма SHA-256 лежит рядом с файлом (\`.sha256\`)."

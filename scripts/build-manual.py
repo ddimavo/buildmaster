@@ -53,7 +53,7 @@ page = f"""<!DOCTYPE html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>BuildMaster - руководство</title>
+<title>IndustryReborn - руководство</title>
 <style>
 :root {{
   --bg:#f6f7fb; --panel:#ffffff; --text:#1d2433; --muted:#667085; --line:#e4e7ec;
@@ -136,10 +136,10 @@ footer {{ max-width:980px; margin:50px auto 0; color:var(--muted); font-size:13p
 </style>
 </head>
 <body data-version="{html.escape(version)}">
-<div class="topbar"><button id="menu">☰ Разделы</button><b>BuildMaster</b></div>
+<div class="topbar"><button id="menu">☰ Разделы</button><b>IndustryReborn</b></div>
 <div class="layout">
 <aside id="side">
-  <div class="brand"><div class="logo">🏙️</div><div><b>BuildMaster</b><small>Руководство {html.escape(version)}</small></div></div>
+  <div class="brand"><div class="logo">🏙️</div><div><b>IndustryReborn</b><small>Руководство {html.escape(version)}</small></div></div>
   <input id="search" type="search" placeholder="Поиск по разделам…" autocomplete="off">
   <nav id="nav">
 {nav_html}
@@ -147,7 +147,7 @@ footer {{ max-width:980px; margin:50px auto 0; color:var(--muted); font-size:13p
 </aside>
 <main>
   <div class="hero">
-    <h1>BuildMaster</h1>
+    <h1>IndustryReborn</h1>
     <p>Район коммерции для Minecraft: участки, аренда, мастерские и электричество, отели, работники и зарплаты, банк, общий аукцион и участки игроков на WorldGuard.</p>
     <div class="chips"><span>Paper 1.21.6 – 26.x</span><span>Java 21</span><span>Vault</span><span>WorldGuard · ChestShop · zAuctionHouse (по желанию)</span><span>Руководство {html.escape(version)}</span></div>
   </div>

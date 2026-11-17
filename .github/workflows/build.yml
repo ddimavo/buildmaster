@@ -40,5 +40,5 @@ jobs:
       - name: Готовый плагин
         uses: actions/upload-artifact@v4
         with:
-          name: BuildMaster
-          path: build/libs/BuildMaster-*.jar
+          name: IndustryReborn
+          path: build/libs/IndustryReborn-*.jar

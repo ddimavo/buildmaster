@@ -59,8 +59,8 @@ jobs:
 
       - name: Проверка jar
         run: |
-          test -f "build/libs/BuildMaster-$VERSION.jar"
-          unzip -p "build/libs/BuildMaster-$VERSION.jar" plugin.yml | grep -q "^version: '\?$VERSION"
+          test -f "build/libs/IndustryReborn-$VERSION.jar"
+          unzip -p "build/libs/IndustryReborn-$VERSION.jar" plugin.yml | grep -q "^version: '\?$VERSION"
 
       - name: Описание релиза
         run: |
@@ -77,20 +77,20 @@ jobs:
       - name: Контрольная сумма
         run: |
           cd build/libs
-          sha256sum "BuildMaster-$VERSION.jar" > "BuildMaster-$VERSION.jar.sha256"
+          sha256sum "IndustryReborn-$VERSION.jar" > "IndustryReborn-$VERSION.jar.sha256"
 
       - name: Публикация релиза
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.TAG }}
           target_commitish: ${{ github.sha }}
-          name: BuildMaster ${{ env.VERSION }}
+          name: IndustryReborn ${{ env.VERSION }}
           body_path: release-notes.md
           prerelease: ${{ env.PRERELEASE == 'true' }}
           fail_on_unmatched_files: true
           files: |
-            build/libs/BuildMaster-${{ env.VERSION }}.jar
-            build/libs/BuildMaster-${{ env.VERSION }}.jar.sha256
+            build/libs/IndustryReborn-${{ env.VERSION }}.jar
+            build/libs/IndustryReborn-${{ env.VERSION }}.jar.sha256
 
       - name: Очистка старых dev-пререлизов
         if: ${{ env.PRERELEASE == 'true' }}

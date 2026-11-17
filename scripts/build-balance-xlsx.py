@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Строит docs/BuildMaster-Balance.xlsx: таблицу баланса экономики BuildMaster с живыми формулами.
+"""Строит docs/IndustryReborn-Balance.xlsx: таблицу баланса экономики IndustryReborn с живыми формулами.
 
 Листы: Сводка, Параметры, Цены, Электричество, Производство, Отели, Налоги и казна, Рекомендации.
 Синие ячейки с жёлтой заливкой - вводимые значения, остальное считается формулами.
@@ -15,7 +15,7 @@ from openpyxl.utils import get_column_letter
 from openpyxl.workbook.defined_name import DefinedName
 from openpyxl.worksheet.datavalidation import DataValidation
 
-OUT = sys.argv[1] if len(sys.argv) > 1 else "docs/BuildMaster-Balance.xlsx"
+OUT = sys.argv[1] if len(sys.argv) > 1 else "docs/IndustryReborn-Balance.xlsx"
 
 wb = Workbook()
 F_IN = Font(name="Calibri", size=11, color="0000FF")
@@ -622,7 +622,7 @@ ws.add_chart(ch, "H%d" % (SR))
 
 # ====================================================================== Сводка
 ws = s_sum
-put(ws, "A1", "BuildMaster: баланс экономики", "title")
+put(ws, "A1", "IndustryReborn: баланс экономики", "title")
 put(ws, "A2", "Таблица сама считает цену электричества, рекомендуемые цены продукции и ставки налогов по показателям экономики. "
               "Меняйте синие ячейки на листах «Параметры», «Цены», «Производство», «Отели» и «Налоги и казна».", "note")
 ws.merge_cells("A2:E2")

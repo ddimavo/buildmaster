@@ -6,7 +6,7 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * Подмножество: BuildMaster не реализует интерфейс напрямую, а оборачивает настоящую экономику через java.lang.reflect.Proxy,
+ * Подмножество: IndustryReborn не реализует интерфейс напрямую, а оборачивает настоящую экономику через java.lang.reflect.Proxy,
  * поэтому полный набор методов здесь не нужен.
  */
 public interface AuctionEconomy {
