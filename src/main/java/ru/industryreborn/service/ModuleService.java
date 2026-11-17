@@ -102,6 +102,7 @@ public final class ModuleService {
                 Text.send(p, msg);
             }
         }
+        plugin.webhooks().event("module", "Функция «" + m.title() + "»", (on ? "включена" : "отключена") + " (" + actor + ")", on ? 0x4CAF50 : 0xE53935);
         plugin.getLogger().info("Функция " + m.key() + (on ? " включена" : " отключена") + " (" + actor + ")");
         // тарифы и голограммы зависят от функций: пересчитываем
         if (m == Module.ELECTRICITY || m == Module.HOTELS) {

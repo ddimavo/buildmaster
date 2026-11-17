@@ -85,11 +85,11 @@ footer { max-width:980px; margin:50px auto 0; color:var(--muted); font-size:13px
 }
 </style>
 </head>
-<body data-version="2.3.0.">
+<body data-version="2.4.0.">
 <div class="topbar"><button id="menu">☰ Разделы</button><b>IndustryReborn</b></div>
 <div class="layout">
 <aside id="side">
-  <div class="brand"><div class="logo">🏙️</div><div><b>IndustryReborn</b><small>Руководство 2.3.0.</small></div></div>
+  <div class="brand"><div class="logo">🏙️</div><div><b>IndustryReborn</b><small>Руководство 2.4.0.</small></div></div>
   <input id="search" type="search" placeholder="Поиск по разделам…" autocomplete="off">
   <nav id="nav">
 <a class="l2" href="#1-что-такое-industryreborn">1. Что такое IndustryReborn</a>
@@ -174,6 +174,7 @@ footer { max-width:980px; margin:50px auto 0; color:var(--muted); font-size:13px
 <a class="l3" href="#137-перезагрузка">13.7. Перезагрузка</a>
 <a class="l2" href="#131-отключение-функций">13.1. Отключение функций</a>
 <a class="l2" href="#132-автокорректировка-экономики">13.2. Автокорректировка экономики</a>
+<a class="l2" href="#133-вебхуки-со-статистикой">13.3. Вебхуки со статистикой</a>
 <a class="l2" href="#14-справочник-команд">14. Справочник команд</a>
 <a class="l3" href="#141-игроки">14.1. Игроки</a>
 <a class="l3" href="#142-администраторы-industryrebornadmin">14.2. Администраторы (industryreborn.admin)</a>
@@ -193,12 +194,12 @@ footer { max-width:980px; margin:50px auto 0; color:var(--muted); font-size:13px
   <div class="hero">
     <h1>IndustryReborn</h1>
     <p>Район коммерции для Minecraft: участки, аренда, мастерские и электричество, отели, работники и зарплаты, банк, общий аукцион и участки игроков на WorldGuard.</p>
-    <div class="chips"><span>Paper 1.21.6 – 26.x</span><span>Java 21</span><span>Vault</span><span>WorldGuard · ChestShop · zAuctionHouse (по желанию)</span><span>Руководство 2.3.0.</span></div>
+    <div class="chips"><span>Paper 1.21.6 – 26.x</span><span>Java 21</span><span>Vault</span><span>WorldGuard · ChestShop · zAuctionHouse (по желанию)</span><span>Руководство 2.4.0.</span></div>
   </div>
   <div class="content">
 
 <blockquote class="callout">
-<p>Версия руководства: 2.3.0. Плагин: Paper 1.21.6 – 26.x, Java 21+. Все команды начинаются с <code>/district</code> (псевдонимы <code>/dt</code>, <code>/uchastok</code>).
+<p>Версия руководства: 2.4.0. Плагин: Paper 1.21.6 – 26.x, Java 21+. Все команды начинаются с <code>/district</code> (псевдонимы <code>/dt</code>, <code>/uchastok</code>).
 Если вы только начинаете, прочитайте разделы 1–3 и сразу переходите к нужной роли: <strong>игрок</strong> (раздел 4), <strong>управляющий предприятием</strong> (5–8), <strong>владелец региона WorldGuard</strong> (9), <strong>администратор</strong> (13–14).</p>
 </blockquote>
 
@@ -1456,6 +1457,7 @@ footer { max-width:980px; margin:50px auto 0; color:var(--muted); font-size:13px
 /district admin                                        центр администрирования (модерация, арест, электросеть, банк)
 /district module [функция] [on|off|reset]              включение и выключение функций плагина
 /district balance [status|preview|run|reset|history]   автокорректировка экономики
+/district webhook [list|send &lt;имя&gt;|test &lt;имя&gt;]         вебхуки со статистикой
 /district moderation approve|reject|tp &lt;№&gt; [причина]   решение по заявке игрока (№ - из страницы модерации)
 /district bank settings                                настройки банка (страница или меню)
 /district machine at &lt;мастерская&gt; &lt;x,y,z&gt; set|clear|menu  задание станку без взгляда на него
@@ -1585,6 +1587,44 @@ footer { max-width:980px; margin:50px auto 0; color:var(--muted); font-size:13px
 (<code>/district power admin base</code>, <code>/district bank admin ...</code>), автокорректировка не трогает. После каждого изменения: запись в журнал
 (было, стало, отношение, индекс) и сообщение в чат (<code>auto-balance.notify</code>).</p>
 <p>Команды: <code>/district balance</code> (показатели и предварительный расчёт), <code>preview</code>, <code>run</code> (применить сейчас), <code>reset</code> (вернуть значения из config.yml), <code>history</code>.</p>
+<h2 id="133-вебхуки-со-статистикой">13.3. Вебхуки со статистикой</h2>
+<p>Включение: <code>/district module webhooks on</code>, адреса - в <code>webhooks.endpoints</code> config.yml (примеры лежат там же). Поддерживаются:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Тип</th>
+<th>Что делает</th>
+<th>Ключевые настройки</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>discord</code></td>
+<td>вебхук канала: сводка в виде embed, сообщение правится на месте (<code>mode: edit</code>) или каждый раз новое (<code>new</code>)</td>
+<td><code>url</code>, <code>username</code></td>
+</tr>
+<tr>
+<td><code>xenforo</code></td>
+<td>REST API XenForo 2: сообщение в тему (<code>thread-id</code>) или новая тема (<code>node-id</code>, <code>title</code>); сводка в BBCode</td>
+<td><code>url</code> (…/api), <code>api-key</code>, <code>api-user</code></td>
+</tr>
+<tr>
+<td><code>invision</code></td>
+<td>REST API Invision Community: сообщение в тему (<code>topic</code>) или новая тема (<code>forum</code>, <code>title</code>); сводка в HTML</td>
+<td><code>url</code> (…/api), <code>api-key</code>, <code>author</code></td>
+</tr>
+<tr>
+<td><code>json</code></td>
+<td>POST с JSON на любой адрес, заголовок авторизации в <code>auth-header</code></td>
+<td><code>url</code></td>
+</tr>
+</tbody>
+</table></div>
+<p>Для каждого адреса: <code>interval-minutes</code> (0 - без расписания), <code>events</code> (<code>stats</code>, <code>balance</code>, <code>module</code>, <code>payout</code>), <code>sections</code> (какие разделы включать:
+<code>general</code>, <code>economy</code>, <code>electricity</code>, <code>production</code>, <code>hotels</code>, <code>work</code>, <code>goods</code>, <code>top</code>). Первое сообщение для Discord, XenForo и Invision запоминается в <code>webhooks.yml</code>,
+дальше сводка правит его. Команды: <code>/district webhook list</code> (состояние и результат последней отправки), <code>send &lt;имя&gt;</code> (отправить сводку сейчас), <code>test &lt;имя&gt;</code>
+(проверочное сообщение). Адрес и ключи хранятся в config.yml: не публикуйте его.</p>
+<p>Выключенные функции (например, электричество) в сводку не попадают.</p>
 <h2 id="14-справочник-команд"><span class="num">14</span>Справочник команд</h2>
 <p>Все команды: <code>/district &lt;подкоманда&gt;</code> (<code>/dt</code>, <code>/uchastok</code>). <code>[ ]</code> – необязательное, <code>&lt; &gt;</code> – обязательное, <code>|</code> – выбор. Номер участка можно не указывать, если вы стоите на нём.</p>
 <h3 id="141-игроки">14.1. Игроки</h3>

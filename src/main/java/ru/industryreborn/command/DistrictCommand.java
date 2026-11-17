@@ -45,7 +45,7 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
             "storage", "claim", "journal", "name", "desc", "bank", "service", "factory", "room", "region", "job", "hologram", "machine", "chest", "shop", "goods", "storefront", "link", "unlink", "enchant", "ui", "plots", "business", "hotel", "admin", "help");
     private static final List<String> ADMIN_SUBS = List.of("wand", "pos1", "pos2", "create", "delete", "evict",
             "setprice", "setrent", "setspawn", "resnapshot", "reload", "seize", "reset", "holo", "category",
-            "moderation", "arrest", "auction", "show", "module", "balance");
+            "moderation", "arrest", "auction", "show", "module", "balance", "webhook");
     /** Команды банка и электросети: отдельные права industryreborn.bank и industryreborn.grid. */
     private static final List<String> GRID_SUBS = List.of("grid", "area");
 
@@ -68,7 +68,8 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
             java.util.Map.entry("auction", ru.industryreborn.service.Module.AUCTION),
             java.util.Map.entry("grid", ru.industryreborn.service.Module.ELECTRICITY),
             java.util.Map.entry("area", ru.industryreborn.service.Module.ELECTRICITY),
-            java.util.Map.entry("balance", ru.industryreborn.service.Module.AUTO_BALANCE));
+            java.util.Map.entry("balance", ru.industryreborn.service.Module.AUTO_BALANCE),
+            java.util.Map.entry("webhook", ru.industryreborn.service.Module.WEBHOOKS));
 
     private final IndustryRebornPlugin plugin;
 
@@ -107,6 +108,7 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
             switch (sub) {
                 case "module" -> withPlayer(sender, p -> modules(p, rest));
                 case "balance" -> balance(sender, rest);
+                case "webhook" -> webhook(sender, rest);
                 case "menu" -> withPlayer(sender, p -> {
                     if (rest.length > 0 && rest[0].equalsIgnoreCase("classic") || !plugin.htmlMenus().open(p, ru.industryreborn.html.HtmlMenus.Kind.MAIN)) {
                         new MainMenu(plugin, p).open();
@@ -1105,6 +1107,40 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
     }
 
     /** treasury | menu | report [дни] | subsidy <участок> <сумма> <причина> | prize <игрок> <сумма> <мероприятие> | pay ... */
+    /** webhook [list|send <имя>|test <имя>]: вебхуки со статистикой. */
+    private void webhook(CommandSender sender, String[] args) {
+        var svc = plugin.webhooks();
+        String sub = args.length == 0 ? "list" : args[0].toLowerCase(Locale.ROOT);
+        switch (sub) {
+            case "list" -> {
+                var list = svc.endpoints();
+                if (list.isEmpty()) {
+                    Text.send(sender, "<gray>Вебхуков нет. Добавьте их в config.yml: раздел webhooks.endpoints.");
+                }
+                for (var e : list) {
+                    Text.send(sender, "<yellow>" + Text.esc(e.name()) + " <gray>(" + e.type() + ", раз в " + e.intervalMinutes() + " мин., события: "
+                            + String.join(", ", e.events()) + "): <white>" + Text.esc(svc.statusOf(e.name())));
+                }
+            }
+            case "send", "test" -> {
+                if (args.length < 2) {
+                    throw new CommandError("Использование: /district webhook " + sub + " <имя>");
+                }
+                var e = svc.endpoint(args[1]);
+                if (e == null) {
+                    throw new CommandError("Вебхук «" + args[1] + "» не найден: /district webhook list");
+                }
+                if (sub.equals("send")) {
+                    svc.sendStats(e);
+                } else {
+                    svc.test(e);
+                }
+                Text.ok(sender, (sub.equals("send") ? "Сводка отправляется" : "Проверочное сообщение отправляется") + ": " + e.name() + ". Результат: /district webhook list");
+            }
+            default -> throw new CommandError("Использование: /district webhook [list|send <имя>|test <имя>]");
+        }
+    }
+
     /** balance [status|preview|run|reset|history]: автокорректировка экономики. */
     private void balance(CommandSender sender, String[] args) {
         var svc = plugin.balance();
@@ -1397,6 +1433,14 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
         }
         if (sub.equals("plots") && args.length == 2) {
             return filter(List.of("free", "mine"), args[1]);
+        }
+        if (sub.equals("webhook")) {
+            if (args.length == 2) {
+                return filter(List.of("list", "send", "test"), args[1]);
+            }
+            if (args.length == 3) {
+                return filter(plugin.webhooks().endpoints().stream().map(ru.industryreborn.webhook.WebhookService.Endpoint::name).toList(), args[2]);
+            }
         }
         if (sub.equals("balance") && args.length == 2) {
             return filter(List.of("status", "preview", "run", "reset", "history"), args[1]);

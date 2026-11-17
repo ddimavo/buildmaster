@@ -75,6 +75,8 @@ public class IndustryRebornPlugin extends JavaPlugin {
     private ru.industryreborn.holo.HoloFactory holoFactory;
     private ru.industryreborn.service.ModuleService modules;
     private ru.industryreborn.service.BalanceService balance;
+    private ru.industryreborn.service.StatsService stats;
+    private ru.industryreborn.webhook.WebhookService webhooks;
     private ru.industryreborn.service.LinkService links;
     private ru.industryreborn.service.ServicesHolograms servicesHolograms;
     private ru.industryreborn.service.BankHolograms bankHolograms;
@@ -131,6 +133,8 @@ public class IndustryRebornPlugin extends JavaPlugin {
         moderation.load();
         modules = new ru.industryreborn.service.ModuleService(this);
         balance = new ru.industryreborn.service.BalanceService(this);
+        stats = new ru.industryreborn.service.StatsService(this);
+        webhooks = new ru.industryreborn.webhook.WebhookService(this);
         holoFactory = new ru.industryreborn.holo.HoloFactory(this);
         holograms = new HologramService(this);
         stations = new StationService(this);
@@ -214,6 +218,7 @@ public class IndustryRebornPlugin extends JavaPlugin {
         getServer().getScheduler().runTaskLater(this, htmlMenus::cleanUp, 100L);
         getServer().getScheduler().runTaskTimer(this, htmlMenus::tick, 200L, 60L);
         getServer().getScheduler().runTaskTimer(this, balance::minuteTick, 1200L, 1200L);
+        getServer().getScheduler().runTaskTimer(this, webhooks::minuteTick, 1300L, 1200L);
         getServer().getScheduler().runTaskLater(this, () -> {
             stations.rescanAll();
             holograms.updateAll();
@@ -346,6 +351,14 @@ public class IndustryRebornPlugin extends JavaPlugin {
     /** Только для тестов: подмена доступа к WorldGuard. */
     public void setRegions(RegionAccess access) {
         this.regions = access;
+    }
+
+    public ru.industryreborn.service.StatsService stats() {
+        return stats;
+    }
+
+    public ru.industryreborn.webhook.WebhookService webhooks() {
+        return webhooks;
     }
 
     public ru.industryreborn.service.BalanceService balance() {

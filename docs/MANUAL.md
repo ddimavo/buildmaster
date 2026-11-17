@@ -1,6 +1,6 @@
 # IndustryReborn: полное руководство
 
-> Версия руководства: 2.3.0. Плагин: Paper 1.21.6 – 26.x, Java 21+. Все команды начинаются с `/district` (псевдонимы `/dt`, `/uchastok`).
+> Версия руководства: 2.4.0. Плагин: Paper 1.21.6 – 26.x, Java 21+. Все команды начинаются с `/district` (псевдонимы `/dt`, `/uchastok`).
 > Если вы только начинаете, прочитайте разделы 1–3 и сразу переходите к нужной роли: **игрок** (раздел 4), **управляющий предприятием** (5–8), **владелец региона WorldGuard** (9), **администратор** (13–14).
 
 ## Содержание
@@ -847,6 +847,7 @@ IndustryReborn делит «район коммерции» на **участк�
 /district admin                                        центр администрирования (модерация, арест, электросеть, банк)
 /district module [функция] [on|off|reset]              включение и выключение функций плагина
 /district balance [status|preview|run|reset|history]   автокорректировка экономики
+/district webhook [list|send <имя>|test <имя>]         вебхуки со статистикой
 /district moderation approve|reject|tp <№> [причина]   решение по заявке игрока (№ - из страницы модерации)
 /district bank settings                                настройки банка (страница или меню)
 /district machine at <мастерская> <x,y,z> set|clear|menu  задание станку без взгляда на него
@@ -922,6 +923,24 @@ IndustryReborn делит «район коммерции» на **участк�
 (было, стало, отношение, индекс) и сообщение в чат (`auto-balance.notify`).
 
 Команды: `/district balance` (показатели и предварительный расчёт), `preview`, `run` (применить сейчас), `reset` (вернуть значения из config.yml), `history`.
+
+## 13.3. Вебхуки со статистикой
+
+Включение: `/district module webhooks on`, адреса - в `webhooks.endpoints` config.yml (примеры лежат там же). Поддерживаются:
+
+| Тип | Что делает | Ключевые настройки |
+|---|---|---|
+| `discord` | вебхук канала: сводка в виде embed, сообщение правится на месте (`mode: edit`) или каждый раз новое (`new`) | `url`, `username` |
+| `xenforo` | REST API XenForo 2: сообщение в тему (`thread-id`) или новая тема (`node-id`, `title`); сводка в BBCode | `url` (…/api), `api-key`, `api-user` |
+| `invision` | REST API Invision Community: сообщение в тему (`topic`) или новая тема (`forum`, `title`); сводка в HTML | `url` (…/api), `api-key`, `author` |
+| `json` | POST с JSON на любой адрес, заголовок авторизации в `auth-header` | `url` |
+
+Для каждого адреса: `interval-minutes` (0 - без расписания), `events` (`stats`, `balance`, `module`, `payout`), `sections` (какие разделы включать:
+`general`, `economy`, `electricity`, `production`, `hotels`, `work`, `goods`, `top`). Первое сообщение для Discord, XenForo и Invision запоминается в `webhooks.yml`,
+дальше сводка правит его. Команды: `/district webhook list` (состояние и результат последней отправки), `send <имя>` (отправить сводку сейчас), `test <имя>`
+(проверочное сообщение). Адрес и ключи хранятся в config.yml: не публикуйте его.
+
+Выключенные функции (например, электричество) в сводку не попадают.
 
 ## 14. Справочник команд
 

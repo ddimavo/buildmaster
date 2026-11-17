@@ -243,6 +243,9 @@ public final class BalanceService {
         if (tariffs) {
             plugin.power().reloadTariffs(actor, "автокорректировка цены электричества");
         }
+        plugin.webhooks().event("balance", "Экономика скорректирована",
+                "Сток/приток " + String.format(Locale.ROOT, "%.2f", s.ratio()) + ", индекс " + String.format(Locale.ROOT, "%.2f", s.index())
+                        + chat.toString().replaceAll("<[^>]+>", ""), 0xFFCF5A);
         String head = "<gold>Экономика скорректирована <gray>(сток/приток <white>" + String.format(Locale.ROOT, "%.2f", s.ratio())
                 + "</white>, цель " + fmt(cfg("target-ratio", 0.95)) + ", индекс <white>" + String.format(Locale.ROOT, "%.2f", s.index()) + "</white>):";
         String mode = plugin.getConfig().getString("auto-balance.notify", "admins").toLowerCase(Locale.ROOT);

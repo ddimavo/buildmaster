@@ -127,6 +127,7 @@ public final class TreasuryPayouts {
         plugin.saveTreasury();
         plugin.journal().add(plot.id, plot.owner, actor, Journal.Action.SUBSIDY,
                 plugin.economy().format(amount) + ": " + reason);
+        plugin.webhooks().event("payout", "Субсидия из казны", "Участок " + plot.id + ": " + plugin.economy().format(amount) + " (" + reason + ")", 0x4CAF50);
         plugin.service().warn(plot.owner, plot.id, "<green>Администрация выделила участку <white>" + Text.esc(plot.id)
                 + "</white> субсидию " + plugin.economy().format(amount) + ": " + Text.esc(reason));
         return null;
@@ -174,6 +175,8 @@ public final class TreasuryPayouts {
         plugin.saveTreasury();
         plugin.journal().add("-", target.getUniqueId(), actor, kind == Kind.PRIZE ? Journal.Action.PRIZE : Journal.Action.TREASURY,
                 plugin.economy().format(amount) + ": " + reason);
+        plugin.webhooks().event("payout", kind == Kind.PRIZE ? "Приз из казны" : "Выплата из казны",
+                target.getName() + ": " + plugin.economy().format(amount) + " (" + reason + ")", 0xFFCF5A);
         Player online = Bukkit.getPlayer(target.getUniqueId());
         if (online != null) {
             Text.send(online, "<green>" + (kind == Kind.PRIZE ? "Вы получили приз " : "Вам выплачено ") + plugin.economy().format(amount)

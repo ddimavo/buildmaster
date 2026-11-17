@@ -469,3 +469,39 @@ auto-balance:
     rent-tax-max: 20
     sales-tax-min: 0
     sales-tax-max: 12
+
+# ---- Вебхуки ----
+# Включаются функцией webhooks (/district module webhooks on). Сводка показателей и события уходят в Discord, на форум XenForo или
+# Invision Community либо на любой адрес с JSON. Запросы идут в отдельном потоке и не тормозят сервер.
+# events: stats (периодическая сводка), balance (корректировка экономики), module (включение/выключение функций), payout (выплаты из казны).
+# mode: edit - сводка правит одно и то же сообщение (Discord: PATCH, форумы: правка поста), new - каждый раз новое.
+# sections: какие разделы включать (general, economy, electricity, production, hotels, work, goods, top); пусто - все.
+# Примеры (раскомментируйте и подставьте свои адреса и ключи):
+webhooks:
+  endpoints: {}
+  #  discord-main:
+  #    type: discord
+  #    url: "https://discord.com/api/webhooks/ID/TOKEN"
+  #    username: IndustryReborn
+  #    interval-minutes: 60
+  #    events: [stats, balance, module, payout]
+  #    mode: edit
+  #  xenforo-news:
+  #    type: xenforo
+  #    url: "https://forum.example.com/api"     # адрес REST API XenForo 2
+  #    api-key: "КЛЮЧ"
+  #    api-user: 1                               # id пользователя, от имени которого пишем
+  #    thread-id: 123                            # тема для сообщений (или node-id и title для создания темы)
+  #    interval-minutes: 180
+  #    events: [stats]
+  #  invision-news:
+  #    type: invision
+  #    url: "https://forum.example.com/api"     # адрес REST API Invision Community
+  #    api-key: "КЛЮЧ"
+  #    author: 1                                 # id автора
+  #    topic: 45                                 # тема (или forum и title для создания темы)
+  #    interval-minutes: 180
+  #  custom:
+  #    type: json
+  #    url: "https://example.com/hook"
+  #    auth-header: "Bearer TOKEN"
