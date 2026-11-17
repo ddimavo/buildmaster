@@ -25,7 +25,7 @@ public final class HtmlMenus implements Listener {
 
     public enum Kind {
         MAIN("main"), BANK("bank"), TREASURY("treasury"), FREE("free"), MINE("mine"), STORAGE("storage"), JOURNAL("journal"),
-        WARNINGS("warnings"), BUSINESS("business"), HOTEL("hotel"), JOBS("jobs"), ORDERS("orders");
+        WARNINGS("warnings"), BUSINESS("business"), HOTEL("hotel"), JOBS("jobs"), ORDERS("orders"), ADMIN("admin"), MODERATION("moderation"), ARRESTS("arrests"), GRID("grid"), BANKSET("bankset");
 
         private final String key;
 
@@ -166,6 +166,11 @@ public final class HtmlMenus implements Listener {
             case HOTEL -> pages.hotel(player, suffix);
             case JOBS -> pages.jobs(player, suffix);
             case ORDERS -> pages.orders(player, suffix);
+            case ADMIN -> pages.admin(player, suffix);
+            case MODERATION -> pages.moderation(player, suffix);
+            case ARRESTS -> pages.arrests(player, suffix);
+            case GRID -> pages.grid(player, suffix);
+            case BANKSET -> pages.bankSettings(player, suffix);
         };
     }
 

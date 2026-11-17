@@ -62,6 +62,15 @@ final class BankCommands {
                     new BankMenu(plugin, p).open();
                 }
             }
+            case "settings" -> {
+                requireBank(sender);
+                if (!(sender instanceof Player p)) {
+                    throw new CommandError("Настройки доступны только игроку. Команды: /district bank admin ...");
+                }
+                if (rest.length > 0 && rest[0].equalsIgnoreCase("classic") || !plugin.htmlMenus().open(p, ru.buildmaster.html.HtmlMenus.Kind.BANKSET)) {
+                    new ru.buildmaster.gui.BankSettingsMenu(plugin, p).open();
+                }
+            }
             case "classic" -> {
                 if (!(sender instanceof Player p)) {
                     throw new CommandError("Меню банка доступно только игроку.");

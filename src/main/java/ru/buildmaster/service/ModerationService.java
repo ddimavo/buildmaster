@@ -246,6 +246,24 @@ public final class ModerationService {
 
     // ------------------------------------------------------------ решения
 
+    /** Ожидающая заявка по началу идентификатора (первые символы UUID). */
+    public Request findPending(String prefix) {
+        Request found = null;
+        for (Request r : pending()) {
+            if (r.id.toString().startsWith(prefix.toLowerCase(java.util.Locale.ROOT))) {
+                if (found != null) {
+                    return null;     // неоднозначно
+                }
+                found = r;
+            }
+        }
+        return found;
+    }
+
+    public static String shortId(Request r) {
+        return r.id.toString().substring(0, 8);
+    }
+
     public List<Request> pending() {
         List<Request> list = new ArrayList<>();
         for (Request r : requests) {

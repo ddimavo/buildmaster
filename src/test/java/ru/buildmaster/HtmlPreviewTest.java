@@ -134,6 +134,20 @@ class HtmlPreviewTest extends PluginTestBase {
         // записываем все страницы для Felya_ (включая режим админа для казны)
         PlayerMock target = felya;
         target.addAttachment(plugin, "buildmaster.bank", true);
+        target.addAttachment(plugin, "buildmaster.admin", true);
+        target.addAttachment(plugin, "buildmaster.grid", true);
+        Plot plant = addPlot("pp1", Category.POWER_PLANT, 140, -1, -1);
+        plant.name = "ТЭС «Север»";
+        plant.plantCapacity = 1000;
+        plugin.grid().connect(w, plant, "Boss");
+        plugin.grid().connect(hotel, plant, "Boss");
+        Plot extra = addPlot("w2", Category.WORKSHOP, 160, -1, 150);
+        plugin.service().rent(mia, extra, 3);
+        plugin.grid().disconnect(extra, "Просрочена оплата", "Boss");
+        mia.performCommand("district name w2 Мастерская Мии");
+        mia.performCommand("district desc w2 Чиним и зачаровываем всё на свете");
+        plugin.storage().add(mia.getUniqueId(), "w2", List.of(new ItemStack(Material.DIAMOND, 5)),
+                ru.buildmaster.model.StorageEntry.State.ARRESTED, "арест", "demo");
         for (HtmlMenus.Kind kind : HtmlMenus.Kind.values()) {
             plugin.htmlMenus().open(target, kind);
         }

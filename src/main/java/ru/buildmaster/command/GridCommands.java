@@ -72,7 +72,7 @@ final class GridCommands {
             case "menu" -> {
                 if (!(sender instanceof Player p)) {
                     info(sender);
-                } else {
+                } else if (args.length > 1 && args[1].equalsIgnoreCase("classic") || !plugin.htmlMenus().open(p, ru.buildmaster.html.HtmlMenus.Kind.GRID)) {
                     new GridMenu(plugin, p, 0).open();
                 }
             }

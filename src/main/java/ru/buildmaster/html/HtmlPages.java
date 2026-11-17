@@ -11,6 +11,7 @@ import ru.buildmaster.model.Category;
 import ru.buildmaster.model.Employee;
 import ru.buildmaster.model.JobApplication;
 import ru.buildmaster.model.Plot;
+import ru.buildmaster.model.Request;
 import ru.buildmaster.model.ServiceOrder;
 import ru.buildmaster.model.Vacancy;
 import ru.buildmaster.service.Journal;
@@ -101,6 +102,9 @@ public final class HtmlPages {
         b.append(link("storage-" + suffix + ".html", "Хранилище", "Вещей: " + stored));
         b.append(link("journal-" + suffix + ".html", "Журнал", "История ваших участков"));
         b.append(link("warnings-" + suffix + ".html", "Уведомления", unread > 0 ? "Непрочитанных: <span class=\"warn\">" + unread + "</span>" : "Непрочитанных нет"));
+        if (player.hasPermission("buildmaster.admin") || player.hasPermission("buildmaster.bank") || player.hasPermission("buildmaster.grid")) {
+            b.append(link("admin-" + suffix + ".html", "Администрирование", "Заявки, арест вещей, электросеть, банк"));
+        }
         b.append(command("district menu classic", "Все разделы", "Участки, работа, заказы и остальное (меню-сундук)"));
         b.append("</div>\n<div class=\"foot\"><a class=\"btn gray\" data-action=\"close\">Закрыть</a></div>");
         return Html.page("Район коммерции", b.toString());
@@ -159,7 +163,7 @@ public final class HtmlPages {
         b.append("<div class=\"foot\"><a class=\"btn gray\" href=\"main-").append(suffix).append(".html\">Назад</a>");
         if (player.hasPermission("buildmaster.bank")) {
             b.append("<a class=\"btn\" href=\"treasury-").append(suffix).append(".html\">Казна</a>");
-            b.append("<a class=\"btn gray\" data-command=\"district bank classic\">Настройки банка</a>");
+            b.append("<a class=\"btn gray\" href=\"bankset-").append(suffix).append(".html\">Настройки банка</a>");
         }
         b.append("<a class=\"btn gray\" data-action=\"close\">Закрыть</a></div>");
         return Html.page("Банк", b.toString());
@@ -761,5 +765,189 @@ public final class HtmlPages {
             b.append("</table>");
         }
         return Html.page("Мои заказы", b.append(nav(suffix, true)).toString());
+    }
+
+    // ------------------------------------------------------------ администрирование
+
+    private String denied(String title, String suffix) {
+        return Html.page(title, "<h1>" + Html.esc(title) + "</h1><div class=\"minus\">Недостаточно прав.</div>" + nav(suffix, true));
+    }
+
+    private static String adminNav(String suffix) {
+        return "<div class=\"foot\"><a class=\"btn gray\" href=\"admin-" + suffix + ".html\">Назад</a>"
+                + "<a class=\"btn gray\" data-action=\"close\">Закрыть</a></div>";
+    }
+
+    /** Центр администрирования: ссылки на разделы со счётчиками ожидающего. */
+    public String admin(Player player, String suffix) {
+        boolean admin = player.hasPermission("buildmaster.admin");
+        boolean bank = player.hasPermission("buildmaster.bank");
+        boolean grid = player.hasPermission("buildmaster.grid");
+        if (!admin && !bank && !grid) {
+            return denied("Администрирование", suffix);
+        }
+        StringBuilder b = new StringBuilder("<h1>Администрирование</h1><div class=\"sub\">Разделы по вашим правам</div><div class=\"grid\">");
+        if (admin) {
+            int pending = plugin.moderation().pending().size();
+            b.append(link("moderation-" + suffix + ".html", "Модерация", "Заявок ожидает: " + (pending > 0 ? "<span class=\"warn\">" + pending + "</span>" : "0")));
+            b.append(link("arrests-" + suffix + ".html", "Арестованные вещи", "Игроков: " + plugin.arrests().players().size()));
+        }
+        if (grid) {
+            b.append(link("grid-" + suffix + ".html", "Электросеть", "Станций: " + plugin.grid().plants().size()));
+        }
+        if (bank) {
+            b.append(link("treasury-" + suffix + ".html", "Казна", "Баланс: " + money(plugin.treasury().balance())));
+            b.append(link("bankset-" + suffix + ".html", "Настройки банка", "Комиссии, налоги, штраф"));
+        }
+        b.append("</div>").append(nav(suffix, true));
+        return Html.page("Администрирование", b.toString());
+    }
+
+    private static final String[] REJECT_REASONS = {"Не соответствует правилам сервера", "Неподходящее название или описание", "Повторная заявка"};
+
+    /** Заявки игроков: название, описание, участок, голограмма, зачарование. */
+    public String moderation(Player player, String suffix) {
+        if (!player.hasPermission("buildmaster.admin")) {
+            return denied("Модерация", suffix);
+        }
+        List<Request> list = plugin.moderation().pending();
+        StringBuilder b = new StringBuilder("<h1>Модерация</h1><div class=\"sub\">Заявки, ожидающие решения: ").append(list.size()).append("</div>\n");
+        if (list.isEmpty()) {
+            b.append("<div class=\"plus\">Новых заявок нет.</div>");
+        }
+        for (Request r : list) {
+            String id = ru.buildmaster.service.ModerationService.shortId(r);
+            b.append("<details class=\"row\"><summary><b>").append(Html.esc(r.type.title())).append("</b> <span class=\"muted\">№ ")
+                    .append(Html.esc(r.plotId)).append(" · ").append(Html.esc(r.requesterName)).append(" · ").append(Html.esc(Text.date(r.createdAt)))
+                    .append("</span></summary><div class=\"inner\"><div class=\"sub\">").append(Html.esc(r.text)).append("</div>")
+                    .append(cmdBtn("district moderation approve " + id, "Одобрить", ""))
+                    .append(cmdBtn("district moderation tp " + id, "Телепорт", "gray"));
+            for (String reason : REJECT_REASONS) {
+                b.append(cmdBtn("district moderation reject " + id + " " + reason, "Отклонить: " + reason, "red"));
+            }
+            b.append("<div class=\"sub\">Своя причина: /district moderation reject ").append(id).append(" &lt;причина&gt;</div></div></details>");
+        }
+        return Html.page("Модерация", b.append(adminNav(suffix)).toString());
+    }
+
+    /** Арестованные вещи по игрокам: вернуть, удалить, выставить на аукцион. */
+    public String arrests(Player player, String suffix) {
+        if (!player.hasPermission("buildmaster.admin")) {
+            return denied("Арестованные вещи", suffix);
+        }
+        var ids = plugin.arrests().players();
+        StringBuilder b = new StringBuilder("<h1>Арестованные вещи</h1><div class=\"sub\">Решение по каждому игроку записывается в журнал</div>\n");
+        if (ids.isEmpty()) {
+            b.append("<div class=\"plus\">Арестованных вещей нет.</div>");
+        }
+        for (java.util.UUID id : ids) {
+            String name = String.valueOf(org.bukkit.Bukkit.getOfflinePlayer(id).getName());
+            b.append("<details class=\"row\"><summary><b>").append(Html.esc(name)).append("</b> <span class=\"muted\">вещей: ")
+                    .append(plugin.arrests().count(id)).append("</span></summary><div class=\"inner\">")
+                    .append(cmdBtn("district arrest release " + name + " Решение администрации", "Вернуть владельцу", ""))
+                    .append(cmdBtn("district arrest auction " + name + " Решение администрации", "На аукцион казны", "gray"))
+                    .append(cmdBtn("district arrest delete " + name + " Решение администрации", "Удалить", "red"))
+                    .append("<div class=\"sub\">Своя причина: /district arrest &lt;release|auction|delete&gt; ").append(Html.esc(name)).append(" &lt;причина&gt;</div></div></details>");
+        }
+        return Html.page("Арестованные вещи", b.append(adminNav(suffix)).toString());
+    }
+
+    /** Электросеть: цена, станции с нагрузкой, подключённые и отключённые предприятия. */
+    public String grid(Player player, String suffix) {
+        if (!player.hasPermission("buildmaster.grid")) {
+            return denied("Электросеть", suffix);
+        }
+        var grid = plugin.grid();
+        List<Plot> plants = grid.plants();
+        double price = plugin.power().base();
+        StringBuilder b = new StringBuilder("<h1>Электросеть</h1><div class=\"sub\">Станции, нагрузка и подключения</div>\n");
+        b.append("<div class=\"stats\">").append(stat(money(price), "Цена 1 V в сутки"))
+                .append(stat(String.valueOf(plants.size()), "Станций"))
+                .append(stat(grid.active() ? "<span class=\"plus\">действует</span>" : "<span class=\"muted\">нет станций</span>", "Сеть")).append("</div>");
+        b.append(cmdBtn("district grid price " + num(Math.max(0.01, price * 0.9)), "Цена -10%", "gray"))
+                .append(cmdBtn("district grid price " + num(price * 1.1), "Цена +10%", "gray"))
+                .append(cmdBtn("district grid autoconnect", "Подключить все автоматически", ""));
+        for (Plot plant : plants) {
+            double load = grid.load(plant);
+            b.append("<h2>").append(Html.esc(plant.displayName())).append(" <span class=\"muted\">№ ").append(Html.esc(plant.id)).append("</span></h2>")
+                    .append("<div class=\"stats\">").append(stat(num(plant.plantCapacity) + " V", "Мощность"))
+                    .append(stat(num(grid.demand(plant)) + " V", "Потребление"))
+                    .append(stat("<span class=\"" + (load > 1 ? "minus" : load > 0.8 ? "warn" : "plus") + "\">" + Math.round(load * 100) + "%</span>", "Нагрузка"))
+                    .append(stat("×" + num(Math.max(1.0, plant.plantMultiplier)), "Множитель тарифа")).append("</div>");
+            for (int d : new int[] {-500, -100, 100, 500}) {
+                b.append(cmdBtn("district grid capacity " + plant.id + " " + num(Math.max(0, plant.plantCapacity + d)), (d > 0 ? "+" : "") + d + " V", "gray"));
+            }
+            List<Plot> connected = grid.connected(plant);
+            if (!connected.isEmpty()) {
+                b.append("<table><tr><th>Подключено</th><th>Потребление</th><th></th></tr>");
+                for (Plot p : connected) {
+                    b.append("<tr><td>").append(Html.esc(p.displayName())).append(" <span class=\"muted\">№ ").append(Html.esc(p.id)).append("</span></td><td>")
+                            .append(num(p.account.unitsPerDay())).append(" V</td><td>")
+                            .append(cmdBtn("district grid disconnect " + p.id + " Отключено администратором", "Отключить", "red")).append("</td></tr>");
+                }
+                b.append("</table>");
+            }
+        }
+        List<Plot> off = new ArrayList<>();
+        for (Plot p : plugin.plots().all()) {
+            if (ru.buildmaster.service.GridService.gridClient(p) && p.plantId == null && !p.isFree()) {
+                off.add(p);
+            }
+        }
+        if (!off.isEmpty()) {
+            b.append("<h2>Не подключены</h2><table><tr><th>Предприятие</th><th>Причина</th><th></th></tr>");
+            for (Plot p : off) {
+                b.append("<tr><td>").append(Html.esc(p.displayName())).append(" <span class=\"muted\">№ ").append(Html.esc(p.id)).append("</span></td><td>")
+                        .append(Html.esc(p.gridReason == null || p.gridReason.isBlank() ? "не подключено" : p.gridReason)).append("</td><td>");
+                if (p.lastPlantId != null) {
+                    b.append(cmdBtn("district grid restore " + p.id, "Вернуть", ""));
+                }
+                for (Plot plant : plants) {
+                    b.append(cmdBtn("district grid connect " + p.id + " " + plant.id, "К " + plant.id, "gray"));
+                }
+                b.append("</td></tr>");
+            }
+            b.append("</table>");
+        }
+        return Html.page("Электросеть", b.append(adminNav(suffix)).toString());
+    }
+
+    private String adjust(String command, double value, double step, double max, String unit, boolean reset) {
+        StringBuilder b = new StringBuilder();
+        b.append(cmdBtn(command + " " + num(Math.max(0, value - step)), "-" + num(step) + unit, "gray"))
+                .append(cmdBtn(command + " " + num(Math.min(max, value + step)), "+" + num(step) + unit, "gray"));
+        if (reset) {
+            b.append(cmdBtn(command + " reset", "Сброс", "red"));
+        }
+        return b.toString();
+    }
+
+    /** Настройки банка: комиссии, штраф, налоги, режим «только в банке». */
+    public String bankSettings(Player player, String suffix) {
+        if (!player.hasPermission("buildmaster.bank")) {
+            return denied("Настройки банка", suffix);
+        }
+        var bank = plugin.bank();
+        StringBuilder b = new StringBuilder("<h1>Настройки банка</h1><div class=\"sub\">Изменения действуют сразу и записываются в журнал</div>\n");
+        b.append("<table><tr><th>Параметр</th><th>Сейчас</th><th></th></tr>");
+        b.append("<tr><td>Комиссия за пополнение</td><td>").append(num(bank.depositCommission())).append("%</td><td>")
+                .append(adjust("district bank admin commission deposit", bank.depositCommission(), 0.5, 100, "%", true)).append("</td></tr>");
+        b.append("<tr><td>Комиссия за снятие</td><td>").append(num(bank.withdrawCommission())).append("%</td><td>")
+                .append(adjust("district bank admin commission withdraw", bank.withdrawCommission(), 0.5, 100, "%", true)).append("</td></tr>");
+        b.append("<tr><td>Штраф при изъятии участка</td><td>").append(num(bank.seizurePenalty())).append("%</td><td>")
+                .append(adjust("district bank admin penalty", bank.seizurePenalty(), 5, 100, "%", true)).append("</td></tr>");
+        b.append("<tr><td>Налог на аренду</td><td>").append(num(bank.rentTax())).append("%</td><td>")
+                .append(adjust("district bank admin tax rent", bank.rentTax(), 1, 100, "%", true)).append("</td></tr>");
+        for (Category c : Category.values()) {
+            if (c.isAdminOnly() || c.isRentOnly()) {
+                continue;
+            }
+            b.append("<tr><td>Налог на имущество: ").append(Html.esc(c.title())).append("</td><td>").append(money(bank.propertyTax(c))).append("</td><td>")
+                    .append(adjust("district bank admin tax property " + c.key(), bank.propertyTax(c), 50, 1_000_000, "", true)).append("</td></tr>");
+        }
+        b.append("<tr><td>Операции только в банке</td><td>").append(bank.onlyInBank() ? "<span class=\"warn\">да</span>" : "нет").append("</td><td>")
+                .append(cmdBtn("district bank admin only-in-bank " + (bank.onlyInBank() ? "off" : "on"), bank.onlyInBank() ? "Выключить" : "Включить", "gray"))
+                .append(cmdBtn("district bank admin only-in-bank reset", "Сброс", "red")).append("</td></tr></table>");
+        return Html.page("Настройки банка", b.append(adminNav(suffix)).toString());
     }
 }

@@ -44,7 +44,7 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
 
     private static final List<String> PLAYER_SUBS = List.of("menu", "list", "info", "buy", "rent", "extend",
             "autorenew", "autoreset", "release", "trust", "untrust", "perm", "account", "power", "warnings", "tp", "replace",
-            "zones", "storage", "claim", "journal", "name", "desc", "bank", "service", "factory", "room", "region", "job", "hologram", "machine", "chest", "shop", "goods", "storefront", "link", "unlink", "enchant", "ui", "plots", "business", "hotel", "help");
+            "zones", "storage", "claim", "journal", "name", "desc", "bank", "service", "factory", "room", "region", "job", "hologram", "machine", "chest", "shop", "goods", "storefront", "link", "unlink", "enchant", "ui", "plots", "business", "hotel", "admin", "help");
     private static final List<String> ADMIN_SUBS = List.of("wand", "pos1", "pos2", "create", "delete", "evict",
             "setprice", "setrent", "setspawn", "zone", "resnapshot", "reload", "seize", "reset", "holo", "category",
             "moderation", "arrest", "auction", "show");
@@ -147,7 +147,12 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
                     }
                 });
                 case "autoreset" -> withPlayer(sender, p -> autoReset(p, rest));
-                case "moderation" -> withPlayer(sender, p -> new ModerationMenu(plugin, p, 0).open());
+                case "moderation" -> withPlayer(sender, p -> moderation(p, rest));
+                case "admin" -> withPlayer(sender, p -> {
+                    if (!plugin.htmlMenus().open(p, ru.buildmaster.html.HtmlMenus.Kind.ADMIN)) {
+                        new ModerationMenu(plugin, p, 0).open();
+                    }
+                });
                 case "seize" -> adminDecision(sender, rest, Journal.Action.SEIZED);
                 case "reset" -> adminDecision(sender, rest, Journal.Action.RESET);
                 case "holo" -> withPlayer(sender, p -> holo(p, rest));
@@ -1087,7 +1092,10 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
 
     /** arrest list | release|delete|auction <игрок> <причина...> */
     private void arrest(CommandSender sender, String[] args) {
-        if (args.length == 0 && sender instanceof Player p) {
+        if ((args.length == 0 || args[0].equalsIgnoreCase("classic")) && sender instanceof Player p) {
+            if (args.length == 0 && plugin.htmlMenus().open(p, ru.buildmaster.html.HtmlMenus.Kind.ARRESTS)) {
+                return;
+            }
             new ru.buildmaster.gui.ArrestedMenu(plugin, p, 0).open();
             return;
         }
@@ -1125,6 +1133,42 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
     }
 
     /** treasury | menu | report [дни] | subsidy <участок> <сумма> <причина> | prize <игрок> <сумма> <мероприятие> | pay ... */
+    /** moderation [classic|approve <№>|reject <№> <причина>|tp <№>]: заявки игроков. */
+    private void moderation(Player p, String[] args) {
+        String sub = args.length == 0 ? "" : args[0].toLowerCase(Locale.ROOT);
+        switch (sub) {
+            case "approve", "reject", "tp" -> {
+                if (args.length < 2 || sub.equals("reject") && args.length < 3) {
+                    throw new CommandError("Использование: /district moderation approve <№> | reject <№> <причина> | tp <№>");
+                }
+                Request r = plugin.moderation().findPending(args[1]);
+                if (r == null) {
+                    throw new CommandError("Заявка «" + args[1] + "» не найдена среди ожидающих.");
+                }
+                if (sub.equals("approve")) {
+                    plugin.moderation().approve(r, p.getName());
+                    Text.ok(p, "Заявка одобрена.");
+                } else if (sub.equals("reject")) {
+                    plugin.moderation().reject(r, p.getName(), String.join(" ", Arrays.copyOfRange(args, 2, args.length)));
+                    Text.ok(p, "Заявка отклонена.");
+                } else {
+                    Plot plot = plugin.plots().get(r.plotId);
+                    var at = r.type == Request.Type.HOLO ? plugin.moderation().holoLocation(r) : null;
+                    if (at != null) {
+                        p.teleport(at);
+                    } else if (plot != null) {
+                        plugin.service().teleport(p, plot);
+                    }
+                }
+            }
+            default -> {
+                if (sub.equals("classic") || !plugin.htmlMenus().open(p, ru.buildmaster.html.HtmlMenus.Kind.MODERATION)) {
+                    new ModerationMenu(plugin, p, 0).open();
+                }
+            }
+        }
+    }
+
     /** ui [html|chest|auto]: какой вид меню открывать. */
     private void ui(Player p, String[] args) {
         var menus = plugin.htmlMenus();

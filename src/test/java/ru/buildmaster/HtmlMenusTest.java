@@ -637,4 +637,113 @@ class HtmlMenusTest extends PluginTestBase {
         steve.performCommand("district job board classic");
         assertTrue(steve.getOpenInventory().getTopInventory().getHolder() instanceof ru.buildmaster.gui.JobBoardMenu);
     }
+
+    // ------------------------------------------------------------ администрирование
+
+    private ru.buildmaster.model.Request submitName(String text) {
+        steve.performCommand("district name s " + text);
+        var list = plugin.moderation().pending();
+        assertFalse(list.isEmpty(), "заявка не создана");
+        return list.get(list.size() - 1);
+    }
+
+    @Test
+    void adminPagesAreLockedForOrdinaryPlayers() throws Exception {
+        steve.performCommand("district admin");
+        for (String page : new String[] {"admin", "moderation", "arrests", "grid", "bankset", "treasury"}) {
+            assertTrue(read(page, steve).contains("Недостаточно прав"), page);
+        }
+        steve.performCommand("district menu");
+        assertFalse(read("main", steve).contains("admin-" + suffix(steve)), "карточки администрирования нет");
+        boss.performCommand("district menu");
+        assertTrue(read("main", boss).contains("admin-" + suffix(boss)));
+    }
+
+    @Test
+    void moderationPageListsRequestsWithDecisionButtons() throws Exception {
+        var r = submitName("Лавка");
+        boss.performCommand("district moderation");
+        assertTrue(gui.opened.get(gui.opened.size() - 1).startsWith("buildmaster/moderation-"));
+        String html = read("moderation", boss);
+        String id = r.id.toString().substring(0, 8);
+        assertTrue(html.contains("Лавка") && html.contains("Steve"), html);
+        assertTrue(html.contains("data-command=\"district moderation approve " + id + "\""));
+        assertTrue(html.contains("data-command=\"district moderation reject " + id + " Повторная заявка\""));
+    }
+
+    @Test
+    void moderationCommandsApproveAndReject() {
+        var r = submitName("Лавка");
+        boss.performCommand("district moderation approve " + r.id.toString().substring(0, 8));
+        assertEquals("Лавка", shop.name);
+        var r2 = submitName("Другое");
+        boss.performCommand("district moderation reject " + r2.id.toString().substring(0, 8) + " Неподходящее название");
+        assertTrue(plugin.moderation().pending().isEmpty());
+        assertEquals("Лавка", shop.name, "отклонённое не применилось");
+    }
+
+    @Test
+    void moderationCommandsNeedAdminAndAKnownId() {
+        var r = submitName("Лавка");
+        steve.performCommand("district moderation approve " + r.id.toString().substring(0, 8));
+        assertEquals(1, plugin.moderation().pending().size(), "обычный игрок не может одобрить");
+        boss.performCommand("district moderation approve zzzz");
+        assertEquals(1, plugin.moderation().pending().size());
+    }
+
+    @Test
+    void arrestsPageOffersDecisionsPerPlayer() throws Exception {
+        plugin.storage().add(steve.getUniqueId(), "s", List.of(new org.bukkit.inventory.ItemStack(org.bukkit.Material.DIAMOND, 3)),
+                ru.buildmaster.model.StorageEntry.State.ARRESTED, "арест", "test");
+        boss.performCommand("district arrest");
+        String html = read("arrests", boss);
+        assertTrue(html.contains("Steve") && html.contains("district arrest release Steve"), html);
+        assertTrue(html.contains("district arrest delete Steve") && html.contains("district arrest auction Steve"));
+        boss.performCommand("district arrest release Steve Решение администрации");
+        assertEquals(0, plugin.arrests().count(steve.getUniqueId()));
+    }
+
+    @Test
+    void gridPageShowsPlantsLoadAndConnections() throws Exception {
+        Plot plant = addPlot("p1", Category.POWER_PLANT, 200, -1, -1);
+        plant.plantCapacity = 1000;
+        Plot w = workshopWithMachines();
+        assertEquals("p1", w.plantId, "новая мастерская подключилась к станции сама");
+        boss.performCommand("district grid");
+        String html = read("grid", boss);
+        assertTrue(html.contains("№ p1") && html.contains("1000 V"), html);
+        assertTrue(html.contains("district grid capacity p1 1100"));
+        assertTrue(html.contains("district grid disconnect w "));
+        boss.performCommand("district grid disconnect w Тест");
+        gui.current.put(boss.getUniqueId(), "buildmaster/grid-" + suffix(boss));
+        plugin.htmlMenus().tick();
+        String after = read("grid", boss);
+        assertTrue(after.contains("Не подключены") && after.contains("district grid connect w p1"), after);
+        assertTrue(after.contains("Тест"));
+    }
+
+    @Test
+    void bankSettingsPageButtonsChangeTheValues() throws Exception {
+        plugin.getConfig().set("bank.deposit-commission-percent", 2.0);
+        boss.performCommand("district bank settings");
+        String html = read("bankset", boss);
+        assertTrue(html.contains("district bank admin commission deposit 1.5") && html.contains("district bank admin commission deposit 2.5"), html);
+        boss.performCommand("district bank admin commission deposit 2.5");
+        assertEquals(2.5, plugin.bank().depositCommission(), 1e-9);
+        assertTrue(html.contains("district bank admin only-in-bank on"));
+        assertTrue(html.contains("district bank admin penalty 5") && html.contains("district bank admin penalty 15"));
+        steve.performCommand("district bank settings");
+        assertFalse(gui.opened.contains("buildmaster/bankset-" + suffix(steve)));
+    }
+
+    @Test
+    void classicArgumentsKeepTheAdminChestMenus() {
+        boss.performCommand("district moderation classic");
+        assertTrue(boss.getOpenInventory().getTopInventory().getHolder() instanceof ru.buildmaster.gui.ModerationMenu);
+        boss.performCommand("district grid menu classic");
+        assertTrue(boss.getOpenInventory().getTopInventory().getHolder() instanceof ru.buildmaster.gui.GridMenu);
+        boss.performCommand("district bank settings classic");
+        assertTrue(boss.getOpenInventory().getTopInventory().getHolder() instanceof ru.buildmaster.gui.BankSettingsMenu);
+        assertTrue(gui.opened.isEmpty());
+    }
 }
