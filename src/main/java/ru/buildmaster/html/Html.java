@@ -51,6 +51,9 @@ public final class Html {
             .bar { width: 220px; height: 12px; background: #11142a; border-radius: 6px; overflow: hidden; margin-top: 4px; }
             .bar i { display: block; height: 12px; background: #4cae6b; }
             .bar i.low { background: #d9534f; }
+            .row { background: #23274a; border: 1px solid #343a68; border-radius: 10px; margin-bottom: 6px; padding: 8px 12px; font-size: 15px; }
+            .row summary { cursor: pointer; }
+            .row .inner { margin-top: 8px; }
             .foot { margin-top: 12px; display: flex; gap: 10px; }
             """;
 

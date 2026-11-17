@@ -44,7 +44,7 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
 
     private static final List<String> PLAYER_SUBS = List.of("menu", "list", "info", "buy", "rent", "extend",
             "autorenew", "autoreset", "release", "trust", "untrust", "perm", "account", "power", "warnings", "tp", "replace",
-            "zones", "storage", "claim", "journal", "name", "desc", "bank", "service", "factory", "room", "region", "job", "hologram", "machine", "chest", "shop", "goods", "storefront", "link", "unlink", "enchant", "ui", "help");
+            "zones", "storage", "claim", "journal", "name", "desc", "bank", "service", "factory", "room", "region", "job", "hologram", "machine", "chest", "shop", "goods", "storefront", "link", "unlink", "enchant", "ui", "plots", "help");
     private static final List<String> ADMIN_SUBS = List.of("wand", "pos1", "pos2", "create", "delete", "evict",
             "setprice", "setrent", "setspawn", "zone", "resnapshot", "reload", "seize", "reset", "holo", "category",
             "moderation", "arrest", "auction", "show");
@@ -99,14 +99,43 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
                 case "tp" -> withPlayer(sender, p -> teleport(p, rest));
                 case "replace" -> withPlayer(sender, p -> replace(p, rest));
                 case "zones" -> withPlayer(sender, p -> zones(p, rest.length > 0 ? rest[0] : null));
-                case "storage", "claim" -> withPlayer(sender, p -> new StorageMenu(plugin, p, 0).open());
-                case "journal" -> withPlayer(sender, p -> new JournalMenu(plugin, p, 0).open());
+                case "storage", "claim" -> withPlayer(sender, p -> {
+                    String arg = rest.length > 0 ? rest[0].toLowerCase(Locale.ROOT) : "";
+                    if (arg.equals("take")) {
+                        boolean[] full = new boolean[1];
+                        int n = plugin.storage().takeAll(p, full);
+                        if (full[0]) {
+                            Text.err(p, "Инвентарь заполнен. Остальное осталось в хранилище.");
+                        } else {
+                            Text.ok(p, n > 0 ? "Забрано стаков: " + n + "." : "В хранилище нечего забирать.");
+                        }
+                    } else if (arg.equals("classic") || !plugin.htmlMenus().open(p, ru.buildmaster.html.HtmlMenus.Kind.STORAGE)) {
+                        new StorageMenu(plugin, p, 0).open();
+                    }
+                });
+                case "journal" -> withPlayer(sender, p -> {
+                    if (rest.length > 0 && rest[0].equalsIgnoreCase("classic") || !plugin.htmlMenus().open(p, ru.buildmaster.html.HtmlMenus.Kind.JOURNAL)) {
+                        new JournalMenu(plugin, p, 0).open();
+                    }
+                });
+                case "plots" -> withPlayer(sender, p -> {
+                    boolean mine = rest.length > 0 && rest[0].equalsIgnoreCase("mine");
+                    if (rest.length > 1 && rest[1].equalsIgnoreCase("classic")
+                            || !plugin.htmlMenus().open(p, mine ? ru.buildmaster.html.HtmlMenus.Kind.MINE : ru.buildmaster.html.HtmlMenus.Kind.FREE)) {
+                        new ru.buildmaster.gui.PlotListMenu(plugin, p, new ru.buildmaster.service.PlotFilter(
+                                mine ? ru.buildmaster.service.PlotFilter.Mode.MINE : ru.buildmaster.service.PlotFilter.Mode.FREE), 0).open();
+                    }
+                });
                 case "name" -> withPlayer(sender, p -> submitText(p, rest, Request.Type.NAME));
                 case "desc" -> withPlayer(sender, p -> submitText(p, rest, Request.Type.DESCRIPTION));
                 case "perm" -> withPlayer(sender, p -> perm(p, rest));
                 case "account" -> account(sender, rest);
                 case "power" -> power(sender, rest);
-                case "warnings" -> withPlayer(sender, p -> new WarningsMenu(plugin, p, 0).open());
+                case "warnings" -> withPlayer(sender, p -> {
+                    if (rest.length > 0 && rest[0].equalsIgnoreCase("classic") || !plugin.htmlMenus().open(p, ru.buildmaster.html.HtmlMenus.Kind.WARNINGS)) {
+                        new WarningsMenu(plugin, p, 0).open();
+                    }
+                });
                 case "autoreset" -> withPlayer(sender, p -> autoReset(p, rest));
                 case "moderation" -> withPlayer(sender, p -> new ModerationMenu(plugin, p, 0).open());
                 case "seize" -> adminDecision(sender, rest, Journal.Action.SEIZED);
@@ -1313,6 +1342,9 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
         }
         if (sub.equals("hologram") && args.length == 2) {
             return filter(List.of("main", "services", "manager", "log"), args[1]);
+        }
+        if (sub.equals("plots") && args.length == 2) {
+            return filter(List.of("free", "mine"), args[1]);
         }
         if (sub.equals("ui") && args.length == 2) {
             return filter(List.of("html", "chest", "auto"), args[1]);

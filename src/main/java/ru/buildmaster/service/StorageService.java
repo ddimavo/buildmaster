@@ -149,6 +149,39 @@ public final class StorageService {
         return null;
     }
 
+    /**
+     * Забирает всё доступное, что поместится в инвентарь игрока. Возвращает число забранных стаков; то, что не влезло,
+     * остаётся в хранилище (full - инвентарь заполнился).
+     */
+    public int takeAll(org.bukkit.entity.Player player, boolean[] full) {
+        UUID id = player.getUniqueId();
+        int taken = 0;
+        List<Object[]> refs = new ArrayList<>();
+        for (StorageEntry e : entries(id)) {
+            if (e.state == StorageEntry.State.AVAILABLE) {
+                for (byte[] b : e.stacks) {
+                    refs.add(new Object[] {e.id, e.plotId, b});
+                }
+            }
+        }
+        for (Object[] ref : refs) {
+            ItemStack stack = take(id, (UUID) ref[0], (byte[]) ref[2]);
+            if (stack == null) {
+                continue;
+            }
+            var rest = player.getInventory().addItem(stack);
+            if (!rest.isEmpty()) {
+                putBack(id, (String) ref[1], rest.values().iterator().next());
+                if (full != null && full.length > 0) {
+                    full[0] = true;
+                }
+                break;
+            }
+            taken++;
+        }
+        return taken;
+    }
+
     /** Забирает предмет, ожидающий аукциона. Возвращает его или null, если записи уже нет. */
     public ItemStack takeForAuction(UUID owner, UUID entryId, byte[] ref) {
         for (StorageEntry e : entries(owner)) {

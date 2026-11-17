@@ -70,17 +70,10 @@ public final class StorageMenu extends Menu {
             set(45, Ui.prev(current, pages), e -> new StorageMenu(plugin, player, current - 1).open());
         }
         set(47, Text.icon(Material.HOPPER, "<green>Забрать всё, что поместится"), e -> {
-            for (Ref ref : new ArrayList<>(refs)) {
-                ItemStack taken = plugin.storage().take(id, ref.entry(), ref.data());
-                if (taken == null) {
-                    continue;
-                }
-                var rest = player.getInventory().addItem(taken);
-                if (!rest.isEmpty()) {
-                    plugin.storage().putBack(id, ref.plot(), rest.values().iterator().next());
-                    Text.err(player, "Инвентарь заполнен. Остальное осталось в хранилище.");
-                    break;
-                }
+            boolean[] full = new boolean[1];
+            plugin.storage().takeAll(player, full);
+            if (full[0]) {
+                Text.err(player, "Инвентарь заполнен. Остальное осталось в хранилище.");
             }
             new StorageMenu(plugin, player, 0).open();
         });

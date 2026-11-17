@@ -85,11 +85,11 @@ footer { max-width:980px; margin:50px auto 0; color:var(--muted); font-size:13px
 }
 </style>
 </head>
-<body data-version="1.23.1.">
+<body data-version="1.24.0.">
 <div class="topbar"><button id="menu">☰ Разделы</button><b>BuildMaster</b></div>
 <div class="layout">
 <aside id="side">
-  <div class="brand"><div class="logo">🏙️</div><div><b>BuildMaster</b><small>Руководство 1.23.1.</small></div></div>
+  <div class="brand"><div class="logo">🏙️</div><div><b>BuildMaster</b><small>Руководство 1.24.0.</small></div></div>
   <input id="search" type="search" placeholder="Поиск по разделам…" autocomplete="off">
   <nav id="nav">
 <a class="l2" href="#1-что-такое-buildmaster">1. Что такое BuildMaster</a>
@@ -190,12 +190,12 @@ footer { max-width:980px; margin:50px auto 0; color:var(--muted); font-size:13px
   <div class="hero">
     <h1>BuildMaster</h1>
     <p>Район коммерции для Minecraft: участки, аренда, мастерские и электричество, отели, работники и зарплаты, банк, общий аукцион и участки игроков на WorldGuard.</p>
-    <div class="chips"><span>Paper 1.21.6 – 26.x</span><span>Java 21</span><span>Vault</span><span>WorldGuard · ChestShop · zAuctionHouse (по желанию)</span><span>Руководство 1.23.1.</span></div>
+    <div class="chips"><span>Paper 1.21.6 – 26.x</span><span>Java 21</span><span>Vault</span><span>WorldGuard · ChestShop · zAuctionHouse (по желанию)</span><span>Руководство 1.24.0.</span></div>
   </div>
   <div class="content">
 
 <blockquote class="callout">
-<p>Версия руководства: 1.23.1. Плагин: Paper 1.21.6 – 26.x, Java 21+. Все команды начинаются с <code>/district</code> (псевдонимы <code>/dt</code>, <code>/uchastok</code>).
+<p>Версия руководства: 1.24.0. Плагин: Paper 1.21.6 – 26.x, Java 21+. Все команды начинаются с <code>/district</code> (псевдонимы <code>/dt</code>, <code>/uchastok</code>).
 Если вы только начинаете, прочитайте разделы 1–3 и сразу переходите к нужной роли: <strong>игрок</strong> (раздел 4), <strong>управляющий предприятием</strong> (5–8), <strong>владелец региона WorldGuard</strong> (9), <strong>администратор</strong> (13–14).</p>
 </blockquote>
 
@@ -1453,6 +1453,8 @@ footer { max-width:980px; margin:50px auto 0; color:var(--muted); font-size:13px
 /district treasury pay &lt;игрок&gt; &lt;сумма&gt; &lt;причина&gt;       прочая выплата из казны
 /district treasury report [дней]                       приходы и расходы казны по статьям
 /district ui [html|chest|auto]                         вид меню: HTML (MC GUI) или сундук
+/district plots [free|mine]                            свободные или мои участки (страница или меню)
+/district storage take                                 забрать из хранилища всё, что поместится
 </code></pre>
 <h3 id="135-электричество-и-тарифы">13.5. Электричество и тарифы</h3>
 <pre><code class="language-text">/district power admin info
@@ -2029,8 +2031,8 @@ footer { max-width:980px; margin:50px auto 0; color:var(--muted); font-size:13px
 <li><strong>Установка.</strong> Положите <code>MCGUI.jar</code> в <code>plugins/</code> и перезапустите сервер. Ресурспак MC GUI раздаёт сам (порт 25602, либо задайте <code>resource-pack.public-url</code>).
   Если ресурспак игрокам ставит Nexo или другой плагин, положите <code>plugins/MCGUI/pack.zip</code> в его папку внешних паков (см. раздел «Compatibility» в README MC GUI).</li>
 <li><strong>Вид меню.</strong> <code>gui.mode</code> в config.yml: <code>auto</code> (HTML, если MC GUI есть), <code>html</code>, <code>chest</code>. Игрок выбирает своё командой <code>/district ui html|chest|auto</code>.</li>
-<li><strong>Что в HTML.</strong> Главное меню, банк (условия, счета, кнопки пополнения и снятия), казна (баланс, отчёт, последние операции). Остальные разделы по кнопке
-  «Все разделы» открываются в меню-сундуке.</li>
+<li><strong>Что в HTML.</strong> Главное меню, свободные и мои участки, банк (условия, счета, кнопки пополнения и снятия), казна (баланс, отчёт, последние операции),
+  хранилище, журнал, уведомления. Остальные разделы по кнопке «Все разделы» открываются в меню-сундуке.</li>
 <li><strong>Ограничения.</strong> Игрокам с Bedrock страницы не показываются, при включённых шейдерах (Iris, OptiFine) страница не работает (нужно их отключить),
   ввод текста остаётся через чат. Страницы создаются под каждого игрока в <code>plugins/MCGUI/pages/buildmaster/</code> и убираются при закрытии.</li>
 </ul>

@@ -24,7 +24,8 @@ import ru.buildmaster.BuildMasterPlugin;
 public final class HtmlMenus implements Listener {
 
     public enum Kind {
-        MAIN("main"), BANK("bank"), TREASURY("treasury");
+        MAIN("main"), BANK("bank"), TREASURY("treasury"), FREE("free"), MINE("mine"), STORAGE("storage"), JOURNAL("journal"),
+        WARNINGS("warnings");
 
         private final String key;
 
@@ -62,6 +63,7 @@ public final class HtmlMenus implements Listener {
     private final Map<UUID, Map<String, String>> written = new HashMap<>();
     private final Map<UUID, Mode> prefs = new HashMap<>();
     private final File prefsFile;
+    private final java.util.Set<UUID> seenWarnings = new java.util.HashSet<>();
     private long loadGraceMs = 15_000L;
 
     public HtmlMenus(BuildMasterPlugin plugin) {
@@ -155,11 +157,21 @@ public final class HtmlMenus implements Listener {
             case MAIN -> pages.main(player, suffix);
             case BANK -> pages.bank(player, suffix);
             case TREASURY -> pages.treasury(player, suffix);
+            case FREE -> pages.free(player, suffix);
+            case MINE -> pages.mine(player, suffix);
+            case STORAGE -> pages.storage(player, suffix);
+            case JOURNAL -> pages.journal(player, suffix);
+            case WARNINGS -> pages.warnings(player, suffix);
         };
     }
 
     /** Записывает (при изменении) страницы игрока в папку MC GUI. */
     private boolean write(Player player) {
+        return write(player, null);
+    }
+
+    /** only - обновить одну страницу (иначе все): открытая страница обновляется часто, остальные при открытии. */
+    private boolean write(Player player, Kind only) {
         File root = backend.pagesDir();
         if (root == null) {
             return false;
@@ -169,6 +181,9 @@ public final class HtmlMenus implements Listener {
         String suffix = suffix(player);
         Map<String, String> state = written.computeIfAbsent(player.getUniqueId(), k -> new HashMap<>());
         for (Kind kind : Kind.values()) {
+            if (only != null && kind != only) {
+                continue;
+            }
             String html = render(kind, player, suffix);
             String name = kind.key() + "-" + suffix + ".html";
             if (html.equals(state.get(name))) {
@@ -215,12 +230,36 @@ public final class HtmlMenus implements Listener {
                 forget(id);
                 continue;
             }
-            write(player);
+            Kind kind = kindOf(current);
+            if (kind == Kind.WARNINGS && !written.isEmpty()) {
+                // страницу уведомлений игрок видит: новые подсвечены при этом показе, затем считаются прочитанными
+                if (seenWarnings.add(id)) {
+                    continue;
+                }
+                plugin.warnings().markAllRead(id);
+            } else {
+                seenWarnings.remove(id);
+            }
+            write(player, kind);
         }
+    }
+
+    private static Kind kindOf(String page) {
+        if (page == null) {
+            return null;
+        }
+        String file = page.substring(page.lastIndexOf('/') + 1);
+        for (Kind k : Kind.values()) {
+            if (file.startsWith(k.key() + "-")) {
+                return k;
+            }
+        }
+        return null;
     }
 
     private void forget(UUID id) {
         open.remove(id);
+        seenWarnings.remove(id);
         openedAt.remove(id);
         written.remove(id);
         File root = backend.pagesDir();
