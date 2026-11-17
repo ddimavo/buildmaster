@@ -58,6 +58,14 @@ final class BankCommands {
                 if (!(sender instanceof Player p)) {
                     throw new CommandError("Меню банка доступно только игроку. Условия: /district bank info");
                 }
+                if (!plugin.htmlMenus().open(p, ru.buildmaster.html.HtmlMenus.Kind.BANK)) {
+                    new BankMenu(plugin, p).open();
+                }
+            }
+            case "classic" -> {
+                if (!(sender instanceof Player p)) {
+                    throw new CommandError("Меню банка доступно только игроку.");
+                }
                 new BankMenu(plugin, p).open();
             }
             case "info" -> info(sender);

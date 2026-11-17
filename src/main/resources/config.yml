@@ -444,3 +444,10 @@ treasury:
   min-reason-length: 3      # причина обязательна
   max-single-payout: 0      # предел одной выплаты (0 - без предела)
   daily-limit: 0            # предел расходов казны за сутки (0 - без предела)
+
+# ---- HTML-меню (плагин MC GUI) ----
+# Если установлен MC GUI (https://github.com/resourcepack-ai/mcgui, нужен сервер 1.21.11+ и ресурспак), главное меню, банк и казна
+# открываются как HTML-страницы. Игрок может выбрать своё: /district ui html|chest|auto.
+# mode: auto - HTML, если MC GUI есть, иначе меню-сундук; html - то же; chest - всегда меню-сундук.
+gui:
+  mode: auto

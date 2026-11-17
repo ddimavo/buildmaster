@@ -44,7 +44,7 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
 
     private static final List<String> PLAYER_SUBS = List.of("menu", "list", "info", "buy", "rent", "extend",
             "autorenew", "autoreset", "release", "trust", "untrust", "perm", "account", "power", "warnings", "tp", "replace",
-            "zones", "storage", "claim", "journal", "name", "desc", "bank", "service", "factory", "room", "region", "job", "hologram", "machine", "chest", "shop", "goods", "storefront", "link", "unlink", "enchant", "help");
+            "zones", "storage", "claim", "journal", "name", "desc", "bank", "service", "factory", "room", "region", "job", "hologram", "machine", "chest", "shop", "goods", "storefront", "link", "unlink", "enchant", "ui", "help");
     private static final List<String> ADMIN_SUBS = List.of("wand", "pos1", "pos2", "create", "delete", "evict",
             "setprice", "setrent", "setspawn", "zone", "resnapshot", "reload", "seize", "reset", "holo", "category",
             "moderation", "arrest", "auction", "show");
@@ -75,7 +75,12 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
         }
         try {
             switch (sub) {
-                case "menu" -> withPlayer(sender, p -> new MainMenu(plugin, p).open());
+                case "menu" -> withPlayer(sender, p -> {
+                    if (rest.length > 0 && rest[0].equalsIgnoreCase("classic") || !plugin.htmlMenus().open(p, ru.buildmaster.html.HtmlMenus.Kind.MAIN)) {
+                        new MainMenu(plugin, p).open();
+                    }
+                });
+                case "ui" -> withPlayer(sender, p -> ui(p, rest));
                 case "help" -> help(sender);
                 case "list" -> list(sender);
                 case "info" -> withPlayer(sender, p -> info(p, plotOrHere(p, rest.length > 0 ? rest[0] : null)));
@@ -1081,6 +1086,24 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
     }
 
     /** treasury | menu | report [дни] | subsidy <участок> <сумма> <причина> | prize <игрок> <сумма> <мероприятие> | pay ... */
+    /** ui [html|chest|auto]: какой вид меню открывать. */
+    private void ui(Player p, String[] args) {
+        var menus = plugin.htmlMenus();
+        if (args.length == 0) {
+            Text.send(p, "<yellow>Вид меню: <white>" + menus.modeOf(p).name().toLowerCase(Locale.ROOT)
+                    + "<gray> (сервер: " + menus.serverMode().name().toLowerCase(Locale.ROOT) + "). HTML-меню "
+                    + (menus.backend().available() ? "<green>доступны" : "<red>недоступны: нет плагина MC GUI")
+                    + "<gray>. Изменить: /district ui html|chest|auto");
+            return;
+        }
+        var mode = ru.buildmaster.html.HtmlMenus.Mode.parse(args[0]);
+        if (mode == null) {
+            throw new CommandError("Использование: /district ui [html|chest|auto]");
+        }
+        menus.setMode(p, mode);
+        Text.ok(p, "Вид меню: " + mode.name().toLowerCase(Locale.ROOT) + ".");
+    }
+
     private void treasury(CommandSender sender, String[] args) {
         if (args.length == 0) {
             Text.send(sender, "<yellow>Казна: <white>" + plugin.economy().format(plugin.treasury().balance()));
@@ -1098,7 +1121,9 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
                 if (!(sender instanceof Player p)) {
                     throw new CommandError("Меню доступно только игроку.");
                 }
-                new TreasuryMenu(plugin, p).open();
+                if (args.length > 1 && args[1].equalsIgnoreCase("classic") || !plugin.htmlMenus().open(p, ru.buildmaster.html.HtmlMenus.Kind.TREASURY)) {
+                    new TreasuryMenu(plugin, p).open();
+                }
             }
             case "report" -> {
                 int days = 7;
@@ -1288,6 +1313,9 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
         }
         if (sub.equals("hologram") && args.length == 2) {
             return filter(List.of("main", "services", "manager", "log"), args[1]);
+        }
+        if (sub.equals("ui") && args.length == 2) {
+            return filter(List.of("html", "chest", "auto"), args[1]);
         }
         if (sub.equals("enchant")) {
             return filter(new EnchantCommands(plugin).complete(sender, args), args[args.length - 1]);
