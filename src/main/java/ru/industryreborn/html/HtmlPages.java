@@ -92,13 +92,15 @@ public final class HtmlPages {
         if (businesses > 0) {
             b.append(link("business-" + suffix + ".html", "Мои предприятия", "Мастерские, магазины, склады: " + businesses));
         }
-        if (hotels > 0) {
+        if (hotels > 0 && plugin.modules().enabled(ru.industryreborn.service.Module.HOTELS)) {
             b.append(link("hotel-" + suffix + ".html", "Мои отели", "Номера, гости, цены: " + hotels));
         }
         if (plugin.jobs().enabled()) {
             b.append(link("jobs-" + suffix + ".html", "Работа", "Вакансий: " + plugin.jobs().board().size() + " · работаю: " + jobs));
         }
-        b.append(link("orders-" + suffix + ".html", "Мои заказы", "Заказов: " + plugin.orders().ofClient(id).size()));
+        if (plugin.modules().enabled(ru.industryreborn.service.Module.SERVICES)) {
+            b.append(link("orders-" + suffix + ".html", "Мои заказы", "Заказов: " + plugin.orders().ofClient(id).size()));
+        }
         b.append(link("storage-" + suffix + ".html", "Хранилище", "Вещей: " + stored));
         b.append(link("journal-" + suffix + ".html", "Журнал", "История ваших участков"));
         b.append(link("warnings-" + suffix + ".html", "Уведомления", unread > 0 ? "Непрочитанных: <span class=\"warn\">" + unread + "</span>" : "Непрочитанных нет"));
@@ -792,6 +794,10 @@ public final class HtmlPages {
             b.append(link("moderation-" + suffix + ".html", "Модерация", "Заявок ожидает: " + (pending > 0 ? "<span class=\"warn\">" + pending + "</span>" : "0")));
             b.append(link("arrests-" + suffix + ".html", "Арестованные вещи", "Игроков: " + plugin.arrests().players().size()));
         }
+        if (admin) {
+            long off = java.util.Arrays.stream(ru.industryreborn.service.Module.values()).filter(m -> !plugin.modules().enabled(m)).count();
+            b.append(link("modules-" + suffix + ".html", "Функции плагина", off == 0 ? "Все включены" : "Отключено: <span class=\"warn\">" + off + "</span>"));
+        }
         if (grid) {
             b.append(link("grid-" + suffix + ".html", "Электросеть", "Станций: " + plugin.grid().plants().size()));
         }
@@ -949,5 +955,23 @@ public final class HtmlPages {
                 .append(cmdBtn("district bank admin only-in-bank " + (bank.onlyInBank() ? "off" : "on"), bank.onlyInBank() ? "Выключить" : "Включить", "gray"))
                 .append(cmdBtn("district bank admin only-in-bank reset", "Сброс", "red")).append("</td></tr></table>");
         return Html.page("Настройки банка", b.append(adminNav(suffix)).toString());
+    }
+
+    /** Функции плагина: включение и выключение. */
+    public String modules(Player player, String suffix) {
+        if (!player.hasPermission("industryreborn.admin")) {
+            return denied("Функции плагина", suffix);
+        }
+        StringBuilder b = new StringBuilder("<h1>Функции плагина</h1><div class=\"sub\">Отключённая функция сразу блокируется для всех, включая администрацию</div>\n");
+        b.append("<table><tr><th>Функция</th><th>Описание</th><th>Состояние</th><th></th></tr>");
+        for (ru.industryreborn.service.Module m : ru.industryreborn.service.Module.values()) {
+            boolean on = plugin.modules().enabled(m);
+            b.append("<tr><td>").append(Html.esc(m.title())).append("</td><td class=\"muted\">").append(Html.esc(m.description())).append("</td><td>")
+                    .append(on ? "<span class=\"plus\">включено</span>" : "<span class=\"minus\">отключено</span>").append("</td><td>")
+                    .append(cmdBtn("district module " + m.key() + " " + (on ? "off" : "on"), on ? "Отключить" : "Включить", on ? "red" : ""))
+                    .append("</td></tr>");
+        }
+        b.append("</table>");
+        return Html.page("Функции плагина", b.append(adminNav(suffix)).toString());
     }
 }

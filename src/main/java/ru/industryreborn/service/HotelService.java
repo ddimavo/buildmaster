@@ -123,6 +123,10 @@ public final class HotelService {
 
     /** Цена номера за сутки: администратор - любая, управляющий отеля - не выше maxRoomRate отеля. */
     public String setRate(Player who, Plot room, double rate) {
+        String moduleOff = plugin.modules().refusal(ru.industryreborn.service.Module.HOTELS);
+        if (moduleOff != null) {
+            return moduleOff;
+        }
         if (room.category != Category.ROOM) {
             return "«" + room.id + "» не номер отеля.";
         }
@@ -200,6 +204,10 @@ public final class HotelService {
 
     /** Добавляет дверь в номер: блок должен лежать внутри отеля, но вне интерьера номера. */
     public String addDoor(Plot room, Block block) {
+        String moduleOff = plugin.modules().refusal(ru.industryreborn.service.Module.HOTELS);
+        if (moduleOff != null) {
+            return moduleOff;
+        }
         if (room.category != Category.ROOM) {
             return "«" + room.id + "» не номер отеля.";
         }
@@ -266,6 +274,10 @@ public final class HotelService {
      */
     public String template(Player admin, Plot hotel, String prefix, Box first, boolean axisX, int step, int count,
                            double rate, int[] doorOffset, Consumer<Integer> done) {
+        String moduleOff = plugin.modules().refusal(ru.industryreborn.service.Module.HOTELS);
+        if (moduleOff != null) {
+            return moduleOff;
+        }
         if (count < 1 || count > 100) {
             return "Количество номеров: от 1 до 100.";
         }
@@ -310,6 +322,10 @@ public final class HotelService {
 
     /** Удаляет свободный номер вместе со снимком и книгой учёта. */
     public String deleteRoom(Plot room) {
+        String moduleOff = plugin.modules().refusal(ru.industryreborn.service.Module.HOTELS);
+        if (moduleOff != null) {
+            return moduleOff;
+        }
         if (room.category != Category.ROOM) {
             return "«" + room.id + "» не номер отеля.";
         }

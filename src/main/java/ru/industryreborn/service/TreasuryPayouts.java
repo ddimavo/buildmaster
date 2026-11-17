@@ -101,6 +101,10 @@ public final class TreasuryPayouts {
 
     /** Субсидия на счёт предприятия. Возвращает ошибку или null. */
     public String subsidy(String actor, Plot plot, double amount, String reason) {
+        String moduleOff = plugin.modules().refusal(ru.industryreborn.service.Module.TREASURY_PAYOUTS);
+        if (moduleOff != null) {
+            return moduleOff;
+        }
         amount = round(amount);
         if (plot == null) {
             return "Участок не найден.";
@@ -130,11 +134,19 @@ public final class TreasuryPayouts {
 
     /** Приз игроку за мероприятие. Возвращает ошибку или null. */
     public String prize(String actor, OfflinePlayer target, double amount, String event) {
+        String moduleOff = plugin.modules().refusal(ru.industryreborn.service.Module.TREASURY_PAYOUTS);
+        if (moduleOff != null) {
+            return moduleOff;
+        }
         return pay(actor, target, amount, event, Kind.PRIZE);
     }
 
     /** Прочая выплата игроку. */
     public String payout(String actor, OfflinePlayer target, double amount, String reason) {
+        String moduleOff = plugin.modules().refusal(ru.industryreborn.service.Module.TREASURY_PAYOUTS);
+        if (moduleOff != null) {
+            return moduleOff;
+        }
         return pay(actor, target, amount, reason, Kind.PAYOUT);
     }
 

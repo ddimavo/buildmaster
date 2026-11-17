@@ -45,9 +45,29 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
             "storage", "claim", "journal", "name", "desc", "bank", "service", "factory", "room", "region", "job", "hologram", "machine", "chest", "shop", "goods", "storefront", "link", "unlink", "enchant", "ui", "plots", "business", "hotel", "admin", "help");
     private static final List<String> ADMIN_SUBS = List.of("wand", "pos1", "pos2", "create", "delete", "evict",
             "setprice", "setrent", "setspawn", "resnapshot", "reload", "seize", "reset", "holo", "category",
-            "moderation", "arrest", "auction", "show");
+            "moderation", "arrest", "auction", "show", "module");
     /** Команды банка и электросети: отдельные права industryreborn.bank и industryreborn.grid. */
     private static final List<String> GRID_SUBS = List.of("grid", "area");
+
+    /** Команды, привязанные к функциям: при отключённой функции недоступны никому, включая администрацию. */
+    private static final java.util.Map<String, ru.industryreborn.service.Module> MODULE_SUBS = java.util.Map.ofEntries(
+            java.util.Map.entry("factory", ru.industryreborn.service.Module.PRODUCTION),
+            java.util.Map.entry("machine", ru.industryreborn.service.Module.PRODUCTION),
+            java.util.Map.entry("chest", ru.industryreborn.service.Module.PRODUCTION),
+            java.util.Map.entry("enchant", ru.industryreborn.service.Module.ENCHANTING),
+            java.util.Map.entry("room", ru.industryreborn.service.Module.HOTELS),
+            java.util.Map.entry("hotel", ru.industryreborn.service.Module.HOTELS),
+            java.util.Map.entry("job", ru.industryreborn.service.Module.JOBS),
+            java.util.Map.entry("service", ru.industryreborn.service.Module.SERVICES),
+            java.util.Map.entry("shop", ru.industryreborn.service.Module.GOODS),
+            java.util.Map.entry("goods", ru.industryreborn.service.Module.GOODS),
+            java.util.Map.entry("storefront", ru.industryreborn.service.Module.GOODS),
+            java.util.Map.entry("link", ru.industryreborn.service.Module.GOODS),
+            java.util.Map.entry("unlink", ru.industryreborn.service.Module.GOODS),
+            java.util.Map.entry("region", ru.industryreborn.service.Module.PLAYER_PLOTS),
+            java.util.Map.entry("auction", ru.industryreborn.service.Module.AUCTION),
+            java.util.Map.entry("grid", ru.industryreborn.service.Module.ELECTRICITY),
+            java.util.Map.entry("area", ru.industryreborn.service.Module.ELECTRICITY));
 
     private final IndustryRebornPlugin plugin;
 
@@ -71,8 +91,20 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
             Text.err(sender, "Недостаточно прав.");
             return true;
         }
+        ru.industryreborn.service.Module bound = MODULE_SUBS.get(sub);
+        if (sub.equals("power") && rest.length > 0 && (rest[0].equalsIgnoreCase("admin") || rest[0].equalsIgnoreCase("calc"))) {
+            bound = ru.industryreborn.service.Module.ELECTRICITY;
+        }
+        if (bound != null) {
+            String off = plugin.modules().refusal(bound);
+            if (off != null) {
+                Text.err(sender, off);
+                return true;
+            }
+        }
         try {
             switch (sub) {
+                case "module" -> withPlayer(sender, p -> modules(p, rest));
                 case "menu" -> withPlayer(sender, p -> {
                     if (rest.length > 0 && rest[0].equalsIgnoreCase("classic") || !plugin.htmlMenus().open(p, ru.industryreborn.html.HtmlMenus.Kind.MAIN)) {
                         new MainMenu(plugin, p).open();
@@ -1071,6 +1103,44 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
     }
 
     /** treasury | menu | report [дни] | subsidy <участок> <сумма> <причина> | prize <игрок> <сумма> <мероприятие> | pay ... */
+    /** module [<функция> on|off|reset]: включение и выключение функций плагина. */
+    private void modules(Player p, String[] args) {
+        var svc = plugin.modules();
+        if (args.length == 0) {
+            if (!plugin.htmlMenus().open(p, ru.industryreborn.html.HtmlMenus.Kind.MODULES)) {
+                Text.send(p, "<yellow>Функции плагина:");
+                for (var m : ru.industryreborn.service.Module.values()) {
+                    p.sendMessage(Text.mm("<gray> <white>" + m.key() + "</white> - " + Text.esc(m.title()) + ": "
+                            + (svc.enabled(m) ? "<green>включено" : "<red>отключено")));
+                }
+                Text.send(p, "<gray>Изменить: /district module <функция> on|off|reset");
+            }
+            return;
+        }
+        var m = ru.industryreborn.service.Module.parse(args[0]);
+        if (m == null) {
+            throw new CommandError("Неизвестная функция «" + args[0] + "». Список: /district module");
+        }
+        if (args.length < 2) {
+            Text.send(p, "<yellow>" + Text.esc(m.title()) + ": " + (svc.enabled(m) ? "<green>включено" : "<red>отключено")
+                    + "<gray>. " + Text.esc(m.description()));
+            return;
+        }
+        switch (args[1].toLowerCase(Locale.ROOT)) {
+            case "on", "вкл", "true" -> svc.set(m, true, p.getName());
+            case "off", "выкл", "false" -> svc.set(m, false, p.getName());
+            case "reset" -> {
+                boolean before = svc.enabled(m);
+                svc.reset(m);
+                if (before != svc.enabled(m)) {
+                    svc.set(m, svc.enabled(m), p.getName());
+                }
+            }
+            default -> throw new CommandError("Использование: /district module <функция> on|off|reset");
+        }
+        Text.ok(p, m.title() + ": " + (svc.enabled(m) ? "включено" : "отключено") + ".");
+    }
+
     /** moderation [classic|approve <№>|reject <№> <причина>|tp <№>]: заявки игроков. */
     private void moderation(Player p, String[] args) {
         String sub = args.length == 0 ? "" : args[0].toLowerCase(Locale.ROOT);
@@ -1282,6 +1352,14 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
         }
         if (sub.equals("plots") && args.length == 2) {
             return filter(List.of("free", "mine"), args[1]);
+        }
+        if (sub.equals("module")) {
+            if (args.length == 2) {
+                return filter(java.util.Arrays.stream(ru.industryreborn.service.Module.values()).map(ru.industryreborn.service.Module::key).toList(), args[1]);
+            }
+            if (args.length == 3) {
+                return filter(List.of("on", "off", "reset"), args[2]);
+            }
         }
         if (sub.equals("ui") && args.length == 2) {
             return filter(List.of("html", "chest", "auto"), args[1]);

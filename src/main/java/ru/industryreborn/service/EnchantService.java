@@ -34,6 +34,10 @@ public final class EnchantService {
 
     /** Предложить зачарование для мастерской. Администратору применяется сразу. Возвращает ошибку или null. */
     public String propose(Player manager, Plot plot, Material item, String enchantKey, int level) {
+        String moduleOff = plugin.modules().refusal(ru.industryreborn.service.Module.ENCHANTING);
+        if (moduleOff != null) {
+            return moduleOff;
+        }
         if (plot.category != Category.WORKSHOP || plot.isFree()) {
             return "Зачарования назначаются мастерским станкам.";
         }
@@ -76,6 +80,10 @@ public final class EnchantService {
 
     /** Убирает одобренное зачарование и снимает его со станков. */
     public String remove(Player manager, Plot plot, String id) {
+        String moduleOff = plugin.modules().refusal(ru.industryreborn.service.Module.ENCHANTING);
+        if (moduleOff != null) {
+            return moduleOff;
+        }
         if (!plot.isOwner(manager.getUniqueId()) && !manager.hasPermission("industryreborn.admin")) {
             return "Зачарования удаляет управляющий мастерской.";
         }

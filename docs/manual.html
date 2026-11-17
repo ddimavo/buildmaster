@@ -85,11 +85,11 @@ footer { max-width:980px; margin:50px auto 0; color:var(--muted); font-size:13px
 }
 </style>
 </head>
-<body data-version="2.1.0.">
+<body data-version="2.2.0.">
 <div class="topbar"><button id="menu">☰ Разделы</button><b>IndustryReborn</b></div>
 <div class="layout">
 <aside id="side">
-  <div class="brand"><div class="logo">🏙️</div><div><b>IndustryReborn</b><small>Руководство 2.1.0.</small></div></div>
+  <div class="brand"><div class="logo">🏙️</div><div><b>IndustryReborn</b><small>Руководство 2.2.0.</small></div></div>
   <input id="search" type="search" placeholder="Поиск по разделам…" autocomplete="off">
   <nav id="nav">
 <a class="l2" href="#1-что-такое-industryreborn">1. Что такое IndustryReborn</a>
@@ -172,6 +172,7 @@ footer { max-width:980px; margin:50px auto 0; color:var(--muted); font-size:13px
 <a class="l3" href="#135-электричество-и-тарифы">13.5. Электричество и тарифы</a>
 <a class="l3" href="#136-что-делать-если">13.6. Что делать, если</a>
 <a class="l3" href="#137-перезагрузка">13.7. Перезагрузка</a>
+<a class="l2" href="#131-отключение-функций">13.1. Отключение функций</a>
 <a class="l2" href="#14-справочник-команд">14. Справочник команд</a>
 <a class="l3" href="#141-игроки">14.1. Игроки</a>
 <a class="l3" href="#142-администраторы-industryrebornadmin">14.2. Администраторы (industryreborn.admin)</a>
@@ -191,12 +192,12 @@ footer { max-width:980px; margin:50px auto 0; color:var(--muted); font-size:13px
   <div class="hero">
     <h1>IndustryReborn</h1>
     <p>Район коммерции для Minecraft: участки, аренда, мастерские и электричество, отели, работники и зарплаты, банк, общий аукцион и участки игроков на WorldGuard.</p>
-    <div class="chips"><span>Paper 1.21.6 – 26.x</span><span>Java 21</span><span>Vault</span><span>WorldGuard · ChestShop · zAuctionHouse (по желанию)</span><span>Руководство 2.1.0.</span></div>
+    <div class="chips"><span>Paper 1.21.6 – 26.x</span><span>Java 21</span><span>Vault</span><span>WorldGuard · ChestShop · zAuctionHouse (по желанию)</span><span>Руководство 2.2.0.</span></div>
   </div>
   <div class="content">
 
 <blockquote class="callout">
-<p>Версия руководства: 2.1.0. Плагин: Paper 1.21.6 – 26.x, Java 21+. Все команды начинаются с <code>/district</code> (псевдонимы <code>/dt</code>, <code>/uchastok</code>).
+<p>Версия руководства: 2.2.0. Плагин: Paper 1.21.6 – 26.x, Java 21+. Все команды начинаются с <code>/district</code> (псевдонимы <code>/dt</code>, <code>/uchastok</code>).
 Если вы только начинаете, прочитайте разделы 1–3 и сразу переходите к нужной роли: <strong>игрок</strong> (раздел 4), <strong>управляющий предприятием</strong> (5–8), <strong>владелец региона WorldGuard</strong> (9), <strong>администратор</strong> (13–14).</p>
 </blockquote>
 
@@ -1452,6 +1453,7 @@ footer { max-width:980px; margin:50px auto 0; color:var(--muted); font-size:13px
 /district business | hotel                             мои предприятия и мои отели (HTML-страницы)
 /district job board | service orders                    работа и мои заказы (HTML-страницы; classic - меню-сундук)
 /district admin                                        центр администрирования (модерация, арест, электросеть, банк)
+/district module [функция] [on|off|reset]              включение и выключение функций плагина
 /district moderation approve|reject|tp &lt;№&gt; [причина]   решение по заявке игрока (№ - из страницы модерации)
 /district bank settings                                настройки банка (страница или меню)
 /district machine at &lt;мастерская&gt; &lt;x,y,z&gt; set|clear|menu  задание станку без взгляда на него
@@ -1503,6 +1505,69 @@ footer { max-width:980px; margin:50px auto 0; color:var(--muted); font-size:13px
 <p><code>/district reload</code> перечитывает <code>config.yml</code> и <code>plots.yml</code>. Часть настроек (экономика, станции) применяется сразу, но структуру
 участков лучше менять при остановленном сервере.</p>
 <hr />
+<h2 id="131-отключение-функций">13.1. Отключение функций</h2>
+<p>Любую функцию плагина можно выключить целиком: <code>/district module</code> (список и кнопки на странице), <code>/district module &lt;функция&gt; on|off|reset</code>
+или раздел <code>modules:</code> в config.yml. Выключенная функция <strong>сразу недоступна всем, включая администрацию</strong>: не работают её команды, меню и кнопки,
+останавливаются фоновые расчёты. Состояние сохраняется в <code>modules.yml</code> (оно перекрывает config.yml, <code>reset</code> возвращает значение из config.yml);
+каждое переключение попадает в журнал, администраторы получают сообщение в чат.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Функция</th>
+<th>Что выключается</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>electricity</code></td>
+<td>электричество и электросеть: станки и отели работают без оплаты и без подключения к станциям</td>
+</tr>
+<tr>
+<td><code>hotels</code></td>
+<td>отели: аренда номеров, цены номеров, голограммы дверей</td>
+</tr>
+<tr>
+<td><code>jobs</code></td>
+<td>доска объявлений, вакансии, зарплаты</td>
+</tr>
+<tr>
+<td><code>services</code></td>
+<td>услуги и заказы мастерских</td>
+</tr>
+<tr>
+<td><code>production</code></td>
+<td>производство: задания станкам, склад сырья, сундуки, улучшения (и зачарования)</td>
+</tr>
+<tr>
+<td><code>enchanting</code></td>
+<td>заявки и работа стола зачарований (зависит от <code>production</code>)</td>
+</tr>
+<tr>
+<td><code>goods</code></td>
+<td>склад товаров, витрины, связи между бизнесами</td>
+</tr>
+<tr>
+<td><code>player-plots</code></td>
+<td>участки игроков на WorldGuard</td>
+</tr>
+<tr>
+<td><code>treasury-payouts</code></td>
+<td>субсидии, призы и выплаты из казны</td>
+</tr>
+<tr>
+<td><code>auction</code></td>
+<td>аукцион казны (zAuctionHouse)</td>
+</tr>
+<tr>
+<td><code>html-menus</code></td>
+<td>HTML-страницы (остаются меню-сундуки)</td>
+</tr>
+<tr>
+<td><code>auto-balance</code>, <code>webhooks</code>, <code>plan</code>, <code>holo-shop</code></td>
+<td>автокорректировка экономики, вебхуки, интеграция с Plan, торговля через голограммы</td>
+</tr>
+</tbody>
+</table></div>
 <h2 id="14-справочник-команд"><span class="num">14</span>Справочник команд</h2>
 <p>Все команды: <code>/district &lt;подкоманда&gt;</code> (<code>/dt</code>, <code>/uchastok</code>). <code>[ ]</code> – необязательное, <code>&lt; &gt;</code> – обязательное, <code>|</code> – выбор. Номер участка можно не указывать, если вы стоите на нём.</p>
 <h3 id="141-игроки">14.1. Игроки</h3>

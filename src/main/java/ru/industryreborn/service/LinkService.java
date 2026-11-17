@@ -21,7 +21,7 @@ public final class LinkService {
 
     /** Действующая цель связи мастерской (магазин или склад) либо null. */
     public Plot target(Plot source) {
-        if (source.linkedTo == null) {
+        if (source.linkedTo == null || !plugin.modules().enabled(ru.industryreborn.service.Module.GOODS)) {
             return null;
         }
         Plot t = plugin.plots().get(source.linkedTo);
@@ -44,6 +44,10 @@ public final class LinkService {
 
     /** Запрос на связь мастерской с магазином или складом. */
     public String request(Player manager, Plot source, Plot target) {
+        String moduleOff = plugin.modules().refusal(ru.industryreborn.service.Module.GOODS);
+        if (moduleOff != null) {
+            return moduleOff;
+        }
         if (source.category != Category.WORKSHOP) {
             return "Привязывать можно только мастерскую.";
         }
@@ -87,6 +91,10 @@ public final class LinkService {
     }
 
     public String accept(Player manager, Plot target, String sourceId) {
+        String moduleOff = plugin.modules().refusal(ru.industryreborn.service.Module.GOODS);
+        if (moduleOff != null) {
+            return moduleOff;
+        }
         if (!target.isOwner(manager.getUniqueId()) && !manager.hasPermission("industryreborn.admin")) {
             return "Запросы подтверждает управляющий магазина или склада.";
         }
@@ -109,6 +117,10 @@ public final class LinkService {
     }
 
     public String decline(Player manager, Plot target, String sourceId) {
+        String moduleOff = plugin.modules().refusal(ru.industryreborn.service.Module.GOODS);
+        if (moduleOff != null) {
+            return moduleOff;
+        }
         if (!target.isOwner(manager.getUniqueId()) && !manager.hasPermission("industryreborn.admin")) {
             return "Запросы отклоняет управляющий магазина или склада.";
         }
@@ -126,6 +138,10 @@ public final class LinkService {
 
     /** Разрывает связь: мастерская (её управляющий) или цель (её управляющий) либо администратор. */
     public String unlink(Player who, Plot source) {
+        String moduleOff = plugin.modules().refusal(ru.industryreborn.service.Module.GOODS);
+        if (moduleOff != null) {
+            return moduleOff;
+        }
         Plot target = source.linkedTo == null ? null : plugin.plots().get(source.linkedTo);
         boolean allowed = who.hasPermission("industryreborn.admin") || source.isOwner(who.getUniqueId())
                 || (target != null && target.isOwner(who.getUniqueId()));

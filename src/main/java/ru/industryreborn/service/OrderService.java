@@ -147,6 +147,10 @@ public final class OrderService {
 
     /** Управляющий меняет цену и/или включает услугу. Возвращает ошибку или null. */
     public String configureOffer(Player manager, Plot plot, String offerKey, Double price, Boolean enabled) {
+        String moduleOff = plugin.modules().refusal(ru.industryreborn.service.Module.SERVICES);
+        if (moduleOff != null) {
+            return moduleOff;
+        }
         if (!plot.isOwner(manager.getUniqueId()) && !manager.hasPermission("industryreborn.admin")) {
             return "Прайс меняет только управляющий мастерской.";
         }
@@ -198,6 +202,10 @@ public final class OrderService {
      * Возвращает текст ошибки или null.
      */
     public String create(Player client, Plot plot, String offerKey, boolean all) {
+        String moduleOff = plugin.modules().refusal(ru.industryreborn.service.Module.SERVICES);
+        if (moduleOff != null) {
+            return moduleOff;
+        }
         if (plot.category != Category.WORKSHOP || plot.isFree() || plot.owner == null) {
             return "Заказы принимают только действующие мастерские.";
         }
@@ -336,6 +344,10 @@ public final class OrderService {
 
     /** Клиент забирает готовый заказ. Возвращает ошибку или null. */
     public String collect(Player client, UUID orderId) {
+        String moduleOff = plugin.modules().refusal(ru.industryreborn.service.Module.SERVICES);
+        if (moduleOff != null) {
+            return moduleOff;
+        }
         ServiceOrder o = orders.get(orderId);
         if (o == null || !o.client.equals(client.getUniqueId())) {
             return "Заказ не найден.";
@@ -356,6 +368,10 @@ public final class OrderService {
 
     /** Клиент отменяет заказ, который ещё не начали выполнять. */
     public String cancel(Player client, UUID orderId) {
+        String moduleOff = plugin.modules().refusal(ru.industryreborn.service.Module.SERVICES);
+        if (moduleOff != null) {
+            return moduleOff;
+        }
         ServiceOrder o = orders.get(orderId);
         if (o == null || !o.client.equals(client.getUniqueId())) {
             return "Заказ не найден.";
@@ -383,6 +399,10 @@ public final class OrderService {
 
     /** Администратор отменяет заказ с обязательной причиной. Возвращает ошибку или null. */
     public String adminCancel(String admin, ServiceOrder o, String reason) {
+        String moduleOff = plugin.modules().refusal(ru.industryreborn.service.Module.SERVICES);
+        if (moduleOff != null) {
+            return moduleOff;
+        }
         if (reason == null || reason.isBlank()) {
             return "Укажите причину отмены.";
         }
@@ -425,6 +445,9 @@ public final class OrderService {
 
     /** Периодическая задача: продвигает заказы по биллинговому времени, пока в мастерской есть электричество. */
     public void tick() {
+        if (plugin.modules().refusal(ru.industryreborn.service.Module.SERVICES) != null) {
+            return;
+        }
         long now = plugin.power().nowSec();
         double dt = lastTickSec == Long.MIN_VALUE ? 0 : Math.max(0, now - lastTickSec);
         lastTickSec = now;

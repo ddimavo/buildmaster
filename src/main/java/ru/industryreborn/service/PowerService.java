@@ -145,7 +145,8 @@ public final class PowerService {
 
     /** Платит ли участок за электричество: мастерская с управляющим. */
     public boolean isBilled(Plot plot) {
-        return !plot.isFree() && (plot.category == Category.WORKSHOP || isHotel(plot) && hotelElectricity());
+        return plugin.modules().enabled(Module.ELECTRICITY) && !plot.isFree()
+                && (plot.category == Category.WORKSHOP || isHotel(plot) && hotelElectricity() && plugin.modules().enabled(Module.HOTELS));
     }
 
     /** Отель (здание, не номер). */

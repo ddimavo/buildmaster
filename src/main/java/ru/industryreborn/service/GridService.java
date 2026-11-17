@@ -38,6 +38,9 @@ public final class GridService {
 
     /** Сеть действует, если есть хотя бы одна электростанция. */
     public boolean active() {
+        if (!plugin.modules().enabled(Module.ELECTRICITY)) {
+            return false;
+        }
         for (Plot p : plugin.plots().all()) {
             if (p.category == Category.POWER_PLANT) {
                 return true;
@@ -110,6 +113,10 @@ public final class GridService {
 
     /** Подключает мастерскую к станции (прежнее подключение заменяется). Возвращает ошибку или null. */
     public String connect(Plot plot, Plot plant, String actor) {
+        String moduleOff = plugin.modules().refusal(ru.industryreborn.service.Module.ELECTRICITY);
+        if (moduleOff != null) {
+            return moduleOff;
+        }
         if (!gridClient(plot)) {
             return "К электросети подключаются только мастерские и отели.";
         }
@@ -134,6 +141,10 @@ public final class GridService {
 
     /** Отключает предприятие от станции с причиной; тариф не начисляется, станки не работают. */
     public String disconnect(Plot plot, String reason, String actor) {
+        String moduleOff = plugin.modules().refusal(ru.industryreborn.service.Module.ELECTRICITY);
+        if (moduleOff != null) {
+            return moduleOff;
+        }
         if (!gridClient(plot)) {
             return "К электросети подключаются только мастерские и отели.";
         }
@@ -159,6 +170,10 @@ public final class GridService {
 
     /** Возвращает предприятие к станции, от которой оно было отключено. */
     public String restore(Plot plot, String actor) {
+        String moduleOff = plugin.modules().refusal(ru.industryreborn.service.Module.ELECTRICITY);
+        if (moduleOff != null) {
+            return moduleOff;
+        }
         if (plot.plantId != null) {
             return "Предприятие уже подключено.";
         }
@@ -253,6 +268,10 @@ public final class GridService {
 
     /** Задаёт мощность станции (V в сутки). Возвращает ошибку или null. */
     public String setCapacity(Plot plant, double capacity, String actor) {
+        String moduleOff = plugin.modules().refusal(ru.industryreborn.service.Module.ELECTRICITY);
+        if (moduleOff != null) {
+            return moduleOff;
+        }
         if (plant.category != Category.POWER_PLANT) {
             return "«" + plant.id + "» не электростанция.";
         }
@@ -314,6 +333,9 @@ public final class GridService {
 
     /** Вызывается из периодической задачи: шаг регулировки раз в grid.update-interval-seconds. */
     public void tick() {
+        if (plugin.modules().refusal(ru.industryreborn.service.Module.ELECTRICITY) != null) {
+            return;
+        }
         long now = plugin.power().nowSec();
         long interval = Math.max(1, plugin.getConfig().getLong("grid.update-interval-seconds", 600));
         if (lastUpdateSec == Long.MIN_VALUE) {

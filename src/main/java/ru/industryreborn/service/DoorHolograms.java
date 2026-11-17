@@ -36,7 +36,7 @@ public final class DoorHolograms {
     }
 
     public boolean enabled() {
-        return plugin.getConfig().getBoolean("holograms.doors", true);
+        return plugin.modules().enabled(ru.industryreborn.service.Module.HOTELS) && plugin.getConfig().getBoolean("holograms.doors", true);
     }
 
     public int spawnedCount() {

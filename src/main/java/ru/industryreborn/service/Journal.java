@@ -36,6 +36,7 @@ public final class Journal {
         STORAGE_AUCTION("Вещи переданы на аукцион"),
         TREASURY("Операция с казной"),
         SUBSIDY("Субсидия из казны"),
+        MODULE("Функция плагина"),
         PRIZE("Приз из казны"),
         ACCOUNT_DEPOSIT("Пополнение счёта"),
         ACCOUNT_WITHDRAW("Снятие со счёта"),

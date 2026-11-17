@@ -30,7 +30,7 @@ public final class PlayerPlotService {
     // ------------------------------------------------------------ настройки
 
     public boolean enabled() {
-        return plugin.getConfig().getBoolean("player-plots.enabled", true);
+        return plugin.modules().enabled(ru.industryreborn.service.Module.PLAYER_PLOTS) && plugin.getConfig().getBoolean("player-plots.enabled", true);
     }
 
     /** Типы, которые игрок может выбрать при привязке региона. */
@@ -65,6 +65,10 @@ public final class PlayerPlotService {
 
     /** Привязывает регион WorldGuard игрока. Участок появляется в списках после одобрения администратором. */
     public String bind(Player p, String regionId, Category type) {
+        String moduleOff = plugin.modules().refusal(ru.industryreborn.service.Module.PLAYER_PLOTS);
+        if (moduleOff != null) {
+            return moduleOff;
+        }
         if (!enabled()) {
             return "Участки игроков отключены на этом сервере.";
         }
@@ -158,6 +162,10 @@ public final class PlayerPlotService {
 
     /** Совладелец региона даёт согласие на продажу и аренду. */
     public String consent(Player p, Plot plot) {
+        String moduleOff = plugin.modules().refusal(ru.industryreborn.service.Module.PLAYER_PLOTS);
+        if (moduleOff != null) {
+            return moduleOff;
+        }
         if (!plot.isPlayerPlot() || !plot.requiredConsents.contains(p.getUniqueId())) {
             return "От вас согласие по этому участку не требуется.";
         }
@@ -192,6 +200,10 @@ public final class PlayerPlotService {
      * Участок должен быть одобрен и свободен, согласия совладельцев получены, цена аренды не выше предела.
      */
     public String setListing(Player p, Plot plot, Double sale, Double rent) {
+        String moduleOff = plugin.modules().refusal(ru.industryreborn.service.Module.PLAYER_PLOTS);
+        if (moduleOff != null) {
+            return moduleOff;
+        }
         String error = checkLandlord(p, plot);
         if (error != null) {
             return error;
@@ -242,6 +254,10 @@ public final class PlayerPlotService {
 
     /** Условие аренды: арендодатель сохраняет доступ. Допустимо только для достаточно больших участков. */
     public String setSharedAccess(Player p, Plot plot, boolean shared) {
+        String moduleOff = plugin.modules().refusal(ru.industryreborn.service.Module.PLAYER_PLOTS);
+        if (moduleOff != null) {
+            return moduleOff;
+        }
         String error = checkLandlord(p, plot);
         if (error != null) {
             return error;
@@ -262,6 +278,10 @@ public final class PlayerPlotService {
 
     /** Отвязывает регион (только свободный участок). Права в WorldGuard не меняются. */
     public String unbind(Player p, Plot plot) {
+        String moduleOff = plugin.modules().refusal(ru.industryreborn.service.Module.PLAYER_PLOTS);
+        if (moduleOff != null) {
+            return moduleOff;
+        }
         String error = checkLandlord(p, plot);
         if (error != null) {
             return error;
@@ -336,6 +356,9 @@ public final class PlayerPlotService {
 
     /** Покупка участка игрока: деньги продавцу, регион покупателю, объявление снимается. */
     public boolean buy(Player buyer, Plot plot) {
+        if (!plugin.modules().check(buyer, ru.industryreborn.service.Module.PLAYER_PLOTS)) {
+            return false;
+        }
         if (plot.approval != Plot.Approval.APPROVED || !plot.isFree() || plot.price < 0) {
             Text.err(buyer, "Этот участок не продаётся.");
             return false;

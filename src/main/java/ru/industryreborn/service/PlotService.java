@@ -132,6 +132,10 @@ public final class PlotService {
      */
     public void createRoom(Player admin, Plot hotel, String roomId, Box box, double rate, List<int[]> doors,
                            java.util.function.Consumer<Boolean> done) {
+        if (!plugin.modules().check(admin, Module.HOTELS)) {
+            done.accept(false);
+            return;
+        }
         String id = hotel.id + "-" + roomId;
         String key = id.toLowerCase();
         World world = Bukkit.getWorld(hotel.world);
@@ -216,6 +220,12 @@ public final class PlotService {
     // ---------------------------------------------------------------- покупка и аренда
 
     private boolean checkAvailable(Player p, Plot plot) {
+        if ((plot.category == Category.HOTEL || plot.category == Category.ROOM) && !plugin.modules().check(p, Module.HOTELS)) {
+            return false;
+        }
+        if (plot.isPlayerPlot() && !plugin.modules().check(p, Module.PLAYER_PLOTS)) {
+            return false;
+        }
         if (plot.category.isAdminOnly()) {
             Text.err(p, "«" + plot.category.title() + "» - административное здание: купить или арендовать его нельзя.");
             return false;
@@ -353,6 +363,9 @@ public final class PlotService {
     }
 
     public boolean extend(Player p, Plot plot, int days) {
+        if ((plot.category == Category.HOTEL || plot.category == Category.ROOM) && !plugin.modules().check(p, Module.HOTELS)) {
+            return false;
+        }
         if (plot.status != Plot.Status.RENTED || !plot.isOwner(p.getUniqueId())) {
             Text.err(p, "Продлевать можно только свою арендованную территорию.");
             return false;

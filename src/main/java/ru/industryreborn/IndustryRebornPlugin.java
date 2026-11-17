@@ -73,6 +73,7 @@ public class IndustryRebornPlugin extends JavaPlugin {
     private ru.industryreborn.service.TreasuryPayouts payouts;
     private ru.industryreborn.html.HtmlMenus htmlMenus;
     private ru.industryreborn.holo.HoloFactory holoFactory;
+    private ru.industryreborn.service.ModuleService modules;
     private ru.industryreborn.service.LinkService links;
     private ru.industryreborn.service.ServicesHolograms servicesHolograms;
     private ru.industryreborn.service.BankHolograms bankHolograms;
@@ -127,6 +128,7 @@ public class IndustryRebornPlugin extends JavaPlugin {
         treasury = Treasury.load(new java.io.File(getDataFolder(), "treasury.yml"));
         moderation = new ModerationService(this);
         moderation.load();
+        modules = new ru.industryreborn.service.ModuleService(this);
         holoFactory = new ru.industryreborn.holo.HoloFactory(this);
         holograms = new HologramService(this);
         stations = new StationService(this);
@@ -341,6 +343,10 @@ public class IndustryRebornPlugin extends JavaPlugin {
     /** Только для тестов: подмена доступа к WorldGuard. */
     public void setRegions(RegionAccess access) {
         this.regions = access;
+    }
+
+    public ru.industryreborn.service.ModuleService modules() {
+        return modules;
     }
 
     public ru.industryreborn.holo.HoloFactory holoFactory() {

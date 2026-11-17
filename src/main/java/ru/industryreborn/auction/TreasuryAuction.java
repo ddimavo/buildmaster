@@ -38,7 +38,7 @@ public final class TreasuryAuction {
     }
 
     public boolean enabled() {
-        return plugin.getConfig().getBoolean("auction.enabled", true);
+        return plugin.modules().enabled(ru.industryreborn.service.Module.AUCTION) && plugin.getConfig().getBoolean("auction.enabled", true);
     }
 
     /** Можно ли сейчас выставлять лоты. */

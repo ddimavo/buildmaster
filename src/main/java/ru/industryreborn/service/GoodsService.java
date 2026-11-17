@@ -38,12 +38,12 @@ public final class GoodsService {
     }
 
     public boolean holdsGoods(Plot plot) {
-        return plot.category == Category.SHOP || plot.category == Category.WORKSHOP || plot.category == Category.WAREHOUSE;
+        return plugin.modules().enabled(ru.industryreborn.service.Module.GOODS) && plot.category == Category.SHOP || plot.category == Category.WORKSHOP || plot.category == Category.WAREHOUSE;
     }
 
     /** Продаёт ли предприятие товары покупателям (склад только хранит). */
     public boolean sells(Plot plot) {
-        return !plot.isFree() && (plot.category == Category.SHOP || plot.category == Category.WORKSHOP);
+        return plugin.modules().enabled(ru.industryreborn.service.Module.GOODS) && !plot.isFree() && (plot.category == Category.SHOP || plot.category == Category.WORKSHOP);
     }
 
     public int total(Plot plot) {
@@ -110,6 +110,10 @@ public final class GoodsService {
 
     /** Кладёт обычные предметы из инвентаря в товары (requested <= 0 - всё подходящее, мешающие предметы с названиями пропускаются). */
     public String deposit(Player manager, Plot plot, Material only, int requested) {
+        String moduleOff = plugin.modules().refusal(ru.industryreborn.service.Module.GOODS);
+        if (moduleOff != null) {
+            return moduleOff;
+        }
         String error = checkManager(manager, plot);
         if (error != null) {
             return error;
@@ -143,6 +147,10 @@ public final class GoodsService {
 
     /** Забирает товар обратно в инвентарь (излишек - в хранилище). */
     public String withdraw(Player manager, Plot plot, Material m, int amount) {
+        String moduleOff = plugin.modules().refusal(ru.industryreborn.service.Module.GOODS);
+        if (moduleOff != null) {
+            return moduleOff;
+        }
         String error = checkManager(manager, plot);
         if (error != null) {
             return error;
@@ -171,6 +179,10 @@ public final class GoodsService {
 
     /** Назначает цену за штуку; null или отрицательная - снять с продажи (цена удаляется). */
     public String setPrice(Player manager, Plot plot, Material m, Double price) {
+        String moduleOff = plugin.modules().refusal(ru.industryreborn.service.Module.GOODS);
+        if (moduleOff != null) {
+            return moduleOff;
+        }
         String error = checkManager(manager, plot);
         if (error != null) {
             return error;
@@ -191,6 +203,10 @@ public final class GoodsService {
 
     /** Покупка с витрины: деньги покупателя на счёт предприятия (минус налог), товар - покупателю. */
     public String buy(Player buyer, Plot plot, Material m, int amount) {
+        String moduleOff = plugin.modules().refusal(ru.industryreborn.service.Module.GOODS);
+        if (moduleOff != null) {
+            return moduleOff;
+        }
         if (!sells(plot)) {
             return "Это предприятие ничего не продаёт.";
         }

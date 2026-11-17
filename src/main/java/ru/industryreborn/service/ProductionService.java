@@ -248,6 +248,10 @@ public final class ProductionService {
 
     /** Назначает станку рецепт. Рецепт должен подходить типу станка, число станков с заданием ограничено уровнем. */
     public String assign(Player manager, Plot plot, String pos, String recipeId) {
+        String moduleOff = plugin.modules().refusal(ru.industryreborn.service.Module.PRODUCTION);
+        if (moduleOff != null) {
+            return moduleOff;
+        }
         String error = checkManager(manager, plot);
         if (error != null) {
             return error;
@@ -267,6 +271,9 @@ public final class ProductionService {
         }
         if (!recipe.family().equals(family)) {
             return "Этот рецепт для другого станка (" + RecipeBook.familyTitle(recipe.family()) + ").";
+        }
+        if (recipe.enchanting() && plugin.modules().refusal(Module.ENCHANTING) != null) {
+            return plugin.modules().refusal(Module.ENCHANTING);
         }
         if (recipe.enchanting() && !plot.approvedEnchants.contains(recipe.id())) {
             return "Это зачарование ещё не одобрено администратором для вашей мастерской: /district enchant propose.";
@@ -290,6 +297,10 @@ public final class ProductionService {
     }
 
     public String clear(Player manager, Plot plot, String pos) {
+        String moduleOff = plugin.modules().refusal(ru.industryreborn.service.Module.PRODUCTION);
+        if (moduleOff != null) {
+            return moduleOff;
+        }
         String error = checkManager(manager, plot);
         if (error != null) {
             return error;
@@ -319,6 +330,10 @@ public final class ProductionService {
 
     /** Помечает контейнер в мастерской как сундук сырья (raw) или продукции. Один блок не может быть и тем и другим. */
     public String markChest(Player manager, Plot plot, Block block, boolean raw) {
+        String moduleOff = plugin.modules().refusal(ru.industryreborn.service.Module.PRODUCTION);
+        if (moduleOff != null) {
+            return moduleOff;
+        }
         String error = checkManager(manager, plot);
         if (error != null) {
             return error;
@@ -348,6 +363,10 @@ public final class ProductionService {
     }
 
     public String unmarkChest(Player manager, Plot plot, Block block) {
+        String moduleOff = plugin.modules().refusal(ru.industryreborn.service.Module.PRODUCTION);
+        if (moduleOff != null) {
+            return moduleOff;
+        }
         String error = checkManager(manager, plot);
         if (error != null) {
             return error;
@@ -471,6 +490,10 @@ public final class ProductionService {
 
     /** Загружает подходящее сырьё из инвентаря на склад (то же, что делает сундук сырья). */
     public String load(Player manager, Plot plot, int requested) {
+        String moduleOff = plugin.modules().refusal(ru.industryreborn.service.Module.PRODUCTION);
+        if (moduleOff != null) {
+            return moduleOff;
+        }
         String error = checkManager(manager, plot);
         if (error != null) {
             return error;
@@ -508,6 +531,10 @@ public final class ProductionService {
 
     /** Забирает продукцию из буферов станков в инвентарь (излишек уходит в хранилище). */
     public String collect(Player manager, Plot plot) {
+        String moduleOff = plugin.modules().refusal(ru.industryreborn.service.Module.PRODUCTION);
+        if (moduleOff != null) {
+            return moduleOff;
+        }
         String error = checkManager(manager, plot);
         if (error != null) {
             return error;
@@ -536,6 +563,10 @@ public final class ProductionService {
 
     /** Повышает уровень мастерской; оплата со счёта предприятия в казну. */
     public String upgrade(Player manager, Plot plot) {
+        String moduleOff = plugin.modules().refusal(ru.industryreborn.service.Module.PRODUCTION);
+        if (moduleOff != null) {
+            return moduleOff;
+        }
         String error = checkManager(manager, plot);
         if (error != null) {
             return error;
@@ -637,6 +668,9 @@ public final class ProductionService {
 
     /** Раз в секунду: сундуки сырья, станки по биллинговому времени (пока есть электричество), сундуки продукции. */
     public void tick() {
+        if (plugin.modules().refusal(ru.industryreborn.service.Module.PRODUCTION) != null) {
+            return;
+        }
         long now = plugin.power().nowSec();
         double dt = lastTickSec == Long.MIN_VALUE ? 0 : Math.max(0, now - lastTickSec);
         lastTickSec = now;

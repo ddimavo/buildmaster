@@ -413,3 +413,24 @@ treasury:
 # mode: auto - HTML, если MC GUI есть, иначе меню-сундук; html - то же; chest - всегда меню-сундук.
 gui:
   mode: auto
+
+# ---- Функции плагина ----
+# Любую функцию можно отключить: она сразу блокируется для всех игроков и для администрации (команды, меню, фоновые расчёты).
+# Переключение в игре: /district module <функция> on|off|reset (хранится в modules.yml и перекрывает это значение).
+# Без электричества станки и отели работают без оплаты и без подключения к станциям.
+modules:
+  electricity: true
+  hotels: true
+  jobs: true
+  services: true
+  production: true
+  enchanting: true
+  goods: true
+  player-plots: true
+  treasury-payouts: true
+  auction: true
+  html-menus: true
+  auto-balance: false
+  webhooks: false
+  plan: true
+  holo-shop: true

@@ -55,7 +55,7 @@ public final class JobService {
     // ------------------------------------------------------------ настройки
 
     public boolean enabled() {
-        return plugin.getConfig().getBoolean("jobs.enabled", true);
+        return plugin.modules().enabled(ru.industryreborn.service.Module.JOBS) && plugin.getConfig().getBoolean("jobs.enabled", true);
     }
 
     public boolean categoryAllowed(Category c) {
@@ -299,6 +299,10 @@ public final class JobService {
     }
 
     public String setOpen(Player who, Vacancy v, boolean open) {
+        String moduleOff = plugin.modules().refusal(ru.industryreborn.service.Module.JOBS);
+        if (moduleOff != null) {
+            return moduleOff;
+        }
         Plot plot = plugin.plots().get(v.plotId);
         String error = plot == null ? "Участок не найден." : checkManager(who, plot);
         if (error != null) {
@@ -311,6 +315,10 @@ public final class JobService {
 
     /** Удаляет вакансию без работников; отклики на неё отклоняются. */
     public String delete(Player who, Vacancy v) {
+        String moduleOff = plugin.modules().refusal(ru.industryreborn.service.Module.JOBS);
+        if (moduleOff != null) {
+            return moduleOff;
+        }
         Plot plot = plugin.plots().get(v.plotId);
         String error = plot == null ? "Участок не найден." : checkManager(who, plot);
         if (error != null) {
@@ -334,6 +342,10 @@ public final class JobService {
     // ------------------------------------------------------------ отклики и наём
 
     public String apply(Player who, Vacancy v) {
+        String moduleOff = plugin.modules().refusal(ru.industryreborn.service.Module.JOBS);
+        if (moduleOff != null) {
+            return moduleOff;
+        }
         if (!enabled()) {
             return "Работа отключена на этом сервере.";
         }
@@ -369,6 +381,10 @@ public final class JobService {
     }
 
     public String withdraw(Player who, JobApplication a) {
+        String moduleOff = plugin.modules().refusal(ru.industryreborn.service.Module.JOBS);
+        if (moduleOff != null) {
+            return moduleOff;
+        }
         if (!a.applicant.equals(who.getUniqueId())) {
             return "Это не ваш отклик.";
         }
@@ -378,6 +394,10 @@ public final class JobService {
     }
 
     public String decline(Player who, JobApplication a) {
+        String moduleOff = plugin.modules().refusal(ru.industryreborn.service.Module.JOBS);
+        if (moduleOff != null) {
+            return moduleOff;
+        }
         Plot plot = plugin.plots().get(a.plotId);
         String error = plot == null ? "Участок не найден." : checkManager(who, plot);
         if (error != null) {
@@ -390,6 +410,10 @@ public final class JobService {
     }
 
     public String accept(Player who, JobApplication a) {
+        String moduleOff = plugin.modules().refusal(ru.industryreborn.service.Module.JOBS);
+        if (moduleOff != null) {
+            return moduleOff;
+        }
         Plot plot = plugin.plots().get(a.plotId);
         String error = plot == null ? "Участок не найден." : checkManager(who, plot);
         if (error != null) {
@@ -437,6 +461,10 @@ public final class JobService {
 
     /** Увольнение по инициативе управляющего (или администратора) с окончательным расчётом. */
     public String fire(Player who, Plot plot, UUID worker) {
+        String moduleOff = plugin.modules().refusal(ru.industryreborn.service.Module.JOBS);
+        if (moduleOff != null) {
+            return moduleOff;
+        }
         String error = checkManager(who, plot);
         if (error != null) {
             return error;
@@ -450,6 +478,10 @@ public final class JobService {
     }
 
     public String quit(Player who, Plot plot) {
+        String moduleOff = plugin.modules().refusal(ru.industryreborn.service.Module.JOBS);
+        if (moduleOff != null) {
+            return moduleOff;
+        }
         Employee e = employee(plot.id, who.getUniqueId());
         if (e == null) {
             return "Вы не работаете на этом участке.";
@@ -517,6 +549,9 @@ public final class JobService {
 
     /** Раз в минуту: время на участке, начисление ставки, выплата. */
     public void minuteTick() {
+        if (plugin.modules().refusal(ru.industryreborn.service.Module.JOBS) != null) {
+            return;
+        }
         if (!enabled() || employees.isEmpty()) {
             return;
         }
