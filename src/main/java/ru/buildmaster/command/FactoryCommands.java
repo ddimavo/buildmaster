@@ -139,7 +139,39 @@ final class FactoryCommands {
         return new Looked(plot, pos, target);
     }
 
+    /** machine at <мастерская> <x,y,z> set <рецепт>|clear|menu: то же без взгляда на станок (для HTML-страниц). */
+    private void machineAt(CommandSender sender, String[] args) {
+        if (args.length < 4) {
+            throw new CommandError("Использование: /district machine at <мастерская> <x,y,z> set <рецепт>|clear|menu");
+        }
+        Player p = player(sender);
+        Plot plot = workshop(sender, args[1]);
+        String pos = args[2];
+        if (!plugin.stations().machines(plot).containsKey(pos)) {
+            throw new CommandError("В этой позиции нет рабочего станка.");
+        }
+        switch (args[3].toLowerCase(Locale.ROOT)) {
+            case "set" -> {
+                if (args.length < 5) {
+                    throw new CommandError("Укажите рецепт.");
+                }
+                check(plugin.factory().assign(p, plot, pos, args[4]));
+                Text.ok(sender, "Станку назначен рецепт " + args[4] + ".");
+            }
+            case "clear" -> {
+                check(plugin.factory().clear(p, plot, pos));
+                Text.ok(sender, "Задание снято.");
+            }
+            case "menu" -> new MachineMenu(plugin, p, plot, pos, null, 0, "").open();
+            default -> throw new CommandError("Использование: /district machine at <мастерская> <x,y,z> set <рецепт>|clear|menu");
+        }
+    }
+
     void machine(CommandSender sender, String[] args) {
+        if (args.length > 0 && args[0].equalsIgnoreCase("at")) {
+            machineAt(sender, args);
+            return;
+        }
         String sub = args.length == 0 ? "menu" : args[0].toLowerCase(Locale.ROOT);
         Looked l = looked(sender);
         switch (sub) {

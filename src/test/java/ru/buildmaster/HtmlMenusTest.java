@@ -375,4 +375,170 @@ class HtmlMenusTest extends PluginTestBase {
         steve.performCommand("district plots free classic");
         assertTrue(gui.opened.isEmpty());
     }
+
+    // ------------------------------------------------------------ предприятия и отели
+
+    private Plot workshopWithMachines() {
+        plugin.recipes().setSource(() -> List.<org.bukkit.inventory.Recipe>of(
+                new org.bukkit.inventory.FurnaceRecipe(new org.bukkit.NamespacedKey(plugin, "f1"), new org.bukkit.inventory.ItemStack(org.bukkit.Material.IRON_INGOT),
+                        org.bukkit.Material.RAW_IRON, 0.7f, 200),
+                new org.bukkit.inventory.FurnaceRecipe(new org.bukkit.NamespacedKey(plugin, "f2"), new org.bukkit.inventory.ItemStack(org.bukkit.Material.GOLD_INGOT),
+                        org.bukkit.Material.RAW_GOLD, 0.7f, 200)).iterator());
+        plugin.getConfig().set("limits.categories.workshop", 0);
+        server.getWorld("world").loadChunk(0, 0);
+        Plot w = addPlot("w", Category.WORKSHOP, 40, -1, 10);
+        assertTrue(plugin.service().rent(steve, w, 3));
+        server.getWorld("world").getBlockAt(41, 1, 1).setType(org.bukkit.Material.FURNACE);
+        plugin.stations().addMachine(w, 41, 1, 1, ru.buildmaster.model.Station.fromName("FURNACE"));
+        plugin.stations().inc(w, ru.buildmaster.model.Station.fromName("FURNACE"));
+        plugin.power().recalc(w);
+        return w;
+    }
+
+    @Test
+    void businessPageShowsAccountMachinesAndRecipeButtons() throws Exception {
+        Plot w = workshopWithMachines();
+        steve.performCommand("district business");
+        assertTrue(gui.opened.get(0).startsWith("buildmaster/business-"));
+        String html = read("business", steve);
+        assertTrue(html.contains("№ w") && html.contains("№ s"), "и мастерская, и магазин");
+        assertTrue(html.contains("data-command=\"district account deposit 1000 w\""));
+        assertTrue(html.contains("data-command=\"district factory load w\""));
+        assertTrue(html.contains("data-command=\"district machine at w 41,1,1 set furnace:IRON_INGOT\""), html);
+        assertTrue(html.contains("data-command=\"district machine at w 41,1,1 set furnace:GOLD_INGOT\""));
+        assertTrue(html.contains("без задания"));
+    }
+
+    @Test
+    void machineAtCommandAssignsAndClearsRecipesWithoutLooking() {
+        Plot w = workshopWithMachines();
+        steve.performCommand("district machine at w 41,1,1 set furnace:IRON_INGOT");
+        assertEquals("furnace:IRON_INGOT", w.machineStates.get("41,1,1").recipe);
+        steve.performCommand("district machine at w 41,1,1 clear");
+        assertTrue(w.machineStates.get("41,1,1") == null || w.machineStates.get("41,1,1").recipe == null);
+        steve.performCommand("district machine at w 99,1,1 set furnace:IRON_INGOT");
+        steve.performCommand("district machine at w 41,1,1 menu");
+        assertTrue(steve.getOpenInventory().getTopInventory().getHolder() instanceof ru.buildmaster.gui.MachineMenu);
+    }
+
+    @Test
+    void anotherPlayerCannotAssignThroughTheCommand() {
+        Plot w = workshopWithMachines();
+        player("Mia", 100).performCommand("district machine at w 41,1,1 set furnace:IRON_INGOT");
+        assertTrue(w.machineStates.get("41,1,1") == null || w.machineStates.get("41,1,1").recipe == null);
+    }
+
+    @Test
+    void assignedMachineShowsItsStatusOnThePage() throws Exception {
+        Plot w = workshopWithMachines();
+        steve.performCommand("district machine at w 41,1,1 set furnace:IRON_INGOT");
+        steve.performCommand("district business");
+        String html = read("business", steve);
+        assertTrue(html.contains("Iron Ingot"));
+        assertTrue(html.contains("data-command=\"district machine at w 41,1,1 clear\""));
+    }
+
+    @Test
+    void businessPageOffersServicesAndGoods() throws Exception {
+        Plot w = workshopWithMachines();
+        w.goods.put(org.bukkit.Material.IRON_INGOT, 5);
+        w.prices.put(org.bukkit.Material.IRON_INGOT, 10.0);
+        steve.performCommand("district business");
+        String html = read("business", steve);
+        assertTrue(html.contains("Услуги для игроков") && html.contains("district service toggle w smelt on"), html);
+        assertTrue(html.contains("district goods price IRON_INGOT 9 w"));
+        assertTrue(html.contains("district goods price IRON_INGOT 11 w"));
+        assertTrue(html.contains("district goods take IRON_INGOT all w"));
+    }
+
+    @Test
+    void goodsPriceButtonCommandWorks() {
+        Plot w = workshopWithMachines();
+        w.goods.put(org.bukkit.Material.IRON_INGOT, 5);
+        w.prices.put(org.bukkit.Material.IRON_INGOT, 10.0);
+        steve.performCommand("district goods price IRON_INGOT 9 w");
+        assertEquals(9.0, w.prices.get(org.bukkit.Material.IRON_INGOT), 1e-9);
+    }
+
+    @Test
+    void mainPageShowsBusinessAndHotelCardsOnlyForOwners() throws Exception {
+        steve.performCommand("district menu");
+        String html = read("main", steve);
+        assertTrue(html.contains("business-" + suffix(steve) + ".html"));
+        assertFalse(html.contains("hotel-" + suffix(steve) + ".html"));
+        player("Mia", 100).performCommand("district menu");
+        // у игрока без предприятий карточки нет
+        assertFalse(Files.readString(new File(tmp, "buildmaster/main-" + suffix(server.getPlayer("Mia")) + ".html").toPath()).contains("business-"));
+    }
+
+    private Plot hotelWithRooms() {
+        plugin.getConfig().set("limits.categories.hotel", 0);
+        plugin.getConfig().set("limits.categories.room", 0);
+        Plot h = addPlot("hot", Category.HOTEL, 60, -1, 10);
+        assertTrue(plugin.service().rent(steve, h, 3));
+        for (int i = 0; i < 2; i++) {
+            Plot r = new Plot("hot-" + (i + 1), "world", new ru.buildmaster.model.Box(61 + i * 4, 1, 1, 63 + i * 4, 3, 4));
+            r.category = Category.ROOM;
+            r.parentId = "hot";
+            r.rentPerDay = 50;
+            plugin.plots().add(r);
+        }
+        h.maxRoomRate = 200;
+        return h;
+    }
+
+    @Test
+    void hotelPageListsRoomsWithGuestsAndRateButtons() throws Exception {
+        Plot h = hotelWithRooms();
+        PlayerMock mia = player("Mia", 5000);
+        assertTrue(plugin.service().rent(mia, plugin.plots().get("hot-1"), 2));
+        steve.performCommand("district hotel");
+        assertTrue(gui.opened.get(0).startsWith("buildmaster/hotel-"));
+        String html = read("hotel", steve);
+        assertTrue(html.contains("свободно 1 из 2"), html);
+        assertTrue(html.contains("Mia") && html.contains("свободен"), html);
+        assertTrue(html.contains("data-command=\"district room rate hot-2 45\""));
+        assertTrue(html.contains("data-command=\"district room rate hot-2 55\""));
+        assertTrue(html.contains("Потребление в сутки"));
+    }
+
+    @Test
+    void roomRateButtonCommandChangesThePrice() {
+        hotelWithRooms();
+        steve.performCommand("district room rate hot-2 55");
+        assertEquals(55, plugin.plots().get("hot-2").rentPerDay, 1e-9);
+    }
+
+    @Test
+    void hotelAndBusinessFallBackToTheChestMenuWithoutMcGui() {
+        gui.available = false;
+        steve.performCommand("district business");
+        steve.performCommand("district hotel");
+        assertTrue(gui.opened.isEmpty());
+        assertTrue(steve.getOpenInventory().getTopInventory().getHolder() instanceof ru.buildmaster.gui.PlotListMenu);
+    }
+
+    @Test
+    void otherPlayersSeeNeitherBusinessesNorHotelsOfSomeoneElse() throws Exception {
+        workshopWithMachines();
+        hotelWithRooms();
+        PlayerMock mia = player("Mia", 100);
+        mia.performCommand("district business");
+        assertTrue(read("business", mia).contains("У вас нет предприятий"));
+        assertFalse(read("business", mia).contains("№ w"));
+        mia.performCommand("district hotel");
+        assertTrue(read("hotel", mia).contains("У вас нет отелей"));
+        assertFalse(read("hotel", mia).contains("hot-1"));
+    }
+
+    @Test
+    void anvilOffersTheChestMenuInsteadOfHundredsOfRecipeButtons() throws Exception {
+        Plot w = workshopWithMachines();
+        server.getWorld("world").getBlockAt(42, 1, 1).setType(org.bukkit.Material.ANVIL);
+        plugin.stations().addMachine(w, 42, 1, 1, ru.buildmaster.model.Station.fromName("ANVIL"));
+        steve.performCommand("district business");
+        String html = read("business", steve);
+        assertTrue(html.contains("data-command=\"district machine at w 42,1,1 menu\""), html);
+        assertFalse(html.contains("machine at w 42,1,1 set"));
+    }
 }

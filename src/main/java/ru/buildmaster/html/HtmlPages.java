@@ -11,6 +11,9 @@ import ru.buildmaster.model.Category;
 import ru.buildmaster.model.Plot;
 import ru.buildmaster.service.Journal;
 import ru.buildmaster.service.PlotFilter;
+import ru.buildmaster.service.ProductionService;
+import ru.buildmaster.service.RecipeBook;
+import ru.buildmaster.service.ServiceCatalog;
 import ru.buildmaster.service.WarningLog;
 import ru.buildmaster.model.StorageEntry;
 import ru.buildmaster.service.Treasury;
@@ -79,6 +82,14 @@ public final class HtmlPages {
                 && !p.category.isAdminOnly()).count();
         b.insert(b.indexOf("<a class=\"card\" href=\"bank-"), link("free-" + suffix + ".html", "Свободные участки", "Доступно: " + free)
                 + link("mine-" + suffix + ".html", "Мои участки", "Всего: " + mine.size()));
+        long businesses = mine.stream().filter(p -> p.isOwner(id) && isBusiness(p)).count();
+        long hotels = mine.stream().filter(p -> p.isOwner(id) && p.category == Category.HOTEL).count();
+        if (businesses > 0) {
+            b.append(link("business-" + suffix + ".html", "Мои предприятия", "Мастерские, магазины, склады: " + businesses));
+        }
+        if (hotels > 0) {
+            b.append(link("hotel-" + suffix + ".html", "Мои отели", "Номера, гости, цены: " + hotels));
+        }
         b.append(link("storage-" + suffix + ".html", "Хранилище", "Вещей: " + stored));
         b.append(link("journal-" + suffix + ".html", "Журнал", "История ваших участков"));
         b.append(link("warnings-" + suffix + ".html", "Уведомления", unread > 0 ? "Непрочитанных: <span class=\"warn\">" + unread + "</span>" : "Непрочитанных нет"));
@@ -384,5 +395,222 @@ public final class HtmlPages {
             b.append("</table>");
         }
         return Html.page("Уведомления", b.append(nav(suffix, true)).toString());
+    }
+
+    // ------------------------------------------------------------ предприятия и отели
+
+    private static boolean isBusiness(Plot p) {
+        return p.category == Category.WORKSHOP || p.category == Category.SHOP || p.category == Category.RESTAURANT
+                || p.category == Category.WAREHOUSE;
+    }
+
+    private static String num(double v) {
+        return v == Math.rint(v) ? String.valueOf((long) v) : String.format(java.util.Locale.ROOT, "%.2f", v);
+    }
+
+    private String accountBlock(Plot p) {
+        plugin.power().touch(p);
+        StringBuilder b = new StringBuilder("<div class=\"sub\">Счёт: ").append(money(plugin.power().balance(p)));
+        if (plugin.power().isBilled(p)) {
+            b.append(" · электричество ").append(money(p.account.ratePerDay())).append("/сут, ")
+                    .append(plugin.power().isPowered(p) ? "<span class=\"plus\">есть</span>" : "<span class=\"minus\">обесточено</span>");
+        }
+        b.append("</div>");
+        for (int amount : new int[] {100, 1000, 10000}) {
+            b.append(cmdBtn("district account deposit " + amount + " " + p.id, "+" + amount, ""));
+        }
+        for (int amount : new int[] {100, 1000}) {
+            b.append(cmdBtn("district account withdraw " + amount + " " + p.id, "-" + amount, "red"));
+        }
+        return b.toString();
+    }
+
+    /** Предприятия игрока (мастерские, магазины, рестораны, склады): счёт, производство, услуги и товары. */
+    public String business(Player player, String suffix) {
+        var id = player.getUniqueId();
+        StringBuilder b = new StringBuilder("<h1>Мои предприятия</h1><div class=\"sub\">Нажмите на предприятие, чтобы управлять</div>\n");
+        boolean any = false;
+        for (Plot p : plugin.plots().all()) {
+            if (!p.isOwner(id) || !isBusiness(p)) {
+                continue;
+            }
+            any = true;
+            b.append("<details class=\"row\"><summary><b>").append(Html.esc(p.displayName())).append("</b> <span class=\"muted\">№ ")
+                    .append(Html.esc(p.id)).append(" · ").append(Html.esc(p.category.title())).append("</span> ")
+                    .append(money(plugin.power().balance(p))).append("</summary><div class=\"inner\">").append(accountBlock(p));
+            if (p.category == Category.WORKSHOP) {
+                workshopBlock(b, p);
+            }
+            goodsBlock(b, p);
+            b.append("</div></details>");
+        }
+        if (!any) {
+            b.append("<div class=\"muted\">У вас нет предприятий.</div>");
+        }
+        return Html.page("Мои предприятия", b.append(nav(suffix, true)).toString());
+    }
+
+    private void workshopBlock(StringBuilder b, Plot p) {
+        var f = plugin.factory();
+        var level = plugin.upgrades().of(p);
+        var next = plugin.upgrades().next(p);
+        List<ProductionService.View> views = f.views(p);
+        long working = views.stream().filter(v -> v.status() == ProductionService.Status.WORKING).count();
+        b.append("<h2>Производство</h2><div class=\"stats\">")
+                .append(stat(f.assignedCount(p) + " из " + f.slots(p), "Станков с заданием"))
+                .append(stat(String.valueOf(working), "Работают сейчас"))
+                .append(stat(f.stockTotal(p) + " / " + f.stockCapacity(p), "Склад сырья"))
+                .append(stat("ур. " + p.level + " · ×" + num(level.speed()), "Уровень, скорость")).append("</div>");
+        b.append(cmdBtn("district factory load " + p.id, "Загрузить сырьё из инвентаря", ""))
+                .append(cmdBtn("district factory collect " + p.id, "Забрать продукцию", ""));
+        if (next != null) {
+            b.append(cmdBtn("district factory upgrade " + p.id, "Улучшить до ур. " + next.level() + " · " + plain(next.price()), "gray"));
+        }
+        if (!p.stock.isEmpty()) {
+            b.append("<table><tr><th>Сырьё на складе</th><th>Кол-во</th></tr>");
+            int shown = 0;
+            for (var e : p.stock.entrySet()) {
+                if (shown++ >= 12) {
+                    b.append("<tr><td class=\"muted\" colspan=\"2\">... и ещё ").append(p.stock.size() - 12).append("</td></tr>");
+                    break;
+                }
+                b.append("<tr><td>").append(Html.esc(itemName(e.getKey()))).append("</td><td>").append(e.getValue()).append("</td></tr>");
+            }
+            b.append("</table>");
+        }
+        b.append("<h2>Станки</h2>");
+        if (views.isEmpty()) {
+            b.append("<div class=\"muted\">Рабочих станков нет: поставьте печь или наковальню.</div>");
+        }
+        for (ProductionService.View v : views) {
+            String name = v.station() == null ? v.block().name() : v.station().title();
+            b.append("<details class=\"row\"><summary>").append(Html.esc(name)).append(" <span class=\"muted\">").append(Html.esc(v.pos()))
+                    .append("</span> ");
+            if (v.recipe() == null) {
+                b.append("<span class=\"muted\">без задания (обслуживает заказы)</span>");
+            } else {
+                b.append(Html.esc(recipeTitle(v.recipe()))).append(" <span class=\"")
+                        .append(v.status() == ProductionService.Status.WORKING ? "plus" : "minus").append("\">")
+                        .append(Html.esc(v.status().title())).append("</span> <span class=\"muted\">продукции ").append(v.output()).append("/")
+                        .append(v.bufferCapacity()).append("</span>");
+            }
+            b.append("</summary><div class=\"inner\">");
+            if (v.recipe() != null) {
+                b.append(cmdBtn("district machine at " + p.id + " " + v.pos() + " clear", "Снять задание", "red"));
+            }
+            String family = RecipeBook.familyOf(v.block());
+            List<RecipeBook.Recipe> recipes = family == null ? List.of() : f.recipesFor(p, v.block());
+            if ("craft".equals(family) || recipes.size() > 30) {
+                b.append(cmdBtn("district machine at " + p.id + " " + v.pos() + " menu", "Выбрать рецепт (меню-сундук)", "gray"));
+            } else if (recipes.isEmpty()) {
+                b.append("<span class=\"muted\">")
+                        .append("enchant".equals(family) ? "Одобренных зачарований нет: /district enchant propose" : "Рецептов нет").append("</span>");
+            } else {
+                for (RecipeBook.Recipe r : recipes) {
+                    b.append(cmdBtn("district machine at " + p.id + " " + v.pos() + " set " + r.id(), recipeTitle(r),
+                            v.recipe() != null && v.recipe().id().equals(r.id()) ? "" : "gray"));
+                }
+            }
+            b.append("</div></details>");
+        }
+        servicesBlock(b, p);
+    }
+
+    private String plain(double v) {
+        return plugin.economy().format(v);
+    }
+
+    private static String recipeTitle(RecipeBook.Recipe r) {
+        String t = itemName(r.output()) + (r.outputAmount() > 1 ? " ×" + r.outputAmount() : "");
+        return r.enchanting() ? t + " + " + r.enchantKey() + " " + r.enchantLevel() : t;
+    }
+
+    private void servicesBlock(StringBuilder b, Plot p) {
+        List<ServiceCatalog.Offer> offers = plugin.catalog().offers();
+        if (offers.isEmpty()) {
+            return;
+        }
+        b.append("<h2>Услуги для игроков</h2><table><tr><th>Услуга</th><th>Цена за ед.</th><th>Действия</th></tr>");
+        for (ServiceCatalog.Offer offer : offers) {
+            Plot.Offer o = p.offers.get(offer.key());
+            boolean on = o != null && o.enabled;
+            double price = o != null && o.price > 0 ? o.price : offer.defaultPrice();
+            b.append("<tr><td>").append(Html.esc(offer.title())).append(on ? " <span class=\"plus\">включена</span>" : " <span class=\"muted\">выключена</span>")
+                    .append("</td><td>").append(money(price)).append("</td><td>")
+                    .append(cmdBtn("district service toggle " + p.id + " " + offer.key() + " " + (on ? "off" : "on"), on ? "Выключить" : "Включить", on ? "red" : ""))
+                    .append(cmdBtn("district service price " + p.id + " " + offer.key() + " " + num(Math.max(0.01, price * 0.9)), "-10%", "gray"))
+                    .append(cmdBtn("district service price " + p.id + " " + offer.key() + " " + num(Math.min(offer.maxPrice(), price * 1.1)), "+10%", "gray"))
+                    .append("</td></tr>");
+        }
+        b.append("</table>");
+    }
+
+    private void goodsBlock(StringBuilder b, Plot p) {
+        if (!plugin.goods().holdsGoods(p)) {
+            return;
+        }
+        b.append("<h2>Товары (").append(plugin.goods().total(p)).append(" / ").append(plugin.goods().capacity(p)).append(")</h2>");
+        if (p.goods.isEmpty()) {
+            b.append("<div class=\"muted\">Склад товаров пуст.</div>");
+        } else {
+            b.append("<table><tr><th>Товар</th><th>Кол-во</th><th>Цена</th><th></th></tr>");
+            for (var e : p.goods.entrySet()) {
+                double price = plugin.goods().price(p, e.getKey());
+                b.append("<tr><td>").append(Html.esc(itemName(e.getKey()))).append("</td><td>").append(e.getValue()).append("</td><td>")
+                        .append(price > 0 ? money(price) : "<span class=\"muted\">не задана</span>").append("</td><td>");
+                if (price > 0) {
+                    b.append(cmdBtn("district goods price " + e.getKey().name() + " " + num(Math.max(0.01, price * 0.9)) + " " + p.id, "-10%", "gray"))
+                            .append(cmdBtn("district goods price " + e.getKey().name() + " " + num(price * 1.1) + " " + p.id, "+10%", "gray"));
+                }
+                b.append(cmdBtn("district goods take " + e.getKey().name() + " all " + p.id, "Забрать", "red")).append("</td></tr>");
+            }
+            b.append("</table>");
+        }
+        b.append(cmdBtn("district goods deposit " + p.id, "Выложить товары из инвентаря", ""))
+                .append(cmdBtn("district goods menu " + p.id, "Назначить цены (меню-сундук)", "gray"));
+    }
+
+    /** Отели игрока: номера со статусом и гостем, цена номера, счёт и электричество. */
+    public String hotel(Player player, String suffix) {
+        var id = player.getUniqueId();
+        StringBuilder b = new StringBuilder("<h1>Мои отели</h1><div class=\"sub\">Электричество оплачивается только за занятые номера</div>\n");
+        boolean any = false;
+        for (Plot h : plugin.plots().all()) {
+            if (!h.isOwner(id) || h.category != Category.HOTEL) {
+                continue;
+            }
+            any = true;
+            List<Plot> rooms = plugin.hotels().rooms(h);
+            b.append("<details class=\"row\"><summary><b>").append(Html.esc(h.displayName())).append("</b> <span class=\"muted\">№ ")
+                    .append(Html.esc(h.id)).append("</span> свободно ").append(plugin.hotels().freeRooms(h)).append(" из ").append(rooms.size())
+                    .append("</summary><div class=\"inner\">").append(accountBlock(h));
+            b.append("<div class=\"stats\">").append(stat(money(h.revenue), "Выручка всего"))
+                    .append(stat(num(plugin.power().unitsFor(h)) + " V", "Потребление в сутки"))
+                    .append(stat(money(h.maxRoomRate), "Предел цены номера")).append("</div>");
+            if (rooms.isEmpty()) {
+                b.append("<div class=\"muted\">Номеров пока нет: их создаёт администратор.</div>");
+            } else {
+                b.append("<table><tr><th>Номер</th><th>Статус</th><th>Размер</th><th>Цена за сутки</th><th></th></tr>");
+                for (Plot r : rooms) {
+                    b.append("<tr><td>").append(Html.esc(r.id)).append("</td><td>");
+                    if (r.isFree()) {
+                        b.append(r.restorePending ? "<span class=\"warn\">уборка</span>" : "<span class=\"plus\">свободен</span>");
+                    } else {
+                        b.append("<span class=\"minus\">занят</span> ").append(Html.esc(String.valueOf(r.ownerName)))
+                                .append(" <span class=\"muted\">до ").append(Html.esc(Text.date(r.rentedUntil))).append("</span>");
+                    }
+                    b.append("</td><td>").append(Html.esc(r.box.describe())).append("</td><td>").append(money(r.rentPerDay)).append("</td><td>")
+                            .append(cmdBtn("district room rate " + r.id + " " + num(Math.max(1, Math.floor(r.rentPerDay * 0.9 + 1e-6))), "-10%", "gray"))
+                            .append(cmdBtn("district room rate " + r.id + " " + num(Math.ceil(r.rentPerDay * 1.1 - 1e-6)), "+10%", "gray"))
+                            .append("</td></tr>");
+                }
+                b.append("</table>");
+            }
+            b.append("</div></details>");
+        }
+        if (!any) {
+            b.append("<div class=\"muted\">У вас нет отелей.</div>");
+        }
+        return Html.page("Мои отели", b.append(nav(suffix, true)).toString());
     }
 }
