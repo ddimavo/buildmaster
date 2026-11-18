@@ -35,6 +35,30 @@ final class PaperDialogBackend implements DialogService.Backend {
     }
 
     @Override
+    public void showChoices(Player player, String title, List<String> bodyLines, List<DialogService.Choice> choices, Consumer<String> choose, Runnable cancel) {
+        List<DialogBody> body = new ArrayList<>();
+        for (String line : bodyLines) {
+            body.add(DialogBody.plainMessage(Text.mm(line), 300));
+        }
+        ClickCallback.Options once = ClickCallback.Options.builder().uses(1).lifetime(java.time.Duration.ofMinutes(10)).build();
+        List<ActionButton> buttons = new ArrayList<>();
+        for (DialogService.Choice c : choices) {
+            buttons.add(ActionButton.builder(Text.mm("<" + c.color() + ">" + c.label()))
+                    .width(c.id().equals("ok") || c.id().equals("manual") ? 300 : 70)
+                    .action(DialogAction.customClick((view, audience) -> Bukkit.getScheduler().runTask(plugin, () -> choose.accept(c.id())), once))
+                    .build());
+        }
+        ActionButton exit = ActionButton.builder(Text.mm("<red>Отмена"))
+                .width(150)
+                .action(DialogAction.customClick((view, audience) -> Bukkit.getScheduler().runTask(plugin, cancel), once))
+                .build();
+        Dialog dialog = Dialog.create(builder -> builder.empty()
+                .base(DialogBase.builder(Text.mm("<gold>" + title)).body(body).canCloseWithEscape(true).build())
+                .type(DialogType.multiAction(buttons, exit, 4)));
+        player.showDialog(dialog);
+    }
+
+    @Override
     public void show(Player player, DialogService.Spec spec, Consumer<Map<String, Object>> submit, Runnable cancel) {
         List<DialogBody> body = new ArrayList<>();
         for (String line : spec.body()) {

@@ -42,12 +42,30 @@ public final class DialogService {
         }
     }
 
+    /** Кнопка окна выбора: id возвращается при нажатии, color - цвет подписи (MiniMessage-имя). */
+    public record Choice(String id, String label, String color) { }
+
+    /**
+     * Окно-степпер: число меняется кнопками, при каждом нажатии окно показывается заново с пересчитанным текстом
+     * (поля окна работают на клиенте, поэтому «живой» пересчёт возможен только так).
+     *
+     * @param body    строки окна для текущего значения (цена, баланс после операции...)
+     * @param valid   можно ли подтвердить это значение (нет - кнопки «подтвердить» не будет)
+     * @param format  подпись значения на кнопках («7 сут.», «500$»)
+     */
+    public record Stepper(String title, double min, double max, double initial, double small, double large, List<Double> presets,
+                          java.util.function.DoubleFunction<List<String>> body, java.util.function.DoublePredicate valid,
+                          java.util.function.DoubleFunction<String> format, String confirm) { }
+
     /** Показ окна игроку; тесты подменяют. submit получает значения полей: String, Double или Boolean. */
     public interface Backend {
 
         boolean available();
 
         void show(Player player, Spec spec, Consumer<Map<String, Object>> submit, Runnable cancel);
+
+        /** Окно с набором кнопок (без полей); choose получает id нажатой кнопки, cancel - выход. */
+        void showChoices(Player player, String title, List<String> body, List<Choice> choices, Consumer<String> choose, Runnable cancel);
     }
 
     private final IndustryRebornPlugin plugin;
@@ -196,6 +214,75 @@ public final class DialogService {
                 }
             }
         }, onCancel);
+    }
+
+    // ------------------------------------------------------------ степпер
+
+    /**
+     * Число кнопками с живым пересчётом. onManual - необязательная кнопка «Ввести число…» (например, окно с полем ввода).
+     * Без окон Paper число вводится в чат.
+     */
+    public void stepper(Player player, Stepper s, Consumer<Double> onSubmit, Runnable onManual, Runnable onCancel) {
+        step(player, s, Math.max(s.min(), Math.min(s.max(), s.initial())), onSubmit, onManual, onCancel);
+    }
+
+    private static String num(double v) {
+        return v == Math.rint(v) ? String.valueOf((long) v) : String.valueOf(Math.round(v * 100) / 100.0);
+    }
+
+    private void step(Player player, Stepper s, double value, Consumer<Double> onSubmit, Runnable onManual, Runnable onCancel) {
+        if (!available()) {
+            fallback(player, new Spec(s.title(), s.body().apply(value), List.of(Field.number("value", "Значение", value, s.min(), s.max(), s.small()))),
+                    values -> {
+                        double v = ((Number) values.get("value")).doubleValue();
+                        if (s.valid().test(v)) {
+                            onSubmit.accept(v);
+                        } else {
+                            Text.err(player, "Это значение нельзя подтвердить.");
+                            if (onCancel != null) {
+                                onCancel.run();
+                            }
+                        }
+                    }, onCancel);
+            return;
+        }
+        List<Choice> choices = new ArrayList<>();
+        double[] deltas = {-s.large(), -s.small(), s.small(), s.large()};
+        for (double d : deltas) {
+            if (d == 0 || value + d < s.min() - 1e-9 || value + d > s.max() + 1e-9) {
+                continue;
+            }
+            choices.add(new Choice("d:" + num(d), (d > 0 ? "+" : "−") + s.format().apply(Math.abs(d)), d > 0 ? "green" : "red"));
+        }
+        for (double p : s.presets()) {
+            if (p >= s.min() - 1e-9 && p <= s.max() + 1e-9 && Math.abs(p - value) > 1e-9) {
+                choices.add(new Choice("p:" + num(p), s.format().apply(p), "aqua"));
+            }
+        }
+        if (onManual != null) {
+            choices.add(new Choice("manual", "Ввести число…", "gray"));
+        }
+        if (s.valid().test(value)) {
+            choices.add(new Choice("ok", s.confirm() + " · " + s.format().apply(value), "green"));
+        }
+        player.closeInventory();
+        try {
+            backend().showChoices(player, s.title(), s.body().apply(value), choices, id -> {
+                if (id.equals("ok")) {
+                    onSubmit.accept(value);
+                } else if (id.equals("manual")) {
+                    onManual.run();
+                } else if (id.startsWith("d:")) {
+                    step(player, s, Math.max(s.min(), Math.min(s.max(), value + Double.parseDouble(id.substring(2)))), onSubmit, onManual, onCancel);
+                } else if (id.startsWith("p:")) {
+                    step(player, s, Double.parseDouble(id.substring(2)), onSubmit, onManual, onCancel);
+                }
+            }, onCancel == null ? () -> { } : onCancel);
+        } catch (RuntimeException | LinkageError e) {
+            plugin.getLogger().warning("Окно ввода не открылось, ввод в чате: " + e);
+            fallback(player, new Spec(s.title(), s.body().apply(value), List.of(Field.number("value", "Значение", value, s.min(), s.max(), s.small()))),
+                    values -> onSubmit.accept(((Number) values.get("value")).doubleValue()), onCancel);
+        }
     }
 
     /** Список полей окна для тестов и расширений. */

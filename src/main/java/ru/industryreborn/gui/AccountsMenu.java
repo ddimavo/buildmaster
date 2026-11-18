@@ -57,19 +57,7 @@ public final class AccountsMenu extends Menu {
                         } else if (e.isShiftClick()) {
                             new AccountMenu(plugin, player, plot).open();
                         } else {
-                            boolean withdraw = e.isRightClick();
-                            plugin.dialogs().amount(player, withdraw ? "Снять со счёта" : "Пополнить счёт",
-                                    java.util.List.of("<white>Участок № " + Text.esc(plot.id) + " · " + Text.esc(plot.displayName()),
-                                            "<gray>Баланс счёта: <white>" + plugin.economy().format(plugin.power().balance(plot)),
-                                            "<gray>Ваши деньги: <white>" + plugin.economy().format(plugin.economy().balance(player))),
-                                    withdraw ? "Сумма, чтобы снять" : "Сумма, чтобы внести", amount -> {
-                                        if (withdraw) {
-                                            plugin.power().withdraw(player, plot, amount);
-                                        } else {
-                                            plugin.power().deposit(player, plot, amount);
-                                        }
-                                        new AccountsMenu(plugin, player, all, current).open();
-                                    }, () -> new AccountsMenu(plugin, player, all, current).open());
+                            AccountDialogs.money(plugin, player, plot, e.isRightClick(), () -> new AccountsMenu(plugin, player, all, current).open());
                         }
                     });
         }

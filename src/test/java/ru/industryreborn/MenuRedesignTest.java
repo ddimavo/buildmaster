@@ -55,6 +55,40 @@ class MenuRedesignTest extends PluginTestBase {
         DialogService.Spec last() {
             return shown.get(shown.size() - 1);
         }
+
+        // ---- окна-степперы
+        record Shown(String title, List<String> body, List<DialogService.Choice> choices) { }
+
+        final List<Shown> steppers = new ArrayList<>();
+        Consumer<String> choose;
+        Runnable choiceCancel;
+
+        @Override
+        public void showChoices(Player player, String title, List<String> body, List<DialogService.Choice> choices, Consumer<String> choose, Runnable cancel) {
+            if (fail) {
+                throw new IllegalStateException("нет диалогов");
+            }
+            steppers.add(new Shown(title, body, choices));
+            this.choose = choose;
+            this.choiceCancel = cancel;
+        }
+
+        Shown lastStepper() {
+            return steppers.get(steppers.size() - 1);
+        }
+
+        boolean has(String id) {
+            return lastStepper().choices().stream().anyMatch(c -> c.id().equals(id));
+        }
+
+        void press(String id) {
+            assertTrue(has(id), "нет кнопки " + id + " среди " + lastStepper().choices());
+            choose.accept(id);
+        }
+
+        String bodyText() {
+            return String.join("\n", lastStepper().body()).replaceAll("<[^>]+>", "");
+        }
     }
 
     private FakeDialogs dialogs;
@@ -183,13 +217,11 @@ class MenuRedesignTest extends PluginTestBase {
         long before = shop.rentedUntil;
         double money = economy.getBalance(steve);
         steve.simulateInventoryClick(steve.getOpenInventory(), ClickType.RIGHT, 9);
-        DialogService.Spec spec = dialogs.last();
-        assertEquals("Продлить аренду", spec.title());
-        var field = spec.fields().get(0);
-        assertEquals(DialogService.Kind.NUMBER, field.kind());
-        assertEquals(1, field.min(), 1e-9);
-        assertTrue(field.max() >= 2, "ползунок до допустимого срока");
-        dialogs.submit.accept(Map.of("value", 3.0));
+        assertEquals("Продлить аренду", dialogs.lastStepper().title());
+        assertTrue(dialogs.bodyText().contains("Стоимость"), dialogs.bodyText());
+        dialogs.press("p:3");
+        assertTrue(dialogs.bodyText().contains("Срок: 3 сут."), dialogs.bodyText());
+        dialogs.press("ok");
         tick();
         assertEquals(before + 3 * plugin.service().dayMillis(), shop.rentedUntil);
         assertEquals(money - 3 * 50, economy.getBalance(steve), 1e-9);
@@ -285,36 +317,117 @@ class MenuRedesignTest extends PluginTestBase {
     }
 
     @Test
-    void depositAndWithdrawAskForAnAmount() {
+    void depositAndWithdrawUseAMoneyStepper() {
+        plugin.getConfig().set("bank.deposit-commission-percent", 10);
         card(steve, shop);
         double cash = economy.getBalance(steve);
         steve.simulateInventoryClick(20);
-        assertEquals("Пополнить счёт", dialogs.last().title());
-        dialogs.submit.accept(Map.of("value", "500"));
+        assertEquals("Пополнить счёт", dialogs.lastStepper().title());
+        assertTrue(dialogs.bodyText().contains("Сумма"), dialogs.bodyText());
+        assertTrue(dialogs.bodyText().contains("Комиссия банка 10"), "комиссия показана: " + dialogs.bodyText());
+        dialogs.press("d:100");                  // сумма меняется кнопками, остатки пересчитываются
+        assertTrue(dialogs.bodyText().contains(plugin.economy().format(1100)), dialogs.bodyText());
+        assertTrue(dialogs.bodyText().contains(plugin.economy().format(cash - 1100)), dialogs.bodyText());
+        dialogs.press("d:-100");
+        dialogs.press("ok");
         tick();
-        assertEquals(500, plugin.power().balance(shop), 1e-9);
-        assertEquals(cash - 500, economy.getBalance(steve), 1e-9);
+        assertEquals(1000 * 0.9, plugin.power().balance(shop), 1e-9, "комиссия банка удержана");
+        assertEquals(cash - 1000, economy.getBalance(steve), 1e-9);
+        // снятие (ПКМ): не больше остатка счёта
         steve.simulateInventoryClick(steve.getOpenInventory(), ClickType.RIGHT, 20);
-        assertEquals("Снять со счёта", dialogs.last().title());
-        dialogs.submit.accept(Map.of("value", "200,5"));
+        assertEquals("Снять со счёта", dialogs.lastStepper().title());
+        assertFalse(dialogs.has("p:100000"), "больше остатка не предлагается");
+        double account0 = plugin.power().balance(shop);
+        dialogs.press("ok");
         tick();
-        assertEquals(299.5, plugin.power().balance(shop), 1e-9, "запятая тоже годится");
+        assertTrue(plugin.power().balance(shop) < account0, "деньги сняты");
+        // ручной ввод суммы
         steve.simulateInventoryClick(20);
+        dialogs.press("manual");
+        assertEquals("Пополнить счёт", dialogs.last().title());
+        double account = plugin.power().balance(shop);
         dialogs.submit.accept(Map.of("value", "abc"));
         tick();
-        assertEquals(299.5, plugin.power().balance(shop), 1e-9, "не число - ничего не меняется");
+        assertEquals(account, plugin.power().balance(shop), 1e-9, "не число - ничего не меняется");
+        dialogs.submit.accept(Map.of("value", "500,5"));
+        tick();
+        assertEquals(account + 500.5 * 0.9, plugin.power().balance(shop), 1e-9);
     }
 
     @Test
-    void customTermOpensASliderUpToTheAllowedDays() {
+    void withNoMoneyThereIsNothingToStep() {
+        economy.set(steve, 0.5);
+        card(steve, shop);
+        int shown = dialogs.steppers.size();
+        steve.simulateInventoryClick(20);
+        assertEquals(shown, dialogs.steppers.size(), "окно не открывается");
+        assertTrue(steve.getOpenInventory().getTopInventory().getHolder() instanceof PlotMenu);
+    }
+
+    @Test
+    void customTermIsAStepperThatRecalculatesThePrice() {
         card(steve, shop);
         steve.simulateInventoryClick(15);
-        var f = dialogs.last().fields().get(0);
         int allowed = ru.industryreborn.service.RentRules.maxExtendDays(System.currentTimeMillis(), shop.rentedUntil, plugin.service().dayMillis(),
                 plugin.service().maxRentDays());
-        assertEquals(allowed, f.max(), 1e-9);
-        assertEquals(Math.min(7, allowed), Double.parseDouble(f.initial()), 1e-9);
-        assertTrue(dialogs.last().body().stream().anyMatch(l -> l.contains("за сутки")));
+        assertTrue(dialogs.bodyText().contains("Срок: " + Math.min(7, allowed) + " сут."), dialogs.bodyText());
+        assertTrue(dialogs.bodyText().contains(plugin.economy().format(Math.min(7, allowed) * 50.0)), dialogs.bodyText());
+        int shownBefore = dialogs.steppers.size();
+        dialogs.press("d:1");                    // +1 сутки: окно показано заново с новой ценой
+        assertEquals(shownBefore + 1, dialogs.steppers.size());
+        int days = Math.min(7, allowed) + 1;
+        assertTrue(dialogs.bodyText().contains("Срок: " + days + " сут."), dialogs.bodyText());
+        assertTrue(dialogs.bodyText().contains(plugin.economy().format(days * 50.0)), "цена пересчитана: " + dialogs.bodyText());
+        dialogs.press("d:-1");
+        dialogs.press("d:-1");
+        assertTrue(dialogs.bodyText().contains("Срок: " + (days - 2) + " сут."), dialogs.bodyText());
+        dialogs.press("p:1");
+        assertFalse(dialogs.has("d:-1"), "ниже минимума кнопки «−» нет");
+        assertFalse(dialogs.has("d:-7"));
+        assertFalse(dialogs.has("p:1"), "текущее значение не предлагается как быстрое");
+        // верхний предел
+        while (dialogs.has("d:7")) {
+            dialogs.press("d:7");
+        }
+        while (dialogs.has("d:1")) {
+            dialogs.press("d:1");
+        }
+        assertTrue(dialogs.bodyText().contains("Срок: " + allowed + " сут."), dialogs.bodyText());
+        assertFalse(dialogs.has("d:1") || dialogs.has("d:7"), "выше допустимого срока кнопок «+» нет");
+        assertFalse(dialogs.has("manual"), "у продления нет ручного ввода");
+        dialogs.press("ok");
+        tick();
+        assertEquals(1, plugin.journal().forPlot("s1").stream().filter(e -> e.action() == Journal.Action.EXTENDED).count());
+    }
+
+    @Test
+    void stepperHidesConfirmWhenThereIsNotEnoughMoney() {
+        economy.set(steve, 120);              // хватит на двое суток по 50
+        card(steve, shop);
+        steve.simulateInventoryClick(15);
+        dialogs.press("p:1");
+        assertTrue(dialogs.has("ok"));
+        dialogs.press("d:1");
+        assertTrue(dialogs.has("ok"), "2 суток = 100");
+        dialogs.press("d:1");
+        assertFalse(dialogs.has("ok"), "3 суток = 150: денег нет, подтвердить нельзя");
+        assertTrue(dialogs.bodyText().contains("Не хватает"), dialogs.bodyText());
+        dialogs.choiceCancel.run();
+        tick();
+        assertTrue(shop.rentedUntil > 0);
+        assertEquals(120, economy.getBalance(steve), 1e-9, "отмена ничего не списывает");
+    }
+
+    @Test
+    void stepperFallsBackToChatWithoutDialogs() {
+        plugin.dialogs().setBackend(null);
+        card(steve, shop);
+        long before = shop.rentedUntil;
+        steve.simulateInventoryClick(15);
+        assertTrue(plugin.chatPrompt().isWaiting(steve));
+        plugin.chatPrompt().deliver(steve, "2");
+        tick();
+        assertEquals(before + 2 * plugin.service().dayMillis(), shop.rentedUntil);
     }
 
     @Test
@@ -440,5 +553,24 @@ class MenuRedesignTest extends PluginTestBase {
         plugin.dialogs().setBackend(null);
         plugin.chatPrompt().ask(steve, "Введите ник:", got::add);
         assertTrue(plugin.chatPrompt().isWaiting(steve), "без окон - чат");
+    }
+
+    @Test
+    void withdrawalKeepsTheElectricityReserve() {
+        plugin.getConfig().set("limits.categories.workshop", 0);
+        Plot w = addPlot("w1", Category.WORKSHOP, 40, -1, 10);
+        plugin.service().rent(steve, w, 2);
+        plugin.power().deposit(steve, w, 1000);
+        plugin.power().touch(w);
+        w.account.setRate(300);                    // тариф электричества: резерв на сутки - 300
+        double reserve = plugin.power().isBilled(w) ? w.account.ratePerDay() : 0;
+        assertEquals(300, reserve, 1e-9, "мастерская платит за электричество");
+        double available = Math.floor(Math.max(0, w.account.rawBalance() - reserve));
+        new PlotMenu(plugin, steve, w, new PlotFilter(PlotFilter.Mode.MINE)).open();
+        steve.simulateInventoryClick(steve.getOpenInventory(), ClickType.RIGHT, 20);
+        assertTrue(dialogs.has("p:" + (long) available) || available < 1, "максимум - остаток без резерва: " + available + " / " + dialogs.lastStepper().choices());
+        if (reserve > 0) {
+            assertFalse(dialogs.has("p:" + (long) Math.floor(w.account.rawBalance())), "полный остаток снять нельзя: нужен резерв " + reserve);
+        }
     }
 }

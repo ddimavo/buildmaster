@@ -143,28 +143,9 @@ public final class PlotMenu extends Menu {
 
     // ------------------------------------------------------------ управляющий
 
-    /** Окно продления аренды на любой срок (ползунок); без ползунка, если можно продлить лишь на сутки. */
+    /** Окно продления аренды на любой срок (степпер с пересчётом цены). */
     static void extendDialog(IndustryRebornPlugin plugin, Player player, Plot plot, Runnable after) {
-        long now = System.currentTimeMillis();
-        int allowed = RentRules.maxExtendDays(now, plot.rentedUntil, plugin.service().dayMillis(), plugin.service().maxRentDays());
-        if (allowed < 1) {
-            Text.err(player, "Срок аренды уже максимальный (" + plugin.service().maxRentDays() + " сут.).");
-            after.run();
-            return;
-        }
-        if (allowed == 1) {
-            plugin.service().extend(player, plot, 1);
-            after.run();
-            return;
-        }
-        plugin.dialogs().number(player, "Продлить аренду",
-                List.of("<white>Участок № " + Text.esc(plot.id) + " · " + Text.esc(plot.displayName()),
-                        "<gray>Стоимость: <white>" + plugin.economy().format(plot.rentPerDay) + " <gray>за сутки",
-                        "<gray>Можно продлить не больше чем на <white>" + allowed + " <gray>сут."),
-                "Срок, суток", Math.min(7, allowed), 1, allowed, 1, days -> {
-                    plugin.service().extend(player, plot, (int) Math.round(days));
-                    after.run();
-                }, after);
+        AccountDialogs.extend(plugin, player, plot, after);
     }
 
     private void buildOwner(boolean admin) {
@@ -224,18 +205,7 @@ public final class PlotMenu extends Menu {
         }
         accountLore.add("<yellow>ЛКМ - пополнить, ПКМ - снять");
         set(slot++, Text.icon(Material.GOLD_NUGGET, "<gold>Счёт предприятия", accountLore.toArray(new String[0])), e -> {
-            boolean withdraw = e.isRightClick();
-            plugin.dialogs().amount(player, withdraw ? "Снять со счёта" : "Пополнить счёт",
-                    List.of("<white>Участок № " + Text.esc(plot.id), "<gray>Баланс счёта: <white>" + plugin.economy().format(plugin.power().balance(plot)),
-                            "<gray>Ваши деньги: <white>" + plugin.economy().format(plugin.economy().balance(player))),
-                    withdraw ? "Сумма, чтобы снять" : "Сумма, чтобы внести", amount -> {
-                        if (withdraw) {
-                            plugin.power().withdraw(player, plot, amount);
-                        } else {
-                            plugin.power().deposit(player, plot, amount);
-                        }
-                        refresh();
-                    }, this::refresh);
+            AccountDialogs.money(plugin, player, plot, e.isRightClick(), this::refresh);
         });
         if (plugin.jobs().enabled() && plugin.jobs().categoryAllowed(plot.category)) {
             set(slot++, Text.icon(Material.VILLAGER_SPAWN_EGG, "<gold>Работники",
