@@ -981,6 +981,10 @@ steel_ingot:
 /district webhook [list|send <имя>|test <имя>]         вебхуки со статистикой
 /district holoshop [create <участок>|remove <номер>|back <номер> on|off|default|list]  торговля через голограммы
 /district build [list|reload|<участок> <здание> [force]]    автостроительство
+/district item list|info|give|reload|export-nexo            предметы плагина (администратор)
+/district recipe [list|info|request|requests|cancel|learn|forget|price|remove]   рецепты станков и заявки игроков (6.8)
+/district blueprint [use|info|shop|buy|give|vault]          чертежи (6.8)
+/district room class <номер> [класс]                       класс номера отеля (8.4.1)
 /district moderation approve|reject|tp <№> [причина]   решение по заявке игрока (№ - из страницы модерации)
 /district bank settings                                настройки банка (страница или меню)
 /district machine at <мастерская> <x,y,z> set|clear|menu  задание станку без взгляда на него
