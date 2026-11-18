@@ -1695,7 +1695,7 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
                     Text.ok(p, "Заявка отклонена.");
                 } else {
                     Plot plot = plugin.plots().get(r.plotId);
-                    var at = r.type == Request.Type.HOLO ? plugin.moderation().holoLocation(r) : null;
+                    var at = plugin.moderation().teleportSpot(r);
                     if (at != null) {
                         p.teleport(at);
                     } else if (plot != null) {

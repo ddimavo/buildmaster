@@ -38,9 +38,14 @@ public final class ModerationMenu extends Menu {
             lore.add("");
             lore.add("<green>ЛКМ - одобрить");
             lore.add("<red>ПКМ - отклонить (потребуется причина)");
-            lore.add("<aqua>Shift+ЛКМ - телепорт к участку");
+            if (r.type != Request.Type.ROOM_CLASS) {
+                lore.add("<aqua>Shift+ЛКМ - телепорт к участку");
+            }
             if (r.type == Request.Type.HOLO) {
                 lore.add("<aqua>Shift+ЛКМ - телепорт на предложенную позицию");
+            }
+            if (r.type == Request.Type.ROOM_CLASS) {
+                lore.add("<aqua>Shift+ЛКМ - телепорт к двери номера (проверить перед решением)");
             }
             set(FIRST + i, Text.icon(r.type == Request.Type.NAME ? Material.NAME_TAG
                             : r.type == Request.Type.HOLO ? Material.ENDER_EYE
@@ -49,8 +54,7 @@ public final class ModerationMenu extends Menu {
                     "<gold>" + r.type.title(), lore.toArray(new String[0])), e -> {
                         if (e.isShiftClick()) {
                             Plot plot = plugin.plots().get(r.plotId);
-                            org.bukkit.Location proposed = r.type == Request.Type.HOLO
-                                    ? plugin.moderation().holoLocation(r) : null;
+                            org.bukkit.Location proposed = plugin.moderation().teleportSpot(r);
                             if (proposed != null) {
                                 player.closeInventory();
                                 player.teleport(proposed);

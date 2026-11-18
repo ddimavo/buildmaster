@@ -46,6 +46,23 @@ public final class DoorText {
     }
 
     /**
+     * Куда встать, чтобы оказаться в коридоре перед дверью лицом к ней: {x, y, z, yaw}. Дверь стоит в стене между интерьером номера и коридором;
+     * возвращает null, если сторону определить нельзя.
+     */
+    public static double[] standSpot(Box interior, int dx, int dy, int dz) {
+        int[][] dirs = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+        for (int[] d : dirs) {
+            boolean outside = !interior.contains(dx + d[0], dy, dz + d[1]) && !interior.contains(dx + d[0], dy + 1, dz + d[1]);
+            boolean inside = interior.contains(dx - d[0], dy, dz - d[1]) || interior.contains(dx - d[0], dy + 1, dz - d[1]);
+            if (outside && inside) {
+                double yaw = Math.toDegrees(Math.atan2(d[0], -d[1]));
+                return new double[] {dx + 0.5 + d[0] * 1.5, dy, dz + 0.5 + d[1] * 1.5, yaw};
+            }
+        }
+        return null;
+    }
+
+    /**
      * Точка над дверью со стороны коридора: дверь стоит в стене, интерьер номера с одной стороны, коридор с другой.
      * Возвращает {x, y, z} или null, если сторону определить нельзя.
      */

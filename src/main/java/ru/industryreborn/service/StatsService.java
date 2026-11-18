@@ -186,6 +186,21 @@ public final class StatsService {
             ho.add(num("rooms", "Номеров", rooms));
             ho.add(num("busy", "Занято номеров", busy));
             ho.add(percent("occupancy", "Занятость номеров", rooms == 0 ? 0 : (double) busy / rooms));
+            for (ru.industryreborn.model.RoomClass c : ru.industryreborn.model.RoomClass.values()) {
+                int count = 0;
+                int busyOfClass = 0;
+                double revenue = 0;
+                for (Plot p : plots) {
+                    if (p.category == Category.ROOM && p.roomClass == c) {
+                        count++;
+                        busyOfClass += p.isFree() ? 0 : 1;
+                        revenue += p.roomRevenue;
+                    }
+                }
+                ho.add(num("rooms-" + c.key(), "Номеров класса «" + c.title() + "»", count));
+                ho.add(num("busy-" + c.key(), "Занято, класс «" + c.title() + "»", busyOfClass));
+                ho.add(cash("revenue-" + c.key(), "Доход класса «" + c.title() + "»", revenue));
+            }
             sections.add(new Section("hotels", "Отели", ho));
         }
 

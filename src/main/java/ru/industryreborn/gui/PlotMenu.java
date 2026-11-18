@@ -47,6 +47,11 @@ public final class PlotMenu extends Menu {
         if (admin && !plot.isFree() && !plugin.service().isLocked(plot)) {
             buildAdmin();
         }
+        if (plot.category == Category.ROOM && (admin || plugin.hotels().hotelOf(plot) != null && plugin.hotels().hotelOf(plot).isOwner(player.getUniqueId()))) {
+            set(51, Text.icon(plot.roomClass.icon(), "<gold>Класс номера", "<gray>Сейчас: " + plot.roomClass.badge(),
+                    admin ? "<yellow>Нажмите: назначить класс" : "<yellow>Нажмите: подать заявку на смену"),
+                    e -> new RoomClassMenu(plugin, player, plot, () -> new PlotMenu(plugin, player, plot, back)).open());
+        }
         if (plugin.getConfig().getBoolean("allow-visit-teleport", true) || owner || admin) {
             set(47, Text.icon(Material.ENDER_PEARL, "<light_purple>Телепорт", "<yellow>Нажмите, чтобы перенестись к участку"), e -> {
                 player.closeInventory();
@@ -81,7 +86,7 @@ public final class PlotMenu extends Menu {
                     });
         }
         if (plot.rentPerDay >= 0) {
-            int max = plugin.service().maxRentDays();
+            int max = plugin.service().maxRentDays(plot);
             int slot = 13;
             for (int days : plugin.getConfig().getIntegerList("rent-day-options")) {
                 if (days < 1 || days > max || slot > 17) {
@@ -152,7 +157,7 @@ public final class PlotMenu extends Menu {
         boolean rented = plot.status == Plot.Status.RENTED;
         if (rented) {
             long now = System.currentTimeMillis();
-            int allowed = RentRules.maxExtendDays(now, plot.rentedUntil, plugin.service().dayMillis(), plugin.service().maxRentDays());
+            int allowed = RentRules.maxExtendDays(now, plot.rentedUntil, plugin.service().dayMillis(), plugin.service().maxRentDays(plot));
             set(9, Ui.section("Аренда", Material.LIGHT_BLUE_STAINED_GLASS_PANE));
             int slot = 11;
             for (int days : new int[] {1, 7, 14}) {
@@ -160,7 +165,7 @@ public final class PlotMenu extends Menu {
                 ItemStack icon = Text.icon(ok ? Material.CLOCK : Material.GRAY_DYE,
                         (ok ? "<aqua>" : "<dark_gray>") + "Продлить на " + days + " сут.",
                         "<gray>Стоимость: <white>" + plugin.economy().format(RentRules.cost(plot.rentPerDay, days)),
-                        ok ? "<yellow>Нажмите" : "<red>Больше " + plugin.service().maxRentDays() + " суток нельзя");
+                        ok ? "<yellow>Нажмите" : "<red>Больше " + plugin.service().maxRentDays(plot) + " суток нельзя");
                 icon.setAmount(days);
                 set(slot++, icon, ok ? e -> {
                     plugin.service().extend(player, plot, days);

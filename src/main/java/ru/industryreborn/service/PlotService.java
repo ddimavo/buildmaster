@@ -75,6 +75,11 @@ public final class PlotService {
         return Math.max(1, plugin.getConfig().getInt("max-rent-days", 14));
     }
 
+    /** Максимальный срок аренды участка; для номера отеля - по его классу. */
+    public int maxRentDays(Plot plot) {
+        return plot != null && plot.category == Category.ROOM ? Math.min(maxRentDays(), plugin.hotels().maxDays(plot.roomClass)) : maxRentDays();
+    }
+
     public boolean isLocked(Plot plot) {
         return plot.busy || plot.restorePending;
     }
@@ -396,7 +401,7 @@ public final class PlotService {
             Text.err(p, "Этот участок не сдаётся в аренду.");
             return false;
         }
-        int max = maxRentDays();
+        int max = maxRentDays(plot);
         if (!RentRules.validNewRent(days, max)) {
             Text.err(p, "Срок аренды: от 1 до " + max + " суток.");
             return false;
@@ -476,11 +481,11 @@ public final class PlotService {
             return false;
         }
         long now = System.currentTimeMillis();
-        int allowed = RentRules.maxExtendDays(now, plot.rentedUntil, dayMillis(), maxRentDays());
+        int allowed = RentRules.maxExtendDays(now, plot.rentedUntil, dayMillis(), maxRentDays(plot));
         if (days < 1 || days > allowed) {
             Text.err(p, allowed == 0
-                    ? "Срок аренды уже максимальный (" + maxRentDays() + " сут.)."
-                    : "Сейчас можно продлить не более чем на " + allowed + " сут. (максимум " + maxRentDays() + ").");
+                    ? "Срок аренды уже максимальный (" + maxRentDays(plot) + " сут.)."
+                    : "Сейчас можно продлить не более чем на " + allowed + " сут. (максимум " + maxRentDays(plot) + ").");
             return false;
         }
         double cost = RentRules.cost(plot.rentPerDay, days);
@@ -1013,7 +1018,7 @@ public final class PlotService {
     /** Пытается продлить аренду на период автопродления. Успех снимает отсрочку. */
     private boolean tryAutoRenew(Plot plot, OfflinePlayer owner, long now) {
         int days = Math.max(1, plugin.getConfig().getInt("autorenew-days", 7));
-        days = Math.min(days, maxRentDays());
+        days = Math.min(days, maxRentDays(plot));
         double cost = RentRules.cost(plot.rentPerDay, days);
         if (!pay(owner, cost, "Автопродление аренды " + plot.id + " (" + owner.getName() + ")", plot)) {
             return false;

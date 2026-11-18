@@ -270,6 +270,7 @@ public final class PlotManager {
         p.maxRoomRate = s.getDouble("max-room-rate");
         RoomClass loadedClass = RoomClass.parse(s.getString("room-class"));
         p.roomClass = loadedClass == null ? RoomClass.ECONOMY : loadedClass;
+        p.roomRevenue = s.getDouble("room-revenue");
         for (String d : s.getStringList("doors")) {
             String[] c = d.split(",");
             p.doors.add(new int[] {Integer.parseInt(c[0].trim()), Integer.parseInt(c[1].trim()), Integer.parseInt(c[2].trim())});
@@ -410,6 +411,9 @@ public final class PlotManager {
             }
             yml.set(k + "parent", p.parentId);
             yml.set(k + "max-room-rate", p.maxRoomRate);
+            if (p.roomRevenue != 0) {
+                yml.set(k + "room-revenue", p.roomRevenue);
+            }
             if (p.roomClass != RoomClass.ECONOMY) {
                 yml.set(k + "room-class", p.roomClass.name());
             }

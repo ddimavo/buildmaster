@@ -228,6 +228,54 @@ public class IndustryRebornExtension implements DataExtension {
         return s().value("hotels", "occupancy") / 100.0;
     }
 
+    @Tab("Отели")
+    @NumberProvider(text = "Номеров: эконом", priority = 60, iconName = "bed", iconColor = Color.GREY)
+    public long roomsEconomy() {
+        return n("hotels", "rooms-economy");
+    }
+
+    @Tab("Отели")
+    @NumberProvider(text = "Номеров: стандарт", priority = 59, iconName = "bed", iconColor = Color.GREEN)
+    public long roomsStandard() {
+        return n("hotels", "rooms-standard");
+    }
+
+    @Tab("Отели")
+    @NumberProvider(text = "Номеров: комфорт", priority = 58, iconName = "bed", iconColor = Color.CYAN)
+    public long roomsComfort() {
+        return n("hotels", "rooms-comfort");
+    }
+
+    @Tab("Отели")
+    @NumberProvider(text = "Номеров: люкс", priority = 57, iconName = "bed", iconColor = Color.AMBER)
+    public long roomsLuxury() {
+        return n("hotels", "rooms-luxury");
+    }
+
+    @Tab("Отели")
+    @DoubleProvider(text = "Доход: эконом", priority = 56, iconName = "coins", iconColor = Color.GREY)
+    public double revenueEconomy() {
+        return s().value("hotels", "revenue-economy");
+    }
+
+    @Tab("Отели")
+    @DoubleProvider(text = "Доход: стандарт", priority = 55, iconName = "coins", iconColor = Color.GREEN)
+    public double revenueStandard() {
+        return s().value("hotels", "revenue-standard");
+    }
+
+    @Tab("Отели")
+    @DoubleProvider(text = "Доход: комфорт", priority = 54, iconName = "coins", iconColor = Color.CYAN)
+    public double revenueComfort() {
+        return s().value("hotels", "revenue-comfort");
+    }
+
+    @Tab("Отели")
+    @DoubleProvider(text = "Доход: люкс", priority = 53, iconName = "coins", iconColor = Color.AMBER)
+    public double revenueLuxury() {
+        return s().value("hotels", "revenue-luxury");
+    }
+
     // ------------------------------------------------------------ работа, заказы, товары
 
     @Tab("Работа и заказы")

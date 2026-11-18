@@ -16,9 +16,9 @@ final class AccountDialogs {
     /** Продление аренды: срок в сутках, стоимость и остаток денег для каждого значения. */
     static void extend(IndustryRebornPlugin plugin, Player player, Plot plot, Runnable after) {
         long now = System.currentTimeMillis();
-        int allowed = RentRules.maxExtendDays(now, plot.rentedUntil, plugin.service().dayMillis(), plugin.service().maxRentDays());
+        int allowed = RentRules.maxExtendDays(now, plot.rentedUntil, plugin.service().dayMillis(), plugin.service().maxRentDays(plot));
         if (allowed < 1) {
-            Text.err(player, "Срок аренды уже максимальный (" + plugin.service().maxRentDays() + " сут.).");
+            Text.err(player, "Срок аренды уже максимальный (" + plugin.service().maxRentDays(plot) + " сут.).");
             after.run();
             return;
         }

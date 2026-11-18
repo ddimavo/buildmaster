@@ -92,6 +92,7 @@ public final class HotelService {
         double net = plugin.bank().applyRentTax(hotel.id, hotel.owner, amount);
         hotel.account.deposit(net);
         hotel.revenue += net;
+        plot.roomRevenue += net;
         plugin.jobs().onIncome(hotel, net);
         plugin.plots().save();
         plugin.journal().add(hotel.id, hotel.owner, "система", Journal.Action.HOTEL,
@@ -143,6 +144,9 @@ public final class HotelService {
         if (!admin && (hotel.maxRoomRate <= 0 || rate > hotel.maxRoomRate)) {
             return hotel.maxRoomRate <= 0 ? "Администратор не разрешил управляющему менять цены номеров."
                     : "Цена номера не может быть выше " + plugin.economy().format(hotel.maxRoomRate) + " за сутки.";
+        }
+        if (!admin && (rate < minRate(room.roomClass) || (maxRate(room.roomClass) > 0 && rate > maxRate(room.roomClass)))) {
+            return "Для класса «" + room.roomClass.title() + "» цена за сутки: " + rangeText(room.roomClass) + ".";
         }
         room.rentPerDay = rate;
         plugin.plots().save();
@@ -197,10 +201,86 @@ public final class HotelService {
     public void applyClass(Plot room, RoomClass target, String by, String how, java.util.UUID subject) {
         RoomClass old = room.roomClass;
         room.roomClass = target;
+        double fitted = room.rentPerDay >= 0 ? clampRate(target, room.rentPerDay) : room.rentPerDay;
+        String note = "";
+        if (fitted != room.rentPerDay) {
+            note = ", цена подогнана под класс: " + plugin.economy().format(room.rentPerDay) + " → " + plugin.economy().format(fitted);
+            room.rentPerDay = fitted;
+        }
         plugin.plots().save();
         plugin.holograms().update(room);
         plugin.journal().add(room.id, subject, by, Journal.Action.HOTEL,
-                "Класс номера: " + old.title() + " → " + target.title() + " (" + how + ")");
+                "Класс номера: " + old.title() + " → " + target.title() + " (" + how + ")" + note);
+    }
+
+    private boolean classesOn() {
+        return plugin.getConfig().getBoolean("hotel-classes.enabled", true);
+    }
+
+    private static final double[][] DEFAULT_RANGE = {{0, 100}, {50, 250}, {150, 500}, {300, 0}};
+    private static final int[] DEFAULT_DAYS = {3, 7, 14, 14};
+    private static final double[] DEFAULT_POWER = {1.0, 1.0, 1.2, 1.5};
+
+    /** Нижняя граница цены за сутки для класса (0 - нет). */
+    public double minRate(RoomClass c) {
+        return !classesOn() ? 0 : Math.max(0, plugin.getConfig().getDouble("hotel-classes." + c.key() + ".min-rate", DEFAULT_RANGE[c.ordinal()][0]));
+    }
+
+    /** Верхняя граница цены за сутки для класса (0 - нет). */
+    public double maxRate(RoomClass c) {
+        return !classesOn() ? 0 : Math.max(0, plugin.getConfig().getDouble("hotel-classes." + c.key() + ".max-rate", DEFAULT_RANGE[c.ordinal()][1]));
+    }
+
+    /** Максимальный срок аренды номера этого класса, сутки (не больше общего max-rent-days). */
+    public int maxDays(RoomClass c) {
+        int global = Math.max(1, plugin.getConfig().getInt("max-rent-days", 14));
+        if (!classesOn()) {
+            return global;
+        }
+        return Math.max(1, Math.min(global, plugin.getConfig().getInt("hotel-classes." + c.key() + ".max-days", DEFAULT_DAYS[c.ordinal()])));
+    }
+
+    /** Множитель потребления электричества номера этого класса. */
+    public double powerFactor(RoomClass c) {
+        return !classesOn() ? 1.0 : Math.max(0, plugin.getConfig().getDouble("hotel-classes." + c.key() + ".power", DEFAULT_POWER[c.ordinal()]));
+    }
+
+    /** Цена в границах класса. */
+    public double clampRate(RoomClass c, double rate) {
+        double min = minRate(c);
+        double max = maxRate(c);
+        double r = Math.max(rate, min);
+        return max > 0 ? Math.min(r, max) : r;
+    }
+
+    /** «от 50 до 250» / «от 300» / «до 100» / «без границ» для подсказок. */
+    public String rangeText(RoomClass c) {
+        double min = minRate(c);
+        double max = maxRate(c);
+        if (min <= 0 && max <= 0) {
+            return "без границ";
+        }
+        if (max <= 0) {
+            return "от " + plugin.economy().format(min);
+        }
+        return min <= 0 ? "до " + plugin.economy().format(max) : plugin.economy().format(min) + " - " + plugin.economy().format(max);
+    }
+
+    /** Сводка по классам отеля: [класс] -> {номеров, занято, доход}. */
+    public Map<RoomClass, double[]> classSummary(Plot hotel) {
+        Map<RoomClass, double[]> map = new java.util.EnumMap<>(RoomClass.class);
+        for (RoomClass c : RoomClass.values()) {
+            map.put(c, new double[3]);
+        }
+        for (Plot room : rooms(hotel)) {
+            double[] v = map.get(room.roomClass);
+            v[0]++;
+            if (!room.isFree()) {
+                v[1]++;
+            }
+            v[2] += room.roomRevenue;
+        }
+        return map;
     }
 
     public static String classList() {

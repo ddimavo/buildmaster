@@ -170,8 +170,8 @@ public final class PowerService {
     /** Потребление одного занятого номера, V в сутки: начальное значение + рост от площади пола. */
     public double roomUnits(Plot room) {
         double area = (double) room.box.sizeX() * room.box.sizeZ();
-        return plugin.getConfig().getDouble("hotel-electricity.base-units", 10)
-                + plugin.getConfig().getDouble("hotel-electricity.per-area", 0.5) * area;
+        return (plugin.getConfig().getDouble("hotel-electricity.base-units", 10)
+                + plugin.getConfig().getDouble("hotel-electricity.per-area", 0.5) * area) * plugin.hotels().powerFactor(room.roomClass);
     }
 
     /** Потребление отеля: сумма по занятым номерам. */

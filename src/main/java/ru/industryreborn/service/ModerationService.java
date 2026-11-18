@@ -127,6 +127,32 @@ public final class ModerationService {
         return null;
     }
 
+    /**
+     * Куда телепортировать администратора при проверке заявки: для позиции голограммы - предложенная точка, для класса номера - коридор перед его дверью.
+     * null - особого места нет (телепорт к самому участку).
+     */
+    public org.bukkit.Location teleportSpot(Request r) {
+        if (r.type == Request.Type.HOLO) {
+            return holoLocation(r);
+        }
+        if (r.type == Request.Type.ROOM_CLASS) {
+            Plot room = plugin.plots().get(r.plotId);
+            org.bukkit.World world = room == null ? null : Bukkit.getWorld(room.world);
+            if (world == null || room.doors.isEmpty()) {
+                return null;
+            }
+            for (int[] d : room.doors) {
+                double[] spot = ru.industryreborn.service.DoorText.standSpot(room.box, d[0], d[1], d[2]);
+                if (spot != null) {
+                    return new org.bukkit.Location(world, spot[0], spot[1], spot[2], (float) spot[3], 0f);
+                }
+            }
+            int[] d = room.doors.get(0);
+            return new org.bukkit.Location(world, d[0] + 0.5, d[1], d[2] + 0.5);
+        }
+        return null;
+    }
+
     /** Текст заявки для людей: для класса номера «Эконом → Люкс», иначе как есть. */
     public String describe(Request r) {
         if (r.type == Request.Type.ROOM_CLASS) {

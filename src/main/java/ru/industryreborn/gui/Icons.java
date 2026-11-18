@@ -70,6 +70,9 @@ final class Icons {
     static String[] plotLore(IndustryRebornPlugin plugin, Plot plot) {
         List<String> lore = new ArrayList<>();
         lore.add("<gray>Тип: <white>" + plot.category.title() + " <gray>· размер: <white>" + plot.box.describe());
+        if (plot.category == ru.industryreborn.model.Category.ROOM) {
+            lore.add("<gray>Класс: " + plot.roomClass.badge());
+        }
         if (plot.isPlayerPlot()) {
             lore.add("<gray>Арендодатель: <white>" + Text.esc(String.valueOf(plot.landlordName)));
             if (plot.approval == Plot.Approval.PENDING) {
@@ -98,7 +101,7 @@ final class Icons {
                 lore.add(plot.isFrozen() ? "<red>● Заморожен" : "<yellow>● Арендован");
                 lore.add("<gray>Арендатор: <white>" + Text.esc(String.valueOf(plot.ownerName)));
                 lore.add("<gray>Осталось: <white>" + Text.duration(left));
-                lore.add(ru.industryreborn.util.Style.bar((double) left / (plugin.service().maxRentDays()
+                lore.add(ru.industryreborn.util.Style.bar((double) left / (plugin.service().maxRentDays(plot)
                         * plugin.service().dayMillis()), 12, left < 86_400_000L ? "red" : "yellow"));
                 lore.add("<gray>Автопродление: " + (plot.autoRenew ? "<green>включено" : "<red>выключено"));
                 if (plot.isFrozen()) {
