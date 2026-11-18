@@ -182,10 +182,10 @@ class AdminBuildingsTest extends PluginTestBase {
 
         new AccountsMenu(plugin, steve, false, 0).open();
         assertTrue(openMenu(steve, AccountsMenu.class));
-        assertFalse(blank(steve.getOpenInventory().getTopInventory().getItem(0)), "свой счёт в списке");
+        assertFalse(blank(steve.getOpenInventory().getTopInventory().getItem(9)), "свой счёт в списке");
 
         new AccountsMenu(plugin, boss, true, 0).open();
-        assertFalse(blank(boss.getOpenInventory().getTopInventory().getItem(0)));
+        assertFalse(blank(boss.getOpenInventory().getTopInventory().getItem(9)));
 
         new AccountMenu(plugin, boss, shop).open();
         assertTrue(openMenu(boss, AccountMenu.class));

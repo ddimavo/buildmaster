@@ -819,7 +819,7 @@ class ServicesIntegrationTest extends PluginTestBase {
         pass(1);
         pass(20);
         new ru.industryreborn.gui.MyOrdersMenu(plugin, alex, 0).open();
-        alex.simulateInventoryClick(0);
+        alex.simulateInventoryClick(9);
         assertEquals(2, count(alex, Material.IRON_INGOT));
         assertNull(plugin.orders().find(o.shortId()));
     }

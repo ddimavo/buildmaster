@@ -203,9 +203,9 @@ class HologramProposalTest extends PluginTestBase {
     void theModerationMenuShowsTheProposalAndTeleportsToIt() {
         plugin.moderation().submitHolo(steve, house, at(5.5, 2, 6.5));
         new ru.industryreborn.gui.ModerationMenu(plugin, boss, 0).open();
-        assertEquals(Material.ENDER_EYE, boss.getOpenInventory().getTopInventory().getItem(0).getType());
+        assertEquals(Material.ENDER_EYE, boss.getOpenInventory().getTopInventory().getItem(9).getType());
         server.getPluginManager().callEvent(new org.bukkit.event.inventory.InventoryClickEvent(boss.getOpenInventory(),
-                org.bukkit.event.inventory.InventoryType.SlotType.CONTAINER, 0,
+                org.bukkit.event.inventory.InventoryType.SlotType.CONTAINER, 9,
                 org.bukkit.event.inventory.ClickType.SHIFT_LEFT, org.bukkit.event.inventory.InventoryAction.MOVE_TO_OTHER_INVENTORY));
         assertEquals(5.5, boss.getLocation().getX(), 1e-6);
         assertEquals(6.5, boss.getLocation().getZ(), 1e-6);

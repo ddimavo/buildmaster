@@ -11,10 +11,11 @@ import ru.industryreborn.util.Text;
 /** Список счетов: свои (пополнение и снятие) или все (проверка банком). */
 public final class AccountsMenu extends Menu {
 
-    private static final int PAGE_SIZE = 45;
+    private static final int PAGE_SIZE = 36;
+    private static final int FIRST = 9;
 
     public AccountsMenu(IndustryRebornPlugin plugin, Player player, boolean all, int page) {
-        super(plugin, player, all ? "<dark_gray>Все счета" : "<dark_gray>Мои счета", 6);
+        super(plugin, player, all ? "<dark_gray>Район › Банк › Все счета" : "<dark_gray>Район › Банк › Мои счета", 6);
         List<Plot> plots;
         if (all) {
             plots = plugin.bank().accounts();
@@ -49,7 +50,7 @@ public final class AccountsMenu extends Menu {
                 lore.add("<yellow>ЛКМ - пополнить, ПКМ - снять");
                 lore.add("<yellow>Shift+ЛКМ - выписка");
             }
-            set(i, Text.icon(Material.GOLD_NUGGET, "<gold>" + Text.esc(plot.displayName()) + " <gray>№ " + Text.esc(plot.id),
+            set(FIRST + i, Text.icon(Material.GOLD_NUGGET, "<gold>" + Text.esc(plot.displayName()) + " <gray>№ " + Text.esc(plot.id),
                     lore.toArray(new String[0])), e -> {
                         if (all) {
                             new AccountMenu(plugin, player, plot).open();
@@ -57,35 +58,26 @@ public final class AccountsMenu extends Menu {
                             new AccountMenu(plugin, player, plot).open();
                         } else {
                             boolean withdraw = e.isRightClick();
-                            plugin.chatPrompt().ask(player, "Введите сумму, чтобы "
-                                    + (withdraw ? "снять со счёта:" : "внести на счёт:"), text -> {
-                                if (!text.equalsIgnoreCase("отмена")) {
-                                    try {
-                                        double amount = Double.parseDouble(text.replace(',', '.'));
+                            plugin.dialogs().amount(player, withdraw ? "Снять со счёта" : "Пополнить счёт",
+                                    java.util.List.of("<white>Участок № " + Text.esc(plot.id) + " · " + Text.esc(plot.displayName()),
+                                            "<gray>Баланс счёта: <white>" + plugin.economy().format(plugin.power().balance(plot)),
+                                            "<gray>Ваши деньги: <white>" + plugin.economy().format(plugin.economy().balance(player))),
+                                    withdraw ? "Сумма, чтобы снять" : "Сумма, чтобы внести", amount -> {
                                         if (withdraw) {
                                             plugin.power().withdraw(player, plot, amount);
                                         } else {
                                             plugin.power().deposit(player, plot, amount);
                                         }
-                                    } catch (NumberFormatException ex) {
-                                        Text.err(player, "Нужно число.");
-                                    }
-                                }
-                                new AccountsMenu(plugin, player, all, current).open();
-                            });
+                                        new AccountsMenu(plugin, player, all, current).open();
+                                    }, () -> new AccountsMenu(plugin, player, all, current).open());
                         }
                     });
         }
         if (plots.isEmpty()) {
             set(22, Text.icon(Material.BARRIER, "<gray>Счетов нет"));
         }
-        if (current > 0) {
-            set(45, Ui.prev(current, pages), e -> new AccountsMenu(plugin, player, all, current - 1).open());
-        }
-        set(49, Text.icon(Material.OAK_DOOR, "<gray>В банк"), e -> new BankMenu(plugin, player).open());
-        if (current < pages - 1) {
-            set(53, Ui.next(current, pages), e -> new AccountsMenu(plugin, player, all, current + 1).open());
-        }
+        set(4, Text.icon(Material.GOLD_INGOT, "<gold>" + (all ? "Все счета" : "Мои счета"), "<gray>Счетов: <white>" + plots.size()));
+        navBar("Банк", () -> new BankMenu(plugin, player).open(), current, pages, p -> new AccountsMenu(plugin, player, all, p).open());
         fill(Material.GRAY_STAINED_GLASS_PANE);
     }
 }

@@ -520,10 +520,10 @@ class JobsTest extends PluginTestBase {
     void theBoardMenuShowsVacanciesAndAppliesOnClick() {
         Vacancy v = post(JobRole.SELLER, 1, 40, 0);
         alex.performCommand("district job board");
-        alex.simulateInventoryClick(0);
+        alex.simulateInventoryClick(9);
         assertEquals(1, plugin.jobs().applicationsBy(alex.getUniqueId()).size());
         alex.performCommand("district job board");
-        alex.simulateInventoryClick(0);
+        alex.simulateInventoryClick(9);
         assertTrue(plugin.jobs().applicationsBy(alex.getUniqueId()).isEmpty(), "повторное нажатие отзывает отклик");
         assertEquals(v.id, plugin.jobs().board().get(0).id);
     }

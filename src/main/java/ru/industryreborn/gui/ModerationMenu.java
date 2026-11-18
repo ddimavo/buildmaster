@@ -13,10 +13,11 @@ import ru.industryreborn.util.Text;
 /** Заявки игроков, ожидающие проверки администратором. */
 public final class ModerationMenu extends Menu {
 
-    private static final int PAGE_SIZE = 45;
+    private static final int PAGE_SIZE = 36;
+    private static final int FIRST = 9;
 
     public ModerationMenu(IndustryRebornPlugin plugin, Player player, int page) {
-        super(plugin, player, "<dark_gray>Ожидает проверки", 6);
+        super(plugin, player, "<dark_gray>Район › Модерация", 6);
         List<Request> list = plugin.moderation().pending();
         int pages = Math.max(1, (list.size() + PAGE_SIZE - 1) / PAGE_SIZE);
         int current = Math.min(Math.max(page, 0), pages - 1);
@@ -41,7 +42,7 @@ public final class ModerationMenu extends Menu {
             if (r.type == Request.Type.HOLO) {
                 lore.add("<aqua>Shift+ЛКМ - телепорт на предложенную позицию");
             }
-            set(i, Text.icon(r.type == Request.Type.NAME ? Material.NAME_TAG
+            set(FIRST + i, Text.icon(r.type == Request.Type.NAME ? Material.NAME_TAG
                             : r.type == Request.Type.HOLO ? Material.ENDER_EYE
                             : r.type == Request.Type.ENCHANT ? Material.ENCHANTED_BOOK : Material.WRITABLE_BOOK,
                     "<gold>" + r.type.title(), lore.toArray(new String[0])), e -> {
@@ -74,13 +75,9 @@ public final class ModerationMenu extends Menu {
         if (list.isEmpty()) {
             set(22, Text.icon(Material.LIME_DYE, "<green>Новых заявок нет"));
         }
-        if (current > 0) {
-            set(45, Ui.prev(current, pages), e -> new ModerationMenu(plugin, player, current - 1).open());
-        }
-        set(49, Ui.home(), e -> new MainMenu(plugin, player).open());
-        if (current < pages - 1) {
-            set(53, Ui.next(current, pages), e -> new ModerationMenu(plugin, player, current + 1).open());
-        }
+        set(4, Text.icon(Material.ANVIL, "<red>Модерация", "<gray>Ожидают проверки: <white>" + list.size(),
+                "<gray>ЛКМ - одобрить, ПКМ - отклонить с причиной"));
+        navBar(null, null, current, pages, p -> new ModerationMenu(plugin, player, p).open());
         fill(Material.GRAY_STAINED_GLASS_PANE);
     }
 }

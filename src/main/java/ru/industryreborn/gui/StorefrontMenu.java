@@ -13,10 +13,11 @@ import ru.industryreborn.util.Text;
 /** Витрина магазина или мастерской для покупателей: товар, цена, наличие и покупка. */
 public final class StorefrontMenu extends Menu {
 
-    private static final int PAGE_SIZE = 45;
+    private static final int PAGE_SIZE = 36;
+    private static final int FIRST = 9;
 
     public StorefrontMenu(IndustryRebornPlugin plugin, Player player, Plot plot, PlotFilter back, int page) {
-        super(plugin, player, "<dark_gray>Витрина · " + Text.esc(plot.displayName()), 6);
+        super(plugin, player, "<dark_gray>Район › Участки › " + Text.esc(plot.displayName()) + " › Витрина", 6);
         var goods = plugin.goods();
         List<Material> listed = goods.listed(plot);
         int pages = Math.max(1, (listed.size() + PAGE_SIZE - 1) / PAGE_SIZE);
@@ -42,7 +43,7 @@ public final class StorefrontMenu extends Menu {
                 meta.displayName(Text.item(have > 0 ? "<gold><bold>" + m.name() : "<gray>" + m.name()));
                 meta.lore(ru.industryreborn.util.Style.lore(lore.toArray(new String[0])).stream().map(Text::item).toList());
             });
-            set(i, icon, e -> {
+            set(FIRST + i, icon, e -> {
                 if (have <= 0) {
                     return;
                 }
@@ -58,15 +59,11 @@ public final class StorefrontMenu extends Menu {
         if (listed.isEmpty()) {
             set(22, Text.icon(Material.BARRIER, "<gray>На витрине пока ничего нет", "<gray>Загляните позже"));
         }
-        if (current > 0) {
-            set(45, Ui.prev(current, pages), e -> new StorefrontMenu(plugin, player, plot, back, current - 1).open());
-        }
         set(47, Text.icon(Material.GOLD_NUGGET, "<gold>Ваш баланс", "<gray>Денег: <white>" + plugin.economy().format(plugin.economy().balance(player)),
                 "<gray>Налог с продаж: <white>" + goods.salesTaxPercent() + "%"));
-        set(49, Ui.back("Участок"), e -> new PlotMenu(plugin, player, plot, back).open());
-        if (current < pages - 1) {
-            set(53, Ui.next(current, pages), e -> new StorefrontMenu(plugin, player, plot, back, current + 1).open());
-        }
+        set(4, Text.icon(Material.EMERALD, "<green>Витрина", "<gray>Товаров в продаже: <white>" + listed.size(),
+                "<gray>ЛКМ - купить 1, Shift+ЛКМ - 16, ПКМ - 64"));
+        navBar("Участок", () -> new PlotMenu(plugin, player, plot, back).open(), current, pages, p -> new StorefrontMenu(plugin, player, plot, back, p).open());
         fill(Material.GRAY_STAINED_GLASS_PANE);
     }
 }

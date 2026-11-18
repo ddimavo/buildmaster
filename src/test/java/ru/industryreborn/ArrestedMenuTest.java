@@ -59,9 +59,9 @@ class ArrestedMenuTest extends PluginTestBase {
         boss.performCommand("district arrest");
         assertEquals(2, plugin.arrests().players().size());
         var inv = boss.getOpenInventory().getTopInventory();
-        assertEquals(Material.PLAYER_HEAD, inv.getItem(0).getType());
-        assertEquals(Material.PLAYER_HEAD, inv.getItem(1).getType());
-        assertNotEquals(Material.PLAYER_HEAD, inv.getItem(2) == null ? Material.AIR : inv.getItem(2).getType());
+        assertEquals(Material.PLAYER_HEAD, inv.getItem(9).getType());
+        assertEquals(Material.PLAYER_HEAD, inv.getItem(10).getType());
+        assertNotEquals(Material.PLAYER_HEAD, inv.getItem(11) == null ? Material.AIR : inv.getItem(11).getType());
     }
 
     @Test
@@ -88,7 +88,7 @@ class ArrestedMenuTest extends PluginTestBase {
         new ru.industryreborn.gui.MainMenu(plugin, boss).open();
         assertEquals(Material.IRON_BARS, boss.getOpenInventory().getTopInventory().getItem(39).getType());
         boss.simulateInventoryClick(39);
-        assertEquals(Material.PLAYER_HEAD, boss.getOpenInventory().getTopInventory().getItem(0).getType());
+        assertEquals(Material.PLAYER_HEAD, boss.getOpenInventory().getTopInventory().getItem(9).getType());
         new ru.industryreborn.gui.MainMenu(plugin, steve).open();
         assertNotEquals(Material.IRON_BARS, steve.getOpenInventory().getTopInventory().getItem(39).getType());
     }

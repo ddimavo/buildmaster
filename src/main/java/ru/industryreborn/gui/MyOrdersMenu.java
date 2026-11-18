@@ -12,10 +12,11 @@ import ru.industryreborn.util.Text;
 /** Заказы игрока во всех мастерских: готовые - забрать, ожидающие - отменить. */
 public final class MyOrdersMenu extends Menu {
 
-    private static final int PAGE_SIZE = 45;
+    private static final int PAGE_SIZE = 36;
+    private static final int FIRST = 9;
 
     public MyOrdersMenu(IndustryRebornPlugin plugin, Player player, int page) {
-        super(plugin, player, "<dark_gray>Мои заказы", 6);
+        super(plugin, player, "<dark_gray>Район › Мои заказы", 6);
         List<ServiceOrder> orders = plugin.orders().ofClient(player.getUniqueId());
         int pages = Math.max(1, (orders.size() + PAGE_SIZE - 1) / PAGE_SIZE);
         int current = Math.min(Math.max(page, 0), pages - 1);
@@ -42,7 +43,7 @@ public final class MyOrdersMenu extends Menu {
             }
             Material icon = o.state == ServiceOrder.State.READY ? Material.CHEST
                     : o.state == ServiceOrder.State.ACTIVE ? Material.FURNACE : Material.CLOCK;
-            set(i, Text.icon(icon, "<gold>" + Text.esc(def == null ? o.offerKey : def.title()) + " <gray>№ " + o.shortId(),
+            set(FIRST + i, Text.icon(icon, "<gold>" + Text.esc(def == null ? o.offerKey : def.title()) + " <gray>№ " + o.shortId(),
                     lore.toArray(new String[0])), e -> {
                         String error = switch (o.state) {
                             case READY -> plugin.orders().collect(player, o.id);
@@ -58,13 +59,9 @@ public final class MyOrdersMenu extends Menu {
         if (orders.isEmpty()) {
             set(22, Text.icon(Material.BARRIER, "<gray>Заказов нет", "<gray>Откройте мастерскую и выберите «Услуги»"));
         }
-        if (current > 0) {
-            set(45, Ui.prev(current, pages), e -> new MyOrdersMenu(plugin, player, current - 1).open());
-        }
-        set(49, Ui.home(), e -> new MainMenu(plugin, player).open());
-        if (current < pages - 1) {
-            set(53, Ui.next(current, pages), e -> new MyOrdersMenu(plugin, player, current + 1).open());
-        }
+        set(4, Text.icon(Material.CHEST, "<aqua>Мои заказы", "<gray>Заказов: <white>" + orders.size(),
+                "<gray>Готовые заберите, ожидающие можно отменить"));
+        navBar(null, null, current, pages, p -> new MyOrdersMenu(plugin, player, p).open());
         fill(Material.GRAY_STAINED_GLASS_PANE);
     }
 }

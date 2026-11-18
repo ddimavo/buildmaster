@@ -14,10 +14,11 @@ import ru.industryreborn.util.Text;
 /** Администратор: игроки с арестованными вещами. Нажатие открывает их вещи и решения. */
 public final class ArrestedMenu extends Menu {
 
-    private static final int PAGE_SIZE = 45;
+    private static final int PAGE_SIZE = 36;
+    private static final int FIRST = 9;
 
     public ArrestedMenu(IndustryRebornPlugin plugin, Player player, int page) {
-        super(plugin, player, "<dark_gray>Арестованные вещи", 6);
+        super(plugin, player, "<dark_gray>Район › Арестованные вещи", 6);
         if (!player.hasPermission("industryreborn.admin")) {
             set(22, Text.icon(Material.BARRIER, "<red>Недостаточно прав"));
             fill(Material.GRAY_STAINED_GLASS_PANE);
@@ -39,18 +40,14 @@ public final class ArrestedMenu extends Menu {
                     "<gray>Вещей: <white>" + plugin.arrests().count(id),
                     "<yellow>Нажмите, чтобы посмотреть и решить");
             icon.editMeta(SkullMeta.class, meta -> meta.setOwningPlayer(op));
-            set(i, icon, e -> new ArrestedPlayerMenu(plugin, player, id, 0).open());
+            set(FIRST + i, icon, e -> new ArrestedPlayerMenu(plugin, player, id, 0).open());
         }
         if (players.isEmpty()) {
             set(22, Text.icon(Material.LIME_DYE, "<green>Арестованных вещей нет"));
         }
-        if (current > 0) {
-            set(45, Ui.prev(current, pages), e -> new ArrestedMenu(plugin, player, current - 1).open());
-        }
-        set(49, Ui.home(), e -> new MainMenu(plugin, player).open());
-        if (current < pages - 1) {
-            set(53, Ui.next(current, pages), e -> new ArrestedMenu(plugin, player, current + 1).open());
-        }
+        set(4, Text.icon(Material.IRON_BARS, "<red>Арестованные вещи", "<gray>Игроков: <white>" + players.size(),
+                "<gray>Выберите игрока, чтобы вернуть, удалить или отправить на аукцион"));
+        navBar(null, null, current, pages, p -> new ArrestedMenu(plugin, player, p).open());
         fill(Material.GRAY_STAINED_GLASS_PANE);
     }
 }

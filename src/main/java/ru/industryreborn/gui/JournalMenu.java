@@ -12,10 +12,11 @@ import ru.industryreborn.util.Text;
 /** Журнал игрока: события по его участкам и решения администрации с причинами. */
 public final class JournalMenu extends Menu {
 
-    private static final int PAGE_SIZE = 45;
+    private static final int PAGE_SIZE = 36;
+    private static final int FIRST = 9;
 
     public JournalMenu(IndustryRebornPlugin plugin, Player player, int page) {
-        super(plugin, player, "<dark_gray>Журнал", 6);
+        super(plugin, player, "<dark_gray>Район › Журнал", 6);
         List<Journal.Entry> entries = plugin.journal().forPlayer(player.getUniqueId());
         int pages = Math.max(1, (entries.size() + PAGE_SIZE - 1) / PAGE_SIZE);
         int current = Math.min(Math.max(page, 0), pages - 1);
@@ -39,19 +40,15 @@ public final class JournalMenu extends Menu {
                     lore.add("<white>" + Text.esc(l));
                 }
             }
-            set(i, Text.icon(bad ? Material.RED_DYE : Material.PAPER,
+            set(FIRST + i, Text.icon(bad ? Material.RED_DYE : Material.PAPER,
                     (bad ? "<red>" : "<green>") + e.action().title(), lore.toArray(new String[0])));
         }
         if (entries.isEmpty()) {
             set(22, Text.icon(Material.BARRIER, "<gray>Записей пока нет"));
         }
-        if (current > 0) {
-            set(45, Ui.prev(current, pages), e -> new JournalMenu(plugin, player, current - 1).open());
-        }
-        set(49, Ui.home(), e -> new MainMenu(plugin, player).open());
-        if (current < pages - 1) {
-            set(53, Ui.next(current, pages), e -> new JournalMenu(plugin, player, current + 1).open());
-        }
+        set(4, Text.icon(Material.WRITABLE_BOOK, "<white>Журнал", "<gray>Записей: <white>" + entries.size(),
+                "<gray>События по вашим участкам, решения администрации и причины"));
+        navBar(null, null, current, pages, p -> new JournalMenu(plugin, player, p).open());
         fill(Material.GRAY_STAINED_GLASS_PANE);
     }
 }

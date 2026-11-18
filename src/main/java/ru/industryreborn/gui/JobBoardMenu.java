@@ -13,10 +13,11 @@ import ru.industryreborn.util.Text;
 /** Доска объявлений: открытые вакансии предприятий. Нажатие - откликнуться (повторное - отозвать отклик). */
 public final class JobBoardMenu extends Menu {
 
-    private static final int PAGE_SIZE = 45;
+    private static final int PAGE_SIZE = 36;
+    private static final int FIRST = 9;
 
     public JobBoardMenu(IndustryRebornPlugin plugin, Player player, int page) {
-        super(plugin, player, "<dark_gray>Доска объявлений · вакансии", 6);
+        super(plugin, player, "<dark_gray>Район › Доска объявлений", 6);
         List<Vacancy> board = plugin.jobs().board();
         int pages = Math.max(1, (board.size() + PAGE_SIZE - 1) / PAGE_SIZE);
         int current = Math.min(Math.max(page, 0), pages - 1);
@@ -52,7 +53,7 @@ public final class JobBoardMenu extends Menu {
                 lore.add("<yellow>Нажмите, чтобы откликнуться");
             }
             JobApplication myApplication = mine;
-            set(i, Text.icon(v.role.icon(), "<gold>" + v.role.title(), lore.toArray(new String[0])), e -> {
+            set(FIRST + i, Text.icon(v.role.icon(), "<gold>" + v.role.title(), lore.toArray(new String[0])), e -> {
                 String error = working ? "Вы уже работаете на этом предприятии."
                         : myApplication != null ? plugin.jobs().withdraw(player, myApplication)
                         : plugin.jobs().apply(player, v);
@@ -67,17 +68,13 @@ public final class JobBoardMenu extends Menu {
         if (board.isEmpty()) {
             set(22, Text.icon(Material.BARRIER, "<gray>Сейчас вакансий нет"));
         }
-        if (current > 0) {
-            set(45, Ui.prev(current, pages), e -> new JobBoardMenu(plugin, player, current - 1).open());
-        }
         set(47, Text.icon(Material.PLAYER_HEAD, "<aqua>Мои работы",
                 "<gray>Работаю: <white>" + plugin.jobs().jobsOf(player.getUniqueId()).size(),
                 "<gray>Откликов: <white>" + plugin.jobs().applicationsBy(player.getUniqueId()).size()),
                 e -> new MyJobsMenu(plugin, player).open());
-        set(49, Ui.home(), e -> new MainMenu(plugin, player).open());
-        if (current < pages - 1) {
-            set(53, Ui.next(current, pages), e -> new JobBoardMenu(plugin, player, current + 1).open());
-        }
+        set(4, Text.icon(Material.OAK_SIGN, "<green>Доска объявлений", "<gray>Вакансий: <white>" + board.size(),
+                "<gray>Нажмите на вакансию, чтобы откликнуться"));
+        navBar(null, null, current, pages, p -> new JobBoardMenu(plugin, player, p).open());
         fill(Material.GRAY_STAINED_GLASS_PANE);
     }
 }

@@ -743,14 +743,14 @@ class BusinessTest extends PluginTestBase {
         stock(shop, Material.IRON_INGOT, 100, 1);
         alex.getInventory().clear();
         new ru.industryreborn.gui.StorefrontMenu(plugin, alex, shop, null, 0).open();
-        alex.simulateInventoryClick(0);
+        alex.simulateInventoryClick(9);
         assertEquals(1, count(alex, Material.IRON_INGOT));
         server.getPluginManager().callEvent(new org.bukkit.event.inventory.InventoryClickEvent(alex.getOpenInventory(),
-                org.bukkit.event.inventory.InventoryType.SlotType.CONTAINER, 0, org.bukkit.event.inventory.ClickType.SHIFT_LEFT,
+                org.bukkit.event.inventory.InventoryType.SlotType.CONTAINER, 9, org.bukkit.event.inventory.ClickType.SHIFT_LEFT,
                 org.bukkit.event.inventory.InventoryAction.MOVE_TO_OTHER_INVENTORY));
         assertEquals(17, count(alex, Material.IRON_INGOT));
         server.getPluginManager().callEvent(new org.bukkit.event.inventory.InventoryClickEvent(alex.getOpenInventory(),
-                org.bukkit.event.inventory.InventoryType.SlotType.CONTAINER, 0, org.bukkit.event.inventory.ClickType.RIGHT,
+                org.bukkit.event.inventory.InventoryType.SlotType.CONTAINER, 9, org.bukkit.event.inventory.ClickType.RIGHT,
                 org.bukkit.event.inventory.InventoryAction.PICKUP_HALF));
         assertEquals(81, count(alex, Material.IRON_INGOT));
         assertEquals(19, plugin.goods().stock(shop, Material.IRON_INGOT));
@@ -760,8 +760,8 @@ class BusinessTest extends PluginTestBase {
     void theStorefrontMenuShowsPricesAndStock() {
         stock(shop, Material.IRON_INGOT, 7, 3);
         var inv = new ru.industryreborn.gui.StorefrontMenu(plugin, alex, shop, null, 0).getInventory();
-        assertEquals(Material.IRON_INGOT, inv.getItem(0).getType());
-        String lore = inv.getItem(0).getItemMeta().lore().stream().map(l -> PlainTextComponentSerializer.plainText().serialize(l))
+        assertEquals(Material.IRON_INGOT, inv.getItem(9).getType());
+        String lore = inv.getItem(9).getItemMeta().lore().stream().map(l -> PlainTextComponentSerializer.plainText().serialize(l))
                 .reduce("", (a, b) -> a + b + "\n");
         assertTrue(lore.contains("3$") && lore.contains("В наличии: 7") && lore.contains("купить"), lore);
     }

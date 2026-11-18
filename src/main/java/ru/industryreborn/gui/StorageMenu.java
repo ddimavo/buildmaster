@@ -13,12 +13,13 @@ import ru.industryreborn.util.Text;
 /** Хранилище игрока: вещи, возвращённые с участков. */
 public final class StorageMenu extends Menu {
 
-    private static final int PAGE_SIZE = 45;
+    private static final int PAGE_SIZE = 36;
+    private static final int FIRST = 9;
 
     private record Ref(UUID entry, String plot, long created, byte[] data) { }
 
     public StorageMenu(IndustryRebornPlugin plugin, Player player, int page) {
-        super(plugin, player, "<dark_gray>Хранилище", 6);
+        super(plugin, player, "<dark_gray>Район › Хранилище", 6);
         UUID id = player.getUniqueId();
         List<Ref> refs = new ArrayList<>();
         int arrested = 0;
@@ -51,7 +52,7 @@ public final class StorageMenu extends Menu {
                 lore.add(Text.item("<yellow>Нажмите, чтобы забрать"));
                 meta.lore(lore);
             });
-            set(i, icon, e -> {
+            set(FIRST + i, icon, e -> {
                 ItemStack taken = plugin.storage().take(id, ref.entry(), ref.data());
                 if (taken != null) {
                     var left2 = player.getInventory().addItem(taken);
@@ -66,9 +67,6 @@ public final class StorageMenu extends Menu {
         if (refs.isEmpty()) {
             set(22, Text.icon(Material.BARRIER, "<gray>Хранилище пусто"));
         }
-        if (current > 0) {
-            set(45, Ui.prev(current, pages), e -> new StorageMenu(plugin, player, current - 1).open());
-        }
         set(47, Text.icon(Material.HOPPER, "<green>Забрать всё, что поместится"), e -> {
             boolean[] full = new boolean[1];
             plugin.storage().takeAll(player, full);
@@ -77,14 +75,14 @@ public final class StorageMenu extends Menu {
             }
             new StorageMenu(plugin, player, 0).open();
         });
-        set(49, Ui.home(), e -> new MainMenu(plugin, player).open());
         if (arrested > 0) {
             set(51, Text.icon(Material.IRON_BARS, "<red>Арестовано вещей: " + arrested,
                     "<gray>Решение примет администрация"));
         }
-        if (current < pages - 1) {
-            set(53, Ui.next(current, pages), e -> new StorageMenu(plugin, player, current + 1).open());
-        }
+        set(4, Text.icon(refs.isEmpty() ? Material.BARREL : Material.CHEST, "<aqua>Хранилище",
+                "<gray>Вещей: <white>" + refs.size(), "<gray>Хранятся: <white>" + days + " суток",
+                "<gray>Вещи сюда попадают с участков при отказе, выселении и сбросе"));
+        navBar(null, null, current, pages, p -> new StorageMenu(plugin, player, p).open());
         fill(Material.GRAY_STAINED_GLASS_PANE);
     }
 }
