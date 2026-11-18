@@ -344,6 +344,39 @@ class PlayerBuildTest extends PluginTestBase {
     }
 
     @Test
+    void adminBuildsForFreeOnOwnPlotsAndGetsClearReasons() {
+        Plot own = makePlot("own", Category.SHOP, new Box(30, 0, 0, 44, 20, 12), boss);
+        double treasury = plugin.treasury().balance();
+        double money = economy.getBalance(boss);
+        run(boss, "build own shop-small");
+        String out = drain(boss);
+        assertTrue(out.contains("построено"), out);
+        assertTrue(solid(30, 44, 0, 12) > 50);
+        assertEquals(treasury, plugin.treasury().balance(), 1e-9, "администратор не платит и на своём участке");
+        assertEquals(money, economy.getBalance(boss), 1e-9);
+        assertFalse(own.busy);
+        // чужой участок: понятная причина с именем игрока
+        plot.ownerName = "Steve";
+        run(boss, "build p1 shop-small");
+        out = drain(boss);
+        assertTrue(out.contains("занят игроком Steve"), out);
+        assertEquals(0, solid(0, 14, 0, 12));
+        // участок обрабатывается: другая причина
+        Plot busy = makePlot("busy", Category.SHOP, new Box(60, 0, 0, 74, 20, 12), null);
+        busy.busy = true;
+        run(boss, "build busy shop-small");
+        out = drain(boss);
+        assertTrue(out.contains("обрабатывается") && out.contains("снимок или стройка"), out);
+        busy.busy = false;
+        busy.restorePending = true;
+        run(boss, "build busy shop-small");
+        assertTrue(drain(boss).contains("идёт сброс здания"));
+        busy.restorePending = false;
+        run(boss, "build busy shop-small");
+        assertTrue(solid(60, 74, 0, 12) > 50, "после обработки строится");
+    }
+
+    @Test
     void adminBuildsForFreeOnFreePlots() {
         Plot free = makePlot("free", Category.SHOP, new Box(30, 0, 0, 44, 20, 12), null);
         double treasury = plugin.treasury().balance();

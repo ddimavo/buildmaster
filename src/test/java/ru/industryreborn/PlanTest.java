@@ -58,6 +58,18 @@ class PlanTest extends PluginTestBase {
         assertTrue(tableExtractor.getWarnings().isEmpty(), tableExtractor.getWarnings().toString());
     }
 
+    @Test
+    void oldTableResultsAreRemovedFromPlansDatabase() {
+        // Plan не удаляет результаты старых провайдеров сам: без @InvalidateMethod таблицы, ушедшие в другое дополнение, остаются в базе
+        // под именем «IndustryReborn» и вместе с показателями дают «Invalid card width: 18»
+        var invalidated = new ExtensionExtractor(extension).getInvalidateMethodAnnotations().stream().map(a -> a.value()).toList();
+        for (String old : new String[] {"plotsByCategory", "topRevenue", "treasuryOperations", "playerPlotsTable"}) {
+            assertTrue(invalidated.contains(old), old);
+            assertFalse(Arrays.stream(IndustryRebornExtension.class.getMethods()).anyMatch(m -> m.getName().equals(old)), "метод " + old + " в основном дополнении не должен возвращаться");
+        }
+        assertTrue(new ExtensionExtractor(tables).getInvalidateMethodAnnotations().isEmpty(), "новому дополнению нечего удалять");
+    }
+
     // ---- раскладка карточек панели Plan: перенос computeLayoutWidths и проверки ширины из фронтенда Plan (ExtensionLayoutWidths.ts, optimizeCardOrder.ts)
 
     private record Item(String element, int min, int max) { }

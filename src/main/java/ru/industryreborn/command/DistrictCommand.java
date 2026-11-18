@@ -1253,8 +1253,14 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
             buildAsPlayer(p, plot, template, args.length > 2 && args[2].equalsIgnoreCase("confirm"));
             return;
         }
-        if (!plot.isFree() || plugin.service().isLocked(plot)) {
-            throw new CommandError("Строить можно только на свободном участке, который сейчас не обрабатывается.");
+        if (plugin.service().isLocked(plot)) {
+            throw new CommandError("Участок сейчас обрабатывается" + (plot.restorePending ? " (идёт сброс здания)" : plot.busy ? " (идёт снимок или стройка)" : "")
+                    + ": подождите несколько секунд и повторите.");
+        }
+        boolean ownPlot = plot.isOwner(p.getUniqueId());
+        if (!plot.isFree() && !ownPlot) {
+            throw new CommandError("Участок занят" + (plot.ownerName == null ? "" : " игроком " + plot.ownerName)
+                    + ": администратор строит на свободных участках и на своих.");
         }
         boolean force = args.length > 2 && args[2].equalsIgnoreCase("force");
         org.bukkit.World world = Bukkit.getWorld(plot.world);
@@ -1263,6 +1269,19 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
             throw new CommandError(error);
         }
         Text.send(p, "<yellow>Строю здание «" + Text.esc(template.title()) + "» на участке " + plot.id + "...");
+        if (ownPlot && !plot.isFree()) {
+            // свой участок: бесплатно, исходный вид не меняется (он принадлежит администрации)
+            plot.busy = true;
+            svc.build(world, template, (ru.industryreborn.building.BuildingService.Placement) planned, () -> {
+                plot.busy = false;
+                plugin.stations().rescan(plot);
+                Text.ok(p, "Здание построено на вашем участке " + plot.id + ".");
+            }, error -> {
+                plot.busy = false;
+                Text.err(p, "Не удалось построить здание: " + error);
+            });
+            return;
+        }
         svc.build(world, template, (ru.industryreborn.building.BuildingService.Placement) planned, () -> {
             Text.ok(p, "Здание построено. Сохраняю его как исходный вид участка.");
             plot.hasBuilding = true;

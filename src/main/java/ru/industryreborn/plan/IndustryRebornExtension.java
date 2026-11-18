@@ -6,6 +6,7 @@ import com.djrapitops.plan.extension.ElementOrder;
 import com.djrapitops.plan.extension.FormatType;
 import com.djrapitops.plan.extension.NotReadyException;
 import com.djrapitops.plan.extension.annotation.DoubleProvider;
+import com.djrapitops.plan.extension.annotation.InvalidateMethod;
 import com.djrapitops.plan.extension.annotation.NumberProvider;
 import com.djrapitops.plan.extension.annotation.PercentageProvider;
 import com.djrapitops.plan.extension.annotation.PluginInfo;
@@ -21,6 +22,12 @@ import java.util.UUID;
  * а на страницах игроков - их участки, предприятия, выручка, аренда, работа и заказы.
  */
 @PluginInfo(name = "IndustryReborn", iconName = "industry", iconFamily = Family.SOLID, color = Color.AMBER)
+// Plan хранит результаты провайдеров в своей базе и сам их не удаляет. Таблицы раньше лежали в этом дополнении, и их старые данные остались в базе:
+// вместе с показателями они дают на панели ошибку «Invalid card width: 18». Эти аннотации просят Plan при регистрации удалить старые результаты и провайдеры.
+@InvalidateMethod("plotsByCategory")
+@InvalidateMethod("topRevenue")
+@InvalidateMethod("treasuryOperations")
+@InvalidateMethod("playerPlotsTable")
 @TabInfo(tab = "Экономика", iconName = "coins", elementOrder = {ElementOrder.VALUES})
 @TabInfo(tab = "Электросеть", iconName = "bolt", elementOrder = {ElementOrder.VALUES})
 @TabInfo(tab = "Производство", iconName = "gears", elementOrder = {ElementOrder.VALUES})
