@@ -1,13 +1,12 @@
 name: Auto release
 
-# Автоматический выпуск при каждом коммите (push в main или в ветки claude/**).
+# Выпуск ТОЛЬКО по запросу: вкладка Actions -> Auto release -> Run workflow (раньше выходил на каждый коммит; изменения теперь копятся до решения о релизе).
 # Версия берётся из build.gradle (1.11.0-SNAPSHOT -> 1.11.0):
 #  - если релиза v1.11.0 ещё нет, выходит обычный релиз 1.11.0 (описание из CHANGELOG.md);
 #  - если уже есть, выходит пререлиз 1.11.0-dev.<номер запуска> со списком коммитов.
 # Старые пререлизы dev удаляются, остаются последние 10. Чтобы пропустить выпуск, добавьте [skip release] в сообщение коммита.
 on:
-  push:
-    branches: [main, 'claude/**']
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -18,7 +17,6 @@ concurrency:
 
 jobs:
   release:
-    if: ${{ !contains(github.event.head_commit.message, '[skip release]') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

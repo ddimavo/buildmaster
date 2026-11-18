@@ -2371,8 +2371,9 @@ gradle build     # сборка jar в build/libs/
 </code></pre>
 <ul>
 <li>Каждый push и pull request собирается и тестируется (<code>.github/workflows/build.yml</code>).</li>
-<li><strong>Автоматический выпуск</strong> (<code>auto-release.yml</code>): каждый коммит в <code>main</code> и <code>claude/**</code> публикуется в Releases. Если релиза текущей версии
-  из <code>build.gradle</code> ещё нет – выходит обычный релиз; иначе пререлиз <code>&lt;версия&gt;-dev.&lt;N&gt;</code> (хранятся последние 10). Пропустить: <code>[skip release]</code>.</li>
+<li><strong>Выпуск по запросу</strong> (<code>auto-release.yml</code>): коммиты не публикуются сами, изменения копятся в <code>CHANGELOG.md</code> в разделе «Не выпущено». Когда решено выпускать, версия в <code>build.gradle</code>
+  поднимается, раздел переименовывается в номер версии, и выпуск запускается вручную (вкладка Actions → Auto release → Run workflow). Если релиза версии из <code>build.gradle</code> ещё нет –
+  выходит обычный релиз; иначе пререлиз <code>&lt;версия&gt;-dev.&lt;N&gt;</code> (хранятся последние 10).</li>
 <li><strong>Ручной релиз</strong> (<code>release.yml</code>): тег <code>v1.2.3</code> или запуск из вкладки Actions с указанием версии. Описание берётся из <code>CHANGELOG.md</code>.</li>
 <li>К релизу прикладываются jar и контрольная сумма <code>.sha256</code>.</li>
 </ul>
