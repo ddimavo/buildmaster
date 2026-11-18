@@ -12,11 +12,8 @@ import com.djrapitops.plan.extension.annotation.PluginInfo;
 import com.djrapitops.plan.extension.annotation.StringProvider;
 import com.djrapitops.plan.extension.annotation.Tab;
 import com.djrapitops.plan.extension.annotation.TabInfo;
-import com.djrapitops.plan.extension.annotation.TableProvider;
 import com.djrapitops.plan.extension.icon.Color;
 import com.djrapitops.plan.extension.icon.Family;
-import com.djrapitops.plan.extension.icon.Icon;
-import com.djrapitops.plan.extension.table.Table;
 import java.util.UUID;
 
 /**
@@ -24,7 +21,7 @@ import java.util.UUID;
  * а на страницах игроков - их участки, предприятия, выручка, аренда, работа и заказы.
  */
 @PluginInfo(name = "IndustryReborn", iconName = "industry", iconFamily = Family.SOLID, color = Color.AMBER)
-@TabInfo(tab = "Экономика", iconName = "coins", elementOrder = {ElementOrder.VALUES, ElementOrder.TABLE})
+@TabInfo(tab = "Экономика", iconName = "coins", elementOrder = {ElementOrder.VALUES})
 @TabInfo(tab = "Электросеть", iconName = "bolt", elementOrder = {ElementOrder.VALUES})
 @TabInfo(tab = "Производство", iconName = "gears", elementOrder = {ElementOrder.VALUES})
 @TabInfo(tab = "Отели", iconName = "hotel", elementOrder = {ElementOrder.VALUES})
@@ -75,21 +72,6 @@ public class IndustryRebornExtension implements DataExtension {
     @DoubleProvider(text = "Баланс казны", priority = 70, iconName = "vault", iconColor = Color.GREEN)
     public double treasury() {
         return s().value("economy", "treasury");
-    }
-
-    @TableProvider(tableColor = Color.AMBER, iconName = "city")
-    public Table plotsByCategory() {
-        Table.Factory table = Table.builder()
-                .columnOne("Тип участка", Icon.called("building").of(Family.SOLID).build())
-                .columnTwo("Занято", Icon.called("user-check").of(Family.SOLID).build())
-                .columnThree("Всего", Icon.called("city").of(Family.SOLID).build());
-        for (var m : s().stats().section("general").metrics()) {
-            if (m.id().startsWith("cat.")) {
-                String[] parts = m.text().split(" из ");
-                table.addRow(m.label(), parts.length > 0 ? parts[0] : "", parts.length > 1 ? parts[1] : "");
-            }
-        }
-        return table.build();
     }
 
     // ------------------------------------------------------------ экономика
@@ -147,32 +129,6 @@ public class IndustryRebornExtension implements DataExtension {
             iconName = "scale-balanced", iconColor = Color.PURPLE)
     public double priceIndex() {
         return s().value("economy", "index");
-    }
-
-    @Tab("Экономика")
-    @TableProvider(tableColor = Color.AMBER, iconName = "trophy")
-    public Table topRevenue() {
-        Table.Factory table = Table.builder()
-                .columnOne("Предприятие", Icon.called("shop").of(Family.SOLID).build())
-                .columnTwo("Владелец", Icon.called("user").of(Family.SOLID).build())
-                .columnThree("Выручка", Icon.called("coins").of(Family.SOLID).build());
-        for (var t : s().stats().topRevenue()) {
-            table.addRow(t.name(), t.owner(), t.text());
-        }
-        return table.build();
-    }
-
-    @Tab("Экономика")
-    @TableProvider(tableColor = Color.GREEN, iconName = "vault")
-    public Table treasuryOperations() {
-        Table.Factory table = Table.builder()
-                .columnOne("Время", Icon.called("clock").of(Family.SOLID).build())
-                .columnTwo("Сумма", Icon.called("coins").of(Family.SOLID).build())
-                .columnThree("Причина", Icon.called("comment").of(Family.SOLID).build());
-        for (var row : s().treasury()) {
-            table.addRow(row.time(), row.amount(), row.reason());
-        }
-        return table.build();
     }
 
     // ------------------------------------------------------------ электросеть
@@ -358,16 +314,4 @@ public class IndustryRebornExtension implements DataExtension {
         return p(playerUUID).stored();
     }
 
-    @TableProvider(tableColor = Color.AMBER, iconName = "city")
-    public Table playerPlotsTable(UUID playerUUID) {
-        Table.Factory table = Table.builder()
-                .columnOne("Участок", Icon.called("building").of(Family.SOLID).build())
-                .columnTwo("Тип", Icon.called("tag").of(Family.SOLID).build())
-                .columnThree("Срок", Icon.called("calendar").of(Family.SOLID).build())
-                .columnFour("Счёт", Icon.called("wallet").of(Family.SOLID).build());
-        for (var row : p(playerUUID).plotRows()) {
-            table.addRow(row.name(), row.type(), row.until(), row.account());
-        }
-        return table.build();
-    }
 }

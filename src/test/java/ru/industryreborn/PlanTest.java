@@ -9,6 +9,7 @@ import com.djrapitops.plan.extension.extractor.ExtensionExtractor;
 import com.djrapitops.plan.extension.table.Table;
 import java.lang.reflect.Method;
 import java.util.Arrays;
+import java.util.Map;
 import org.bukkit.Material;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -16,6 +17,7 @@ import org.mockbukkit.mockbukkit.entity.PlayerMock;
 import ru.industryreborn.model.Category;
 import ru.industryreborn.model.Plot;
 import ru.industryreborn.plan.IndustryRebornExtension;
+import ru.industryreborn.plan.IndustryRebornTablesExtension;
 import ru.industryreborn.service.Module;
 import ru.industryreborn.support.PluginTestBase;
 
@@ -25,6 +27,7 @@ class PlanTest extends PluginTestBase {
     private PlayerMock steve;
     private PlayerMock boss;
     private IndustryRebornExtension extension;
+    private IndustryRebornTablesExtension tables;
 
     @BeforeEach
     void setUp() {
@@ -40,6 +43,7 @@ class PlanTest extends PluginTestBase {
         shop.revenue = 777;
         plugin.treasury().deposit(300, "Аренда");
         extension = new IndustryRebornExtension(plugin.planHook());
+        tables = new IndustryRebornTablesExtension(plugin.planHook());
     }
 
     @Test
@@ -49,6 +53,134 @@ class PlanTest extends PluginTestBase {
         assertTrue(extractor.getWarnings().isEmpty(), extractor.getWarnings().toString());
         assertEquals("IndustryReborn", extractor.getPluginInfo().name());
         assertFalse(extractor.getTabInformation().isEmpty());
+        ExtensionExtractor tableExtractor = new ExtensionExtractor(tables);
+        tableExtractor.validateAnnotations();
+        assertTrue(tableExtractor.getWarnings().isEmpty(), tableExtractor.getWarnings().toString());
+    }
+
+    // ---- раскладка карточек панели Plan: перенос computeLayoutWidths и проверки ширины из фронтенда Plan (ExtensionLayoutWidths.ts, optimizeCardOrder.ts)
+
+    private record Item(String element, int min, int max) { }
+
+    private static java.util.List<Item> expand(java.util.List<Item> row, int cardWidth) {
+        double[] min = new double[row.size()];
+        double[] max = new double[row.size()];
+        for (int i = 0; i < row.size(); i++) {
+            min[i] = (double) row.get(i).min() / cardWidth * 12;
+            max[i] = (double) row.get(i).max() / cardWidth * 12;
+        }
+        double remaining = 12;
+        for (double v : min) {
+            remaining -= v;
+        }
+        boolean allWide = true;
+        for (double v : min) {
+            allWide &= v > 6;
+        }
+        java.util.List<Item> out = new java.util.ArrayList<>();
+        if (remaining < 0 && allWide) {
+            for (Item i : row) {
+                out.add(new Item(i.element(), 12, 12));
+            }
+            return out;
+        }
+        while (remaining > 0) {
+            boolean changed = false;
+            for (int i = 0; i < min.length; i++) {
+                if (min[i] < max[i]) {
+                    min[i]++;
+                    remaining--;
+                    changed = true;
+                    if (remaining == 0) {
+                        break;
+                    }
+                }
+            }
+            if (!changed) {
+                break;
+            }
+        }
+        for (int i = 0; i < min.length; i++) {
+            out.add(new Item(row.get(i).element(), (int) Math.floor(min[i]) == min[i] ? (int) min[i] : -1, (int) max[i]));
+        }
+        return out;
+    }
+
+    /** Ширины карточек, которые панель Plan посчитает для дополнения; -1 - ширина не целая. Возвращает карту элемент -> ширина, ключ CARD - карточка целиком. */
+    private static Map<String, Integer> planWidths(boolean hasValues, boolean hasTable, boolean hasWideTable) {
+        java.util.List<Item> layout = new java.util.ArrayList<>();
+        if (hasValues) {
+            layout.add(new Item("VALUES", 4, 6));
+        }
+        if (hasTable) {
+            layout.add(new Item("TABLE", hasWideTable ? 12 : 4, hasWideTable ? 12 : 6));   // extension.wide == есть широкая таблица
+        }
+        int combined = layout.stream().mapToInt(Item::min).sum();
+        boolean hasFullWidth = layout.stream().anyMatch(i -> i.min() == 12);
+        boolean split = !hasFullWidth && hasValues && combined == 8 && layout.size() == 2
+                || combined == 16 && layout.size() == 2 && layout.stream().anyMatch(i -> i.min() < 8)
+                || combined == 16 && (layout.size() == 3 || layout.size() == 4) && !hasValues;
+        int card;
+        if (split) {
+            card = combined / 2;
+        } else if (combined > 12) {
+            card = 12;
+        } else {
+            card = combined;
+        }
+        Map<String, Integer> result = new java.util.LinkedHashMap<>();
+        result.put("CARD", card);
+        for (Item i : expand(layout, card)) {
+            result.put(i.element(), i.min());
+        }
+        return result;
+    }
+
+    private static void assertPlanCanDraw(String what, Map<String, Integer> widths) {
+        for (var e : widths.entrySet()) {
+            int w = e.getValue();
+            assertTrue(w >= 1 && w <= 12, what + ": Invalid card width: " + w + " (" + e.getKey() + ")");
+        }
+    }
+
+    private static boolean has(Class<?> type, Class<? extends java.lang.annotation.Annotation>... annotations) {
+        for (Method m : type.getMethods()) {
+            for (var a : annotations) {
+                if (m.isAnnotationPresent(a)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void cardWidthsAreValidForPlansLayout() throws Exception {
+        plugin.planHook().refresh();
+        // воспроизведение ошибки: значения и широкая (3+ столбцов) таблица в одном дополнении без графиков дают ширину 18
+        var bug = planWidths(true, true, true);
+        assertEquals(18, bug.get("TABLE"), "так выглядит ошибка Invalid card width: 18");
+        // наши дополнения
+        for (Object ext : new Object[] {extension, tables}) {
+            Class<?> type = ext.getClass();
+            boolean values = has(type, NumberProvider.class, com.djrapitops.plan.extension.annotation.DoubleProvider.class,
+                    com.djrapitops.plan.extension.annotation.PercentageProvider.class, com.djrapitops.plan.extension.annotation.StringProvider.class);
+            boolean table = has(type, com.djrapitops.plan.extension.annotation.TableProvider.class);
+            boolean wide = false;
+            for (Method m : type.getMethods()) {
+                if (m.isAnnotationPresent(com.djrapitops.plan.extension.annotation.TableProvider.class)) {
+                    Object t = m.getParameterCount() == 0 ? m.invoke(ext) : m.invoke(ext, steve.getUniqueId());
+                    wide |= ((Table) t).getMaxColumnSize() >= 3;
+                }
+            }
+            assertPlanCanDraw(type.getSimpleName(), planWidths(values, table, wide));
+            assertFalse(values && table && wide, type.getSimpleName() + ": значения и широкая таблица вместе дают ошибку раскладки Plan");
+        }
+        // в дополнении с показателями таблиц нет, а таблицы лежат в отдельном
+        assertFalse(has(IndustryRebornExtension.class, com.djrapitops.plan.extension.annotation.TableProvider.class));
+        assertFalse(has(IndustryRebornTablesExtension.class, NumberProvider.class, com.djrapitops.plan.extension.annotation.DoubleProvider.class,
+                com.djrapitops.plan.extension.annotation.PercentageProvider.class, com.djrapitops.plan.extension.annotation.StringProvider.class));
     }
 
     @Test
@@ -73,12 +205,12 @@ class PlanTest extends PluginTestBase {
     @Test
     void tablesCarryTheRows() {
         plugin.planHook().refresh();
-        Table top = extension.topRevenue();
+        Table top = tables.topRevenue();
         assertEquals(1, top.getRows().size());
         assertEquals("Лавка", top.getRows().get(0)[0]);
         assertEquals("Steve", top.getRows().get(0)[1]);
-        assertTrue(extension.treasuryOperations().getRows().stream().anyMatch(r -> "Аренда".equals(r[2])));
-        Table byCategory = extension.plotsByCategory();
+        assertTrue(tables.treasuryOperations().getRows().stream().anyMatch(r -> "Аренда".equals(r[2])));
+        Table byCategory = tables.plotsByCategory();
         assertTrue(byCategory.getRows().stream().anyMatch(r -> "Магазин".equals(r[0]) && "1".equals(String.valueOf(r[1])) && "1".equals(String.valueOf(r[2]))));
     }
 
@@ -89,7 +221,7 @@ class PlanTest extends PluginTestBase {
         assertEquals(1, extension.playerBusinesses(steve.getUniqueId()));
         assertEquals(777, extension.playerRevenue(steve.getUniqueId()), 1e-9);
         assertNotEquals("-", extension.playerNearestRent(steve.getUniqueId()));
-        assertEquals(1, extension.playerPlotsTable(steve.getUniqueId()).getRows().size());
+        assertEquals(1, tables.playerPlotsTable(steve.getUniqueId()).getRows().size());
         assertThrows(NotReadyException.class, () -> extension.playerPlots(boss.getUniqueId()), "у игрока нет данных");
     }
 
