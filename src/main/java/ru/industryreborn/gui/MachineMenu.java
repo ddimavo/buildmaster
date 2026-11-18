@@ -67,7 +67,7 @@ public final class MachineMenu extends Menu {
                 lore.add("<green>● Сейчас назначено");
             }
             lore.add("<yellow>Нажмите, чтобы назначить");
-            set(i, Text.icon(ServicesMenu.iconFor(r.output()), (active ? "<green>" : "<gold>") + (r.enchanting() ? r.output().name() + " + " + r.enchantKey() + " " + r.enchantLevel()
+            set(9 + i, Text.icon(ServicesMenu.iconFor(r.output()), (active ? "<green>" : "<gold>") + (r.enchanting() ? r.output().name() + " + " + r.enchantKey() + " " + r.enchantLevel()
                             : r.output().name()), lore.toArray(new String[0])),
                     e -> {
                         String error = f.assign(player, plot, pos, r.id());
@@ -87,24 +87,18 @@ public final class MachineMenu extends Menu {
             set(22, Text.icon(Material.BARRIER, "<red>Ничего не найдено", "<gray>Измените категорию или поиск"));
         }
 
-        // ---- категории (строка 36-44) ----
-        int cs = 36;
+        // ---- категория: одна кнопка листает по кругу ----
         if (!categories.isEmpty()) {
-            set(cs++, Text.icon(category == null ? Material.LIME_DYE : Material.GRAY_DYE, "<white>Все",
-                    "<yellow>Нажмите, чтобы показать всё"), e -> new MachineMenu(plugin, player, plot, pos, null, 0, search).open());
-            for (String c : categories) {
-                if (cs > 42) {
-                    break;
-                }
-                boolean on = c.equals(category);
-                set(cs++, Text.icon(on ? Material.LIME_DYE : Material.GRAY_DYE, (on ? "<green>" : "<white>") + c,
-                        "<yellow>Нажмите, чтобы отфильтровать"), e -> new MachineMenu(plugin, player, plot, pos, c, 0, search).open());
-            }
+            List<String> cycle = new ArrayList<>();
+            cycle.add(null);
+            cycle.addAll(categories);
+            int at = Math.max(0, cycle.indexOf(category));
+            String nextCategory = cycle.get((at + 1) % cycle.size());
+            set(2, Text.icon(category == null ? Material.HOPPER : Material.LIME_DYE, "<aqua>Категория: <white>" + (category == null ? "все" : category),
+                    "<gray>Всего категорий: <white>" + categories.size(), "<yellow>Нажмите, чтобы переключить"),
+                    e -> new MachineMenu(plugin, player, plot, pos, nextCategory, 0, search).open());
         }
         // ---- навигация ----
-        if (current > 0) {
-            set(45, Ui.prev(current, pages), e -> new MachineMenu(plugin, player, plot, pos, category, current - 1, search).open());
-        }
         List<String> info = new ArrayList<>();
         info.add("<gray>Тип: <white>" + FactoryMenu.blockTitle(block));
         info.add("<gray>Задание: <white>" + (view.recipe() == null ? "не назначено" : view.recipe().output().name()));
@@ -113,9 +107,9 @@ public final class MachineMenu extends Menu {
             info.add(Style.bar(view.ratio(), 12, "green"));
         }
         info.add("<gray>Станков с заданием: <white>" + f.assignedCount(plot) + " из " + f.slots(plot));
-        set(46, Text.icon(block == Material.AIR ? Material.FURNACE : block, "<gold>Этот станок", info.toArray(new String[0])));
+        set(4, Text.icon(block == Material.AIR ? Material.FURNACE : block, "<gold>Этот станок", info.toArray(new String[0])));
         if (view.recipe() != null) {
-            set(47, Text.icon(Material.BARRIER, "<red>Снять задание", "<gray>Станок будет обслуживать заказы игроков",
+            set(7, Text.icon(Material.BARRIER, "<red>Снять задание", "<gray>Станок будет обслуживать заказы игроков",
                     "<yellow>Нажмите, чтобы снять"), e -> {
                 String error = f.clear(player, plot, pos);
                 if (error != null) {
@@ -124,7 +118,7 @@ public final class MachineMenu extends Menu {
                 new MachineMenu(plugin, player, plot, pos, category, current, search).open();
             });
         }
-        set(48, Text.icon(Material.COMPASS, "<aqua>Поиск", q.isEmpty() ? "<gray>По названию результата или сырья" : "<gray>Сейчас: <white>" + Text.esc(search),
+        set(5, Text.icon(Material.COMPASS, "<aqua>Поиск", q.isEmpty() ? "<gray>По названию результата или сырья" : "<gray>Сейчас: <white>" + Text.esc(search),
                 "<yellow>ЛКМ - ввести, ПКМ - сбросить"), e -> {
                     if (e.isRightClick()) {
                         new MachineMenu(plugin, player, plot, pos, category, 0, "").open();
@@ -135,7 +129,7 @@ public final class MachineMenu extends Menu {
                     }
                 });
         if ("enchant".equals(RecipeBook.familyOf(block))) {
-            set(50, Text.icon(Material.ENCHANTED_BOOK, "<light_purple>Предложить зачарование",
+            set(6, Text.icon(Material.ENCHANTED_BOOK, "<light_purple>Предложить зачарование",
                     "<gray>Одобренных: <white>" + plot.approvedEnchants.size() + "<gray> из " + plugin.enchants().maxRecipes(),
                     "<gray>Заявку одобряет администратор",
                     "<yellow>Нажмите, чтобы ввести предмет, зачарование и уровень"), e ->
@@ -157,10 +151,8 @@ public final class MachineMenu extends Menu {
                                         new MachineMenu(plugin, player, plot, pos, category, current, search).open();
                                     }))));
         }
-        set(49, Ui.back("Производство"), e -> new FactoryMenu(plugin, player, plot, null).open());
-        if (current < pages - 1) {
-            set(53, Ui.next(current, pages), e -> new MachineMenu(plugin, player, plot, pos, category, current + 1, search).open());
-        }
+        navBar("Производство", () -> new FactoryMenu(plugin, player, plot, null).open(), current, pages,
+                p -> new MachineMenu(plugin, player, plot, pos, category, p, search).open());
         fill(Material.GRAY_STAINED_GLASS_PANE);
     }
 

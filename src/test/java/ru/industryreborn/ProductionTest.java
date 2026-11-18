@@ -756,9 +756,9 @@ class ProductionTest extends PluginTestBase {
     void theMachineMenuListsRecipesAndAssignsOnClick() {
         new ru.industryreborn.gui.MachineMenu(plugin, steve, workshop, pos(1), null, 0, "").open();
         var inv = steve.getOpenInventory().getTopInventory();
-        assertEquals(Material.GOLD_INGOT, inv.getItem(0).getType(), "по алфавиту");
-        assertEquals(Material.IRON_INGOT, inv.getItem(1).getType());
-        steve.simulateInventoryClick(1);
+        assertEquals(Material.GOLD_INGOT, inv.getItem(9).getType(), "по алфавиту");
+        assertEquals(Material.IRON_INGOT, inv.getItem(10).getType());
+        steve.simulateInventoryClick(10);
         assertEquals("furnace:IRON_INGOT", workshop.machineStates.get(pos(1)).recipe);
         assertTrue(steve.getOpenInventory().getTopInventory().getHolder() instanceof ru.industryreborn.gui.FactoryMenu);
     }
@@ -768,13 +768,13 @@ class ProductionTest extends PluginTestBase {
     void theAnvilMenuFiltersByCategoryAndSearch() {
         new ru.industryreborn.gui.MachineMenu(plugin, steve, workshop, pos(3), "Инструменты", 0, "").open();
         var inv = steve.getOpenInventory().getTopInventory();
-        assertEquals(Material.IRON_PICKAXE, inv.getItem(0).getType());
-        assertTrue(inv.getItem(1) == null || inv.getItem(1).getType().name().endsWith("_PANE"), "блоков в категории нет");
+        assertEquals(Material.IRON_PICKAXE, inv.getItem(9).getType());
+        assertTrue(inv.getItem(10) == null || inv.getItem(10).getType().name().endsWith("_PANE"), "блоков в категории нет");
         new ru.industryreborn.gui.MachineMenu(plugin, steve, workshop, pos(3), null, 0, "magma").open();
         inv = steve.getOpenInventory().getTopInventory();
-        assertEquals(Material.MAGMA_CREAM, inv.getItem(0).getType(), "поиск по названию");
+        assertEquals(Material.MAGMA_CREAM, inv.getItem(9).getType(), "поиск по названию");
         new ru.industryreborn.gui.MachineMenu(plugin, steve, workshop, pos(3), null, 0, "stick").open();
-        assertEquals(Material.IRON_PICKAXE, steve.getOpenInventory().getTopInventory().getItem(0).getType(), "поиск по сырью");
+        assertEquals(Material.IRON_PICKAXE, steve.getOpenInventory().getTopInventory().getItem(9).getType(), "поиск по сырью");
     }
 
     @Test
@@ -782,10 +782,10 @@ class ProductionTest extends PluginTestBase {
         stock(Material.RAW_IRON, 10);
         assign(1, "furnace:IRON_INGOT");
         var inv = new ru.industryreborn.gui.FactoryMenu(plugin, steve, workshop, null).getInventory();
-        assertEquals(Material.FURNACE, inv.getItem(19).getType());
-        assertEquals(Material.BLAST_FURNACE, inv.getItem(20).getType());
-        assertEquals(Material.ANVIL, inv.getItem(21).getType());
-        String furnace = inv.getItem(19).getItemMeta().lore().stream()
+        assertEquals(Material.FURNACE, inv.getItem(20).getType());
+        assertEquals(Material.BLAST_FURNACE, inv.getItem(21).getType());
+        assertEquals(Material.ANVIL, inv.getItem(22).getType());
+        String furnace = inv.getItem(20).getItemMeta().lore().stream()
                 .map(l -> net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText().serialize(l))
                 .reduce("", (a, b) -> a + b + "\n");
         assertTrue(furnace.contains("IRON_INGOT"), furnace);

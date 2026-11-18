@@ -573,4 +573,116 @@ class MenuRedesignTest extends PluginTestBase {
             assertFalse(dialogs.has("p:" + (long) Math.floor(w.account.rawBalance())), "полный остаток снять нельзя: нужен резерв " + reserve);
         }
     }
+
+    // ------------------------------------------------------------ остальные меню
+
+    @Test
+    void postingAVacancyUsesSteppersForPlacesRateAndPercent() {
+        new ru.industryreborn.gui.StaffMenu(plugin, steve, shop, null, ru.industryreborn.gui.StaffMenu.Tab.NEW).open();
+        Inventory inv = open();
+        assertEquals("ДОЛЖНОСТЬ", plain(inv.getItem(9).getItemMeta().displayName()));
+        steve.simulateInventoryClick(11);
+        assertTrue(dialogs.lastStepper().title().startsWith("Вакансия"), dialogs.lastStepper().title());
+        assertTrue(dialogs.bodyText().contains("Мест: 1"), dialogs.bodyText());
+        dialogs.press("d:1");
+        assertTrue(dialogs.bodyText().contains("Мест: 2"), dialogs.bodyText());
+        dialogs.press("ok");
+        assertTrue(dialogs.lastStepper().title().contains("ставка"), dialogs.lastStepper().title());
+        assertTrue(dialogs.bodyText().contains("мест: 2"), dialogs.bodyText());
+        dialogs.press("p:0");                       // ставка 0 - без ставки
+        assertTrue(dialogs.bodyText().contains("без ставки"), dialogs.bodyText());
+        long top = (long) plugin.jobs().maxRate();
+        dialogs.press("p:" + top);                  // предел ставки
+        assertTrue(dialogs.bodyText().contains(plugin.economy().format(top)), dialogs.bodyText());
+        dialogs.press("ok");
+        if (dialogs.lastStepper().title().contains("процент")) {
+            dialogs.press("ok");
+        }
+        var posted = plugin.jobs().vacanciesOf("s1");
+        StringBuilder all = new StringBuilder();
+        String msg;
+        while ((msg = steve.nextMessage()) != null) {
+            all.append(msg).append(" | ");
+        }
+        assertEquals(1, posted.size(), all.toString() + " last=" + dialogs.lastStepper().title());
+        assertEquals(2, posted.get(0).slots);
+        assertEquals(top, posted.get(0).rate, 1e-9);
+    }
+
+    @Test
+    void vacancyFlowFallsBackToChat() {
+        plugin.dialogs().setBackend(null);
+        new ru.industryreborn.gui.StaffMenu(plugin, steve, shop, null, ru.industryreborn.gui.StaffMenu.Tab.NEW).open();
+        steve.simulateInventoryClick(11);
+        assertTrue(plugin.chatPrompt().isWaiting(steve));
+        plugin.chatPrompt().deliver(steve, "3");
+        tick();
+        plugin.chatPrompt().deliver(steve, "50");
+        tick();
+        if (plugin.chatPrompt().isWaiting(steve)) {
+            plugin.chatPrompt().deliver(steve, "0");
+            tick();
+        }
+        var posted = plugin.jobs().vacanciesOf("s1");
+        assertEquals(1, posted.size());
+        assertEquals(3, posted.get(0).slots);
+        assertEquals(50, posted.get(0).rate, 1e-9);
+    }
+
+    @Test
+    void staffTabsLiveInTheHeader() {
+        new ru.industryreborn.gui.StaffMenu(plugin, steve, shop, null, ru.industryreborn.gui.StaffMenu.Tab.VACANCIES).open();
+        Inventory inv = open();
+        assertEquals(Material.ENCHANTED_BOOK, inv.getItem(2).getType(), "открытая вкладка подсвечена");
+        assertEquals(Material.PAPER, inv.getItem(3).getType());
+        assertEquals(Material.PLAYER_HEAD, inv.getItem(4).getType());
+        assertEquals(Material.NETHER_STAR, inv.getItem(6).getType());
+        steve.simulateInventoryClick(3);
+        assertEquals(Material.BOOK, open().getItem(2).getType(), "вкладка переключилась");
+        assertEquals(Material.ARROW, open().getItem(45).getType());
+        steve.simulateInventoryClick(45);
+        assertTrue(steve.getOpenInventory().getTopInventory().getHolder() instanceof PlotMenu);
+    }
+
+    @Test
+    void rightsMenuHasGroupsAndANavigationBar() {
+        shop.grant(boss.getUniqueId(), Plot.Perm.CONTAINERS);
+        new ru.industryreborn.gui.RightsMenu(plugin, steve, shop, null).open();
+        Inventory inv = open();
+        assertEquals("ДОСТУП ДЛЯ ВСЕХ", plain(inv.getItem(9).getItemMeta().displayName()));
+        assertEquals("ИГРОКИ С ПРАВАМИ", plain(inv.getItem(27).getItemMeta().displayName()));
+        assertEquals(Material.PLAYER_HEAD, inv.getItem(29).getType());
+        assertEquals(Material.PLAYER_HEAD, inv.getItem(6).getType(), "добавить игрока - в шапке");
+        steve.simulateInventoryClick(29);
+        Inventory rights = open();
+        assertEquals("ПРАВА", plain(rights.getItem(9).getItemMeta().displayName()));
+        assertEquals("ОПАСНАЯ ЗОНА", plain(rights.getItem(18).getItemMeta().displayName()));
+        steve.simulateInventoryClick(20);
+        assertTrue(shop.grants.isEmpty(), "все права сняты");
+        assertTrue(steve.getOpenInventory().getTopInventory().getHolder() instanceof ru.industryreborn.gui.RightsMenu);
+    }
+
+    @Test
+    void factoryMenuIsGroupedAndMachinesFilterByCategoryWithOneButton() {
+        Plot workshop = addPlot("w9", Category.WORKSHOP, 60, -1, 10);
+        plugin.getConfig().set("limits.categories.workshop", 0);
+        plugin.service().rent(steve, workshop, 2);
+        Inventory inv = new ru.industryreborn.gui.FactoryMenu(plugin, steve, workshop, null).getInventory();
+        assertEquals("РАЗВИТИЕ", plain(inv.getItem(9).getItemMeta().displayName()));
+        assertEquals("СТАНКИ", plain(inv.getItem(18).getItemMeta().displayName()));
+        assertEquals(Material.NETHER_STAR, inv.getItem(11).getType());
+        assertEquals(Material.BARREL, inv.getItem(12).getType());
+        assertEquals(Material.ARROW, inv.getItem(45).getType());
+        assertEquals(Material.BARRIER, inv.getItem(53).getType());
+    }
+
+    @Test
+    void myJobsHasTwoGroups() {
+        new ru.industryreborn.gui.MyJobsMenu(plugin, steve).open();
+        Inventory inv = open();
+        assertEquals("РАБОТАЮ", plain(inv.getItem(9).getItemMeta().displayName()));
+        assertEquals("МОИ ОТКЛИКИ", plain(inv.getItem(18).getItemMeta().displayName()));
+        assertEquals(Material.BARRIER, inv.getItem(22).getType(), "пустое состояние");
+        assertEquals(Material.ARROW, inv.getItem(45).getType());
+    }
 }

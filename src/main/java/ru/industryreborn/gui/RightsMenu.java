@@ -23,6 +23,7 @@ public final class RightsMenu extends Menu {
                 "<gray>Строительство - ставить и ломать блоки", "<gray>Контейнеры - сундуки, бочки и т.п.",
                 "<gray>Станки - печи, наковальни и др."));
 
+        set(9, Ui.section("Доступ для всех", Material.LIGHT_BLUE_STAINED_GLASS_PANE));
         List<String> allowed = plugin.getConfig().getStringList("public-permissions." + plot.category.key());
         int slot = 11;
         for (Plot.Perm perm : new Plot.Perm[] {Plot.Perm.CONTAINERS, Plot.Perm.STATIONS}) {
@@ -42,7 +43,8 @@ public final class RightsMenu extends Menu {
             slot += 2;
         }
 
-        int i = 18;
+        set(27, Ui.section("Игроки с правами", Material.CYAN_STAINED_GLASS_PANE));
+        int i = 29;
         for (var entry : plot.grants.entrySet()) {
             if (i > 44) {
                 break;
@@ -64,7 +66,7 @@ public final class RightsMenu extends Menu {
             set(i++, head, e -> new PlayerRightsMenu(plugin, player, plot, id, back).open());
         }
 
-        set(47, Text.icon(Material.PLAYER_HEAD, "<green>Добавить игрока", "<yellow>Введите ник в чате"),
+        set(6, Text.icon(Material.PLAYER_HEAD, "<green>Добавить игрока", "<yellow>Введите ник"),
                 e -> plugin.chatPrompt().ask(player, "Введите ник игрока:", text -> {
                     OfflinePlayer target = Bukkit.getPlayerExact(text);
                     if (target == null) {
@@ -79,7 +81,7 @@ public final class RightsMenu extends Menu {
                         new PlayerRightsMenu(plugin, player, plot, target.getUniqueId(), back).open();
                     }
                 }));
-        set(49, Ui.back(null), e -> new PlotMenu(plugin, player, plot, back).open());
+        navBar("Участок", () -> new PlotMenu(plugin, player, plot, back).open(), 0, 1, p -> { });
         fill(Material.GRAY_STAINED_GLASS_PANE);
     }
 }

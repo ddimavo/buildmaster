@@ -99,9 +99,9 @@ class ArrestedMenuTest extends PluginTestBase {
         arrest(steve.getUniqueId(), "b", Material.EMERALD, 2);
         new ru.industryreborn.gui.ArrestedPlayerMenu(plugin, boss, steve.getUniqueId(), 0).open();
         var inv = boss.getOpenInventory().getTopInventory();
-        assertEquals(Material.DIAMOND, inv.getItem(0).getType());
-        assertEquals(Material.EMERALD, inv.getItem(1).getType());
-        String lore = inv.getItem(0).getItemMeta().lore().toString();
+        assertEquals(Material.DIAMOND, inv.getItem(9).getType());
+        assertEquals(Material.EMERALD, inv.getItem(10).getType());
+        String lore = inv.getItem(9).getItemMeta().lore().toString();
         assertTrue(lore.contains("нарушение"));
         assertTrue(lore.contains("DIAMOND"));
     }
@@ -111,11 +111,11 @@ class ArrestedMenuTest extends PluginTestBase {
         arrest(steve.getUniqueId(), "a", Material.DIAMOND, 5);
         arrest(steve.getUniqueId(), "b", Material.EMERALD, 2);
         new ru.industryreborn.gui.ArrestedPlayerMenu(plugin, boss, steve.getUniqueId(), 0).open();
-        boss.simulateInventoryClick(0);                       // партия a
+        boss.simulateInventoryClick(9);                       // партия a
         var decision = boss.getOpenInventory().getTopInventory();
-        assertEquals(Material.DIAMOND, decision.getItem(0).getType());
-        assertTrue(decision.getItem(1).getType().name().endsWith("_STAINED_GLASS_PANE"), "только вещи этой партии");
-        boss.simulateInventoryClick(46);                      // вернуть
+        assertEquals(Material.DIAMOND, decision.getItem(9).getType());
+        assertTrue(decision.getItem(10).getType().name().endsWith("_STAINED_GLASS_PANE"), "только вещи этой партии");
+        boss.simulateInventoryClick(2);                       // вернуть
         answer(boss, "ошибка ареста");
         assertEquals(5, count(steve.getUniqueId(), StorageEntry.State.AVAILABLE));
         assertEquals(2, count(steve.getUniqueId(), StorageEntry.State.ARRESTED));
@@ -129,16 +129,16 @@ class ArrestedMenuTest extends PluginTestBase {
         arrest(steve.getUniqueId(), "a", Material.DIAMOND, 5);
         arrest(steve.getUniqueId(), "b", Material.EMERALD, 2);
         new ru.industryreborn.gui.ArrestedPlayerMenu(plugin, boss, steve.getUniqueId(), 0).open();
-        boss.simulateInventoryClick(49);                      // по всем вещам
-        boss.simulateInventoryClick(52);                      // удалить
+        boss.simulateInventoryClick(4);                       // по всем вещам
+        boss.simulateInventoryClick(6);                       // удалить
         answer(boss, "   ");
         assertEquals(7, count(steve.getUniqueId(), StorageEntry.State.ARRESTED), "пустая причина - действие отменено");
         new ru.industryreborn.gui.ArrestDecisionMenu(plugin, boss, steve.getUniqueId(), null).open();
-        boss.simulateInventoryClick(52);
+        boss.simulateInventoryClick(6);
         answer(boss, "отмена");
         assertEquals(7, count(steve.getUniqueId(), StorageEntry.State.ARRESTED));
         new ru.industryreborn.gui.ArrestDecisionMenu(plugin, boss, steve.getUniqueId(), null).open();
-        boss.simulateInventoryClick(52);
+        boss.simulateInventoryClick(6);
         answer(boss, "читерские вещи");
         assertEquals(0, count(steve.getUniqueId(), StorageEntry.State.ARRESTED));
         assertEquals(0, count(steve.getUniqueId(), StorageEntry.State.AVAILABLE), "вещи удалены, а не возвращены");
@@ -149,7 +149,7 @@ class ArrestedMenuTest extends PluginTestBase {
     void sendingToTheAuctionQueuesTheItems() {
         arrest(alex.getUniqueId(), "a", Material.GOLD_INGOT, 3);
         new ru.industryreborn.gui.ArrestDecisionMenu(plugin, boss, alex.getUniqueId(), null).open();
-        boss.simulateInventoryClick(49);
+        boss.simulateInventoryClick(4);
         answer(boss, "конфискация");
         assertEquals(3, count(alex.getUniqueId(), StorageEntry.State.AUCTION));
         assertEquals(0, count(alex.getUniqueId(), StorageEntry.State.ARRESTED));

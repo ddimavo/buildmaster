@@ -1,5 +1,6 @@
 package ru.industryreborn.gui;
 
+import java.util.List;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import ru.industryreborn.IndustryRebornPlugin;
@@ -29,18 +30,18 @@ public final class StaffMenu extends Menu {
             case EMPLOYEES -> employees();
             case NEW -> roles();
         }
-        set(45, Text.icon(Material.NETHER_STAR, "<green>Новая вакансия", "<gray>Должность, места, зарплата"),
+        set(6, Text.icon(Material.NETHER_STAR, "<green>Новая вакансия", "<gray>Должность, места, зарплата"),
                 e -> new StaffMenu(plugin, player, plot, back, Tab.NEW).open());
-        set(47, Text.icon(Material.BOOK, "<aqua>Вакансии" + (tab == Tab.VACANCIES ? " ◄" : ""),
+        set(2, Text.icon(tab == Tab.VACANCIES ? Material.ENCHANTED_BOOK : Material.BOOK, "<aqua>Вакансии" + (tab == Tab.VACANCIES ? " ◄" : ""),
                 "<gray>Размещено: <white>" + plugin.jobs().vacanciesOf(plot.id).size()),
                 e -> new StaffMenu(plugin, player, plot, back, Tab.VACANCIES).open());
-        set(48, Text.icon(Material.PAPER, "<aqua>Отклики" + (tab == Tab.APPLICATIONS ? " ◄" : ""),
+        set(3, Text.icon(Material.PAPER, "<aqua>Отклики" + (tab == Tab.APPLICATIONS ? " ◄" : ""),
                 "<gray>Ожидают: <white>" + plugin.jobs().applicationsFor(plot.id).size()),
                 e -> new StaffMenu(plugin, player, plot, back, Tab.APPLICATIONS).open());
-        set(49, Text.icon(Material.PLAYER_HEAD, "<aqua>Работники" + (tab == Tab.EMPLOYEES ? " ◄" : ""),
+        set(4, Text.icon(Material.PLAYER_HEAD, "<aqua>Работники" + (tab == Tab.EMPLOYEES ? " ◄" : ""),
                 "<gray>Работают: <white>" + plugin.jobs().employeesOf(plot.id).size()),
                 e -> new StaffMenu(plugin, player, plot, back, Tab.EMPLOYEES).open());
-        set(53, Text.icon(Material.ARROW, "<yellow>К участку"), e -> new PlotMenu(plugin, player, plot, back).open());
+        navBar("Участок", () -> new PlotMenu(plugin, player, plot, back).open(), 0, 1, p -> { });
         fill(Material.GRAY_STAINED_GLASS_PANE);
     }
 
@@ -51,10 +52,10 @@ public final class StaffMenu extends Menu {
     private void vacancies() {
         int slot = 0;
         for (Vacancy v : plugin.jobs().vacanciesOf(plot.id)) {
-            if (slot >= 45) {
+            if (slot >= 36) {
                 break;
             }
-            set(slot++, Text.icon(v.role.icon(), "<gold>" + v.role.title() + " <gray>№" + v.id,
+            set(9 + slot++, Text.icon(v.role.icon(), "<gold>" + v.role.title() + " <gray>№" + v.id,
                     "<gray>Зарплата: <white>" + Text.esc(plugin.jobs().describePay(v)),
                     "<gray>Мест: <white>" + plugin.jobs().freeSlots(v) + " свободно из " + v.slots,
                     "<gray>Доступ: <white>" + (v.perms.isEmpty() ? "нет"
@@ -76,11 +77,11 @@ public final class StaffMenu extends Menu {
     private void applications() {
         int slot = 0;
         for (JobApplication a : plugin.jobs().applicationsFor(plot.id)) {
-            if (slot >= 45) {
+            if (slot >= 36) {
                 break;
             }
             Vacancy v = plugin.jobs().vacancy(a.vacancyId);
-            set(slot++, Text.icon(Material.PLAYER_HEAD, "<gold>" + Text.esc(a.applicantName),
+            set(9 + slot++, Text.icon(Material.PLAYER_HEAD, "<gold>" + Text.esc(a.applicantName),
                     "<gray>Вакансия: <white>" + (v == null ? "снята" : v.role.title() + " №" + v.id),
                     "<yellow>ЛКМ - принять", "<yellow>ПКМ - отклонить"), e -> {
                 String error = e.isRightClick() ? plugin.jobs().decline(player, a) : plugin.jobs().accept(player, a);
@@ -98,11 +99,11 @@ public final class StaffMenu extends Menu {
     private void employees() {
         int slot = 0;
         for (Employee em : plugin.jobs().employeesOf(plot.id)) {
-            if (slot >= 45) {
+            if (slot >= 36) {
                 break;
             }
             Vacancy v = plugin.jobs().vacancy(em.vacancyId);
-            set(slot++, Text.icon(v == null ? Material.PLAYER_HEAD : v.role.icon(), "<gold>" + Text.esc(em.name),
+            set(9 + slot++, Text.icon(v == null ? Material.PLAYER_HEAD : v.role.icon(), "<gold>" + Text.esc(em.name),
                     "<gray>Должность: <white>" + (v == null ? "-" : v.role.title()),
                     "<gray>К выплате: <white>" + plugin.economy().format(em.accrued),
                     "<gray>Выплачено всего: <white>" + plugin.economy().format(em.totalPaid),
@@ -124,7 +125,8 @@ public final class StaffMenu extends Menu {
 
     /** Выбор должности, затем ввод числа мест, ставки и процента в чате. */
     private void roles() {
-        int slot = 10;
+        set(9, Ui.section("Должность", Material.LIME_STAINED_GLASS_PANE));
+        int slot = 11;
         for (JobRole role : JobRole.values()) {
             set(slot++, Text.icon(role.icon(), "<gold>" + role.title(),
                     "<gray>Доступ по умолчанию: <white>" + (role.defaultPerms().isEmpty() ? "нет"
@@ -134,34 +136,42 @@ public final class StaffMenu extends Menu {
     }
 
     private void askSlots(JobRole role) {
-        plugin.chatPrompt().ask(player, "Сколько мест (1-" + plugin.jobs().maxSlots() + ")?", text -> {
-            Integer slots = parseInt(text);
-            if (slots == null) {
-                reopen(Tab.VACANCIES);
-                return;
-            }
-            plugin.chatPrompt().ask(player, "Ставка за каждые " + plugin.jobs().blockMinutes()
-                    + " мин. работы на участке (до " + plugin.economy().format(plugin.jobs().maxRate()) + ", 0 - без ставки):", rateText -> {
-                Double rate = parseNumber(rateText);
-                if (rate == null) {
-                    reopen(Tab.VACANCIES);
-                    return;
-                }
-                if (!plugin.jobs().hasPercentIncome(plot)) {
-                    finish(role, slots, rate, 0);
-                    return;
-                }
-                plugin.chatPrompt().ask(player, "Процент от дохода (до " + plugin.jobs().maxPercent() + ", 0 - без процента):",
-                        percentText -> {
-                            Double percent = parseNumber(percentText);
-                            if (percent == null) {
-                                reopen(Tab.VACANCIES);
-                                return;
-                            }
-                            finish(role, slots, rate, percent);
-                        });
-            });
-        });
+        int max = plugin.jobs().maxSlots();
+        double large = max >= 5 ? 5 : 1;
+        plugin.dialogs().stepper(player, new DialogService.Stepper("Вакансия: " + role.title(), 1, max, 1, 1, large, List.of(1.0, 2.0, 3.0, 5.0),
+                v -> List.of("<white>" + role.title() + " · " + Text.esc(plot.displayName()), "<gray>Мест: <white>" + Math.round(v) + " <gray>(до " + max + ")"),
+                v -> true, v -> Math.round(v) + " мест", "Далее"),
+                v -> askRate(role, (int) Math.round(v)), null, () -> reopen(Tab.VACANCIES));
+    }
+
+    private void askRate(JobRole role, int slots) {
+        double max = plugin.jobs().maxRate();
+        double small = max >= 500 ? 10 : max >= 50 ? 5 : 1;
+        double large = small * 10;
+        int block = plugin.jobs().blockMinutes();
+        plugin.dialogs().stepper(player, new DialogService.Stepper("Вакансия: " + role.title() + " - ставка", 0, max, Math.min(max, large), small, large,
+                List.of(0.0, Math.floor(max / 4), Math.floor(max / 2), max),
+                v -> List.of("<white>" + role.title() + " · мест: " + slots,
+                        "<gray>Ставка за каждые <white>" + block + "<gray> мин. работы на участке: <gold>" + plugin.economy().format(v) + (v <= 0 ? " <gray>(без ставки)" : ""),
+                        "<gray>Предел: <white>" + plugin.economy().format(max)),
+                v -> true, v -> plugin.economy().format(v), "Далее"),
+                rate -> {
+                    if (!plugin.jobs().hasPercentIncome(plot)) {
+                        finish(role, slots, rate, 0);
+                    } else {
+                        askPercent(role, slots, rate);
+                    }
+                }, null, () -> reopen(Tab.VACANCIES));
+    }
+
+    private void askPercent(JobRole role, int slots, double rate) {
+        double max = plugin.jobs().maxPercent();
+        plugin.dialogs().stepper(player, new DialogService.Stepper("Вакансия: " + role.title() + " - процент", 0, max, 0, 1, 5, List.of(0.0, 5.0, 10.0, max),
+                v -> List.of("<white>" + role.title() + " · мест: " + slots + " · ставка " + plugin.economy().format(rate),
+                        "<gray>Процент от дохода предприятия: <gold>" + Math.round(v * 100) / 100.0 + "%" + (v <= 0 ? " <gray>(без процента)" : ""),
+                        "<gray>Предел: <white>" + max + "%"),
+                v -> true, v -> Math.round(v * 100) / 100.0 + "%", "Разместить"),
+                percent -> finish(role, slots, rate, percent), null, () -> reopen(Tab.VACANCIES));
     }
 
     private void finish(JobRole role, int slots, double rate, double percent) {

@@ -16,7 +16,12 @@ public final class PlayerRightsMenu extends Menu {
     private static final int MAX_PLAYERS = 10;
 
     public PlayerRightsMenu(IndustryRebornPlugin plugin, Player player, Plot plot, UUID target, PlotFilter back) {
-        super(plugin, player, "<dark_gray>Район › Участки › Права › " + Text.esc(String.valueOf(Bukkit.getOfflinePlayer(target).getName())), 3);
+        super(plugin, player, "<dark_gray>Район › Участки › Права › " + Text.esc(String.valueOf(Bukkit.getOfflinePlayer(target).getName())), 6);
+        var op = Bukkit.getOfflinePlayer(target);
+        var head = Text.icon(Material.PLAYER_HEAD, "<aqua>" + Text.esc(String.valueOf(op.getName())), "<gray>Права на участке " + Text.esc(plot.id));
+        head.editMeta(org.bukkit.inventory.meta.SkullMeta.class, meta -> meta.setOwningPlayer(op));
+        set(4, head);
+        set(9, Ui.section("Права", Material.LIGHT_BLUE_STAINED_GLASS_PANE));
         int slot = 11;
         for (Plot.Perm perm : Plot.Perm.values()) {
             boolean on = plot.permsOf(target).contains(perm);
@@ -39,13 +44,14 @@ public final class PlayerRightsMenu extends Menu {
                     });
             slot += 2;
         }
-        set(22, Text.icon(Material.RED_STAINED_GLASS, "<red>Лишить всех прав"), e -> {
+        set(18, Ui.section("Опасная зона", Material.RED_STAINED_GLASS_PANE));
+        set(20, Text.icon(Material.RED_STAINED_GLASS, "<red>Лишить всех прав", "<yellow>Нажмите, чтобы снять все права"), e -> {
             plot.revokeAll(target);
             plugin.plots().save();
             plugin.journal().add(plot.id, target, player.getName(), Journal.Action.RIGHTS, "права сняты");
             new RightsMenu(plugin, player, plot, back).open();
         });
-        set(18, Ui.back(null), e -> new RightsMenu(plugin, player, plot, back).open());
+        navBar("Права", () -> new RightsMenu(plugin, player, plot, back).open(), 0, 1, p -> { });
         fill(Material.GRAY_STAINED_GLASS_PANE);
     }
 }

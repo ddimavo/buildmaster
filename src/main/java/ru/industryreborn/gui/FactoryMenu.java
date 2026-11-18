@@ -17,7 +17,7 @@ import ru.industryreborn.util.Text;
 public final class FactoryMenu extends Menu {
 
     public FactoryMenu(IndustryRebornPlugin plugin, Player player, Plot plot, PlotFilter back) {
-        super(plugin, player, "<dark_gray>Район › Участки › " + Text.esc(plot.displayName()) + " › Производство", 5);
+        super(plugin, player, "<dark_gray>Район › Участки › " + Text.esc(plot.displayName()) + " › Производство", 6);
         var f = plugin.factory();
         UpgradeCatalog.Level level = plugin.upgrades().of(plot);
         UpgradeCatalog.Level next = plugin.upgrades().next(plot);
@@ -42,7 +42,8 @@ public final class FactoryMenu extends Menu {
                     + ", буфер ×" + next.buffer() + ", очередь заказов +" + next.orderQueue());
             up.add("<yellow>Нажмите, чтобы улучшить (оплата со счёта предприятия)");
         }
-        set(10, Text.icon(Material.NETHER_STAR, "<gold>Улучшения мастерской", up.toArray(new String[0])), e -> {
+        set(9, Ui.section("Развитие", Material.ORANGE_STAINED_GLASS_PANE));
+        set(11, Text.icon(Material.NETHER_STAR, "<gold>Улучшения мастерской", up.toArray(new String[0])), e -> {
             String error = f.upgrade(player, plot);
             if (error != null) {
                 Text.err(player, error);
@@ -76,7 +77,7 @@ public final class FactoryMenu extends Menu {
 
         // ---- продукция ----
         int product = views.stream().mapToInt(ProductionService.View::output).sum();
-        set(14, Text.icon(Material.CHEST_MINECART, "<green>Продукция в буферах станков",
+        set(13, Text.icon(Material.CHEST_MINECART, "<green>Продукция в буферах станков",
                 "<gray>Ждёт выгрузки: <white>" + product,
                 "<gray>Сундуки продукции забирают её сами",
                 "<yellow>ЛКМ - забрать всё в инвентарь"), e -> {
@@ -88,7 +89,7 @@ public final class FactoryMenu extends Menu {
         });
 
         // ---- сундуки ----
-        set(16, Text.icon(Material.CHEST, "<white>Сундуки мастерской",
+        set(14, Text.icon(Material.CHEST, "<white>Сундуки мастерской",
                 "<gray>Сундуков сырья: <white>" + plot.rawChests.size(),
                 "<gray>Сундуков продукции: <white>" + plot.productChests.size(),
                 "<gray>Посмотрите на сундук и выполните:",
@@ -97,7 +98,8 @@ public final class FactoryMenu extends Menu {
                 "<white>/district chest unmark <gray>- снять"));
 
         // ---- станки ----
-        int[] slots = {19, 20, 21, 22, 23, 24, 25, 28, 29, 30, 31, 32, 33, 34};
+        set(18, Ui.section("Станки", Material.ORANGE_STAINED_GLASS_PANE));
+        int[] slots = {20, 21, 22, 23, 24, 25, 26, 29, 30, 31, 32, 33, 34, 35};
         int i = 0;
         for (ProductionService.View v : views) {
             if (i >= slots.length) {
@@ -123,10 +125,10 @@ public final class FactoryMenu extends Menu {
                     e -> new MachineMenu(plugin, player, plot, pos, null, 0, "").open());
         }
         if (views.isEmpty()) {
-            set(22, Text.icon(Material.BARRIER, "<gray>В мастерской нет рабочих станков",
+            set(23, Text.icon(Material.BARRIER, "<gray>В мастерской нет рабочих станков",
                     "<gray>Поставьте печь или наковальню: установка платная"));
         }
-        set(36, Ui.back(null), e -> new PlotMenu(plugin, player, plot, back).open());
+        navBar("Участок", () -> new PlotMenu(plugin, player, plot, back).open(), 0, 1, p -> { });
         fill(Material.GRAY_STAINED_GLASS_PANE);
     }
 

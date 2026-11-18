@@ -27,22 +27,22 @@ public final class ArrestDecisionMenu extends Menu {
                 if (slot >= 36) {
                     break;
                 }
-                set(slot++, ItemStack.deserializeBytes(b));
+                set(9 + slot++, ItemStack.deserializeBytes(b));
             }
         }
         if (slot == 0) {
             set(22, Text.icon(Material.BARRIER, "<gray>Вещей нет"));
         }
-        set(45, Ui.back(null), e -> new ArrestedPlayerMenu(plugin, player, target, 0).open());
-        set(46, Text.icon(Material.LIME_CONCRETE, "<green>Вернуть игроку",
+        navBar("К партиям", () -> new ArrestedPlayerMenu(plugin, player, target, 0).open(), 0, 1, p -> { });
+        set(2, Text.icon(Material.LIME_CONCRETE, "<green>Вернуть игроку",
                 "<gray>Вещи станут доступны в его хранилище", "<yellow>Потребуется причина"),
                 e -> ArrestedPlayerMenu.decide(plugin, player, target, entryId, ArrestService.Decision.RELEASE));
-        set(49, Text.icon(Material.GOLD_BLOCK, "<gold>На аукцион",
+        set(4, Text.icon(Material.GOLD_BLOCK, "<gold>На аукцион",
                 "<gray>Вещи уйдут на общий аукцион от казны,", "<gray>выручка - в казну",
                 plugin.treasuryAuction().ready() ? "<green>Аукцион подключён" : "<yellow>Аукцион недоступен: вещи подождут в очереди",
                 "<yellow>Потребуется причина"),
                 e -> ArrestedPlayerMenu.decide(plugin, player, target, entryId, ArrestService.Decision.AUCTION));
-        set(52, Text.icon(Material.RED_CONCRETE, "<red>Удалить",
+        set(6, Text.icon(Material.RED_CONCRETE, "<red>Удалить",
                 "<gray>Вещи удаляются безвозвратно", "<yellow>Потребуется причина"),
                 e -> ArrestedPlayerMenu.decide(plugin, player, target, entryId, ArrestService.Decision.DELETE));
         fill(Material.GRAY_STAINED_GLASS_PANE);

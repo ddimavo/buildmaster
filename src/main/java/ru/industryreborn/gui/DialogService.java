@@ -247,7 +247,8 @@ public final class DialogService {
             return;
         }
         List<Choice> choices = new ArrayList<>();
-        double[] deltas = {-s.large(), -s.small(), s.small(), s.large()};
+        double[] deltas = Math.abs(s.large() - s.small()) < 1e-9 ? new double[] {-s.small(), s.small()}
+                : new double[] {-s.large(), -s.small(), s.small(), s.large()};
         for (double d : deltas) {
             if (d == 0 || value + d < s.min() - 1e-9 || value + d > s.max() + 1e-9) {
                 continue;

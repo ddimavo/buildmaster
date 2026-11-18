@@ -534,10 +534,10 @@ class JobsTest extends PluginTestBase {
         Vacancy v = post(JobRole.SELLER, 1, 40, 0);
         plugin.jobs().apply(alex, v);
         new ru.industryreborn.gui.StaffMenu(plugin, steve, shop, null, ru.industryreborn.gui.StaffMenu.Tab.APPLICATIONS).open();
-        steve.simulateInventoryClick(0);
+        steve.simulateInventoryClick(9);
         assertNotNull(plugin.jobs().employee("s", alex.getUniqueId()));
         new ru.industryreborn.gui.StaffMenu(plugin, steve, shop, null, ru.industryreborn.gui.StaffMenu.Tab.VACANCIES).open();
-        steve.simulateInventoryClick(0);
+        steve.simulateInventoryClick(9);
         assertFalse(v.open);
     }
 

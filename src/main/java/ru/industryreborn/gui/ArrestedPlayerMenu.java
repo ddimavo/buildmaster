@@ -29,7 +29,7 @@ public final class ArrestedPlayerMenu extends Menu {
         }
         int slot = 0;
         for (StorageEntry entry : plugin.arrests().entries(target)) {
-            if (slot >= 45) {
+            if (slot >= 36) {
                 break;
             }
             int items = 0;
@@ -54,14 +54,14 @@ public final class ArrestedPlayerMenu extends Menu {
             lore.add("<yellow>Нажмите, чтобы решить по этой партии");
             Material icon = first == null ? Material.CHEST : first.getType();
             UUID entryId = entry.id;
-            set(slot++, Text.icon(icon, "<gold>Партия " + Text.esc(entry.plotId), lore.toArray(new String[0])),
+            set(9 + slot++, Text.icon(icon, "<gold>Партия " + Text.esc(entry.plotId), lore.toArray(new String[0])),
                     e -> new ArrestDecisionMenu(plugin, player, target, entryId).open());
         }
         if (slot == 0) {
             set(22, Text.icon(Material.LIME_DYE, "<green>Арестованных вещей нет"));
         }
-        set(45, Text.icon(Material.ARROW, "<yellow>К списку"), e -> new ArrestedMenu(plugin, player, 0).open());
-        set(49, Text.icon(Material.IRON_BARS, "<red>Решить по всем вещам игрока",
+        navBar("Арестованные вещи", () -> new ArrestedMenu(plugin, player, 0).open(), 0, 1, p -> { });
+        set(4, Text.icon(Material.IRON_BARS, "<red>Решить по всем вещам игрока",
                 "<gray>Вещей: <white>" + plugin.arrests().count(target), "<yellow>Нажмите"),
                 e -> new ArrestDecisionMenu(plugin, player, target, null).open());
         fill(Material.GRAY_STAINED_GLASS_PANE);

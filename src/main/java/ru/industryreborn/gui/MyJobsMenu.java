@@ -14,16 +14,18 @@ import ru.industryreborn.util.Text;
 public final class MyJobsMenu extends Menu {
 
     public MyJobsMenu(IndustryRebornPlugin plugin, Player player) {
-        super(plugin, player, "<dark_gray>Район › Доска объявлений › Мои работы", 4);
+        super(plugin, player, "<dark_gray>Район › Доска объявлений › Мои работы", 6);
+        set(9, Ui.section("Работаю", Material.LIME_STAINED_GLASS_PANE));
+        set(18, Ui.section("Мои отклики", Material.YELLOW_STAINED_GLASS_PANE));
         int slot = 0;
         for (Employee e : plugin.jobs().jobsOf(player.getUniqueId())) {
-            if (slot >= 9) {
+            if (slot >= 8) {
                 break;
             }
             Vacancy v = plugin.jobs().vacancy(e.vacancyId);
             Plot plot = plugin.plots().get(e.plotId);
             String where = plot == null ? e.plotId : plot.displayName();
-            set(slot++, Text.icon(v == null ? Material.PAPER : v.role.icon(),
+            set(10 + slot++, Text.icon(v == null ? Material.PAPER : v.role.icon(),
                     "<gold>" + (v == null ? "Работа" : v.role.title()) + " · " + Text.esc(where),
                     "<gray>Зарплата: <white>" + (v == null ? "-" : Text.esc(plugin.jobs().describePay(v))),
                     "<gray>К выплате: <white>" + plugin.economy().format(e.accrued),
@@ -42,9 +44,9 @@ public final class MyJobsMenu extends Menu {
                             }, () -> new MyJobsMenu(plugin, player).open()).open());
         }
         List<JobApplication> apps = plugin.jobs().applicationsBy(player.getUniqueId());
-        int appSlot = 9;
+        int appSlot = 19;
         for (JobApplication a : apps) {
-            if (appSlot >= 18) {
+            if (appSlot >= 27) {
                 break;
             }
             Vacancy v = plugin.jobs().vacancy(a.vacancyId);
@@ -58,10 +60,10 @@ public final class MyJobsMenu extends Menu {
             });
         }
         if (slot == 0 && apps.isEmpty()) {
-            set(13, Text.icon(Material.BARRIER, "<gray>Вы нигде не работаете",
+            set(22, Text.icon(Material.BARRIER, "<gray>Вы нигде не работаете",
                     "<gray>Загляните на доску объявлений"));
         }
-        set(31, Text.icon(Material.ARROW, "<yellow>К доске объявлений"), e -> new JobBoardMenu(plugin, player, 0).open());
+        navBar("Доска объявлений", () -> new JobBoardMenu(plugin, player, 0).open(), 0, 1, p -> { });
         fill(Material.GRAY_STAINED_GLASS_PANE);
     }
 }
