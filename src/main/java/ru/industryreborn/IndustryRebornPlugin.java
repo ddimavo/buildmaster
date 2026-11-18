@@ -167,6 +167,7 @@ public class IndustryRebornPlugin extends JavaPlugin {
         recipes = new RecipeBook(this);
         reloadCustomContent();
         registerNexoReload();
+        blueprints = new ru.industryreborn.items.BlueprintService(this);
         factory = new ProductionService(this);
         hotels = new HotelService(this);
         regions = new WorldGuardRegions(getLogger());
@@ -375,6 +376,12 @@ public class IndustryRebornPlugin extends JavaPlugin {
     }
 
     private ru.industryreborn.items.CustomItems customItems;
+    private ru.industryreborn.items.BlueprintService blueprints;
+
+    /** Чертежи: одноразовые предметы для изучения рецептов, магазин и хранилище администрации. */
+    public ru.industryreborn.items.BlueprintService blueprints() {
+        return blueprints;
+    }
 
     /** Предметы плагина и метки (items/*.yml), распознавание и мост к Nexo. */
     public ru.industryreborn.items.CustomItems customItems() {

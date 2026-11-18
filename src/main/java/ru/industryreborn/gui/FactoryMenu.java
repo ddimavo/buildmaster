@@ -63,7 +63,10 @@ public final class FactoryMenu extends Menu {
             }
             stock.add("<gray>" + e.getKey().name() + ": <white>" + e.getValue());
         }
-        if (plot.stock.isEmpty()) {
+        for (Map.Entry<String, Integer> e : plot.customStock.entrySet()) {
+            stock.add("<gray>" + Text.esc(plugin.customItems().displayName(ru.industryreborn.items.ItemRef.parse(e.getKey()))) + ": <white>" + e.getValue());
+        }
+        if (plot.stock.isEmpty() && plot.customStock.isEmpty()) {
             stock.add("<gray>Склад пуст: положите сырьё в сундук сырья");
         }
         stock.add("<yellow>ЛКМ - загрузить сырьё из инвентаря");
@@ -96,6 +99,26 @@ public final class FactoryMenu extends Menu {
                 "<white>/district chest raw <gray>- сырьё",
                 "<white>/district chest product <gray>- продукция",
                 "<white>/district chest unmark <gray>- снять"));
+
+        // ---- чертежи ----
+        if (plugin.blueprints().enabled()) {
+            set(15, Text.icon(Material.MAP, "<aqua>Чертежи и рецепты",
+                    "<gray>Изучено рецептов: <white>" + plot.learnedRecipes.size(),
+                    "<gray>Чертёж одноразовый: рецепт остаётся",
+                    "<gray>за предприятием навсегда.",
+                    "<yellow>ЛКМ - изучить чертёж из руки",
+                    "<yellow>ПКМ - магазин чертежей"), e -> {
+                        if (e.isRightClick()) {
+                            new BlueprintShopMenu(plugin, player, () -> new FactoryMenu(plugin, player, plot, back).open(), 0).open();
+                            return;
+                        }
+                        String error = plugin.blueprints().learnFromHand(player, plot);
+                        if (error != null) {
+                            Text.err(player, error);
+                        }
+                        new FactoryMenu(plugin, player, plot, back).open();
+                    });
+        }
 
         // ---- станки ----
         set(18, Ui.section("Станки", Material.ORANGE_STAINED_GLASS_PANE));

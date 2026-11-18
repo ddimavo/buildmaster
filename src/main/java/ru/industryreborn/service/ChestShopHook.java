@@ -30,6 +30,7 @@ public final class ChestShopHook implements Listener {
         if (Bukkit.getPluginManager().getPlugin("ChestShop") == null) {
             return false;
         }
+        registerBlueprintBlock();
         try {
             Class<? extends Event> type = (Class<? extends Event>) Class.forName("com.Acrobot.ChestShop.Events.TransactionEvent");
             Bukkit.getPluginManager().registerEvent(type, this, EventPriority.MONITOR,
@@ -43,6 +44,48 @@ public final class ChestShopHook implements Listener {
         } catch (ReflectiveOperationException | LinkageError e) {
             plugin.getLogger().warning("Не удалось подключиться к ChestShop: " + e);
             return false;
+        }
+    }
+
+    /**
+     * Чертежи продают только магазины администрации: сделки ChestShop с чертежом отменяются (событие PreTransactionEvent, стаки берутся через getStock()).
+     * Не проверено на настоящем ChestShop: при другом устройстве события блокировка просто не включается.
+     */
+    @SuppressWarnings("unchecked")
+    private void registerBlueprintBlock() {
+        try {
+            Class<? extends Event> pre = (Class<? extends Event>) Class.forName("com.Acrobot.ChestShop.Events.PreTransactionEvent");
+            Bukkit.getPluginManager().registerEvent(pre, this, EventPriority.HIGH, (listener, event) -> {
+                if (pre.isInstance(event)) {
+                    blockBlueprints(event);
+                }
+            }, plugin, false);
+        } catch (ReflectiveOperationException | LinkageError e) {
+            plugin.getLogger().warning("ChestShop: запрет на продажу чертежей не включён: " + e);
+        }
+    }
+
+    private void blockBlueprints(Event event) {
+        try {
+            if (plugin.blueprints() == null || !(event instanceof org.bukkit.event.Cancellable cancellable)) {
+                return;
+            }
+            Object stock = event.getClass().getMethod("getStock").invoke(event);
+            if (!(stock instanceof org.bukkit.inventory.ItemStack[] stacks)) {
+                return;
+            }
+            for (org.bukkit.inventory.ItemStack s : stacks) {
+                if (plugin.blueprints().isBlueprint(s)) {
+                    cancellable.setCancelled(true);
+                    Object client = event.getClass().getMethod("getClient").invoke(event);
+                    if (client instanceof org.bukkit.entity.Player p) {
+                        ru.industryreborn.util.Text.err(p, "Чертежи продаёт только магазин администрации: /district blueprint shop");
+                    }
+                    return;
+                }
+            }
+        } catch (ReflectiveOperationException | RuntimeException e) {
+            plugin.getLogger().log(java.util.logging.Level.FINE, "ChestShop: не удалось проверить сделку на чертёж", e);
         }
     }
 

@@ -23,6 +23,10 @@ permissions:
     children:
       industryreborn.bank: true
       industryreborn.grid: true
+      industryreborn.vault: true
+  industryreborn.vault:
+    description: Хранилище администрации для чертежей - открыть, забрать предметы и распоряжаться ими
+    default: op
   industryreborn.bank:
     description: Работа банка - казна, проверка всех счетов, комиссии, штраф и налоги
     default: op

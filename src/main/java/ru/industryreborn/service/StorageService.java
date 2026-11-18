@@ -91,9 +91,41 @@ public final class StorageService {
         }
     }
 
+    private boolean blueprint(ItemStack s) {
+        return plugin.blueprints() != null && plugin.blueprints().isBlueprint(s);
+    }
+
+    /**
+     * Чертежи не продаются через аукцион казны и не удаляются: они уходят в хранилище администрации. Переносит чертежи записи туда
+     * и возвращает, сколько стаков перенесено (пустая запись остаётся, её убирает вызывающий).
+     */
+    private int extractBlueprints(StorageEntry e, String why) {
+        int moved = 0;
+        for (int i = e.stacks.size() - 1; i >= 0; i--) {
+            ItemStack s = ItemStack.deserializeBytes(e.stacks.get(i));
+            if (blueprint(s)) {
+                plugin.blueprints().deposit(s, why);
+                e.stacks.remove(i);
+                moved++;
+            }
+        }
+        return moved;
+    }
+
     /** Добавляет вещи в хранилище. Повторные вызовы с тем же batch дополняют одну запись. */
     public void add(UUID owner, String plotId, List<ItemStack> items, StorageEntry.State state, String reason,
                     String batch) {
+        if (state == StorageEntry.State.AUCTION) {
+            List<ItemStack> rest = new ArrayList<>();
+            for (ItemStack s : items) {
+                if (blueprint(s)) {
+                    plugin.blueprints().deposit(s, "не для аукциона: участок " + plotId);
+                } else {
+                    rest.add(s);
+                }
+            }
+            items = rest;
+        }
         if (items.isEmpty()) {
             return;
         }
@@ -193,7 +225,12 @@ public final class StorageService {
                             entries(owner).remove(e);
                         }
                         save(owner);
-                        return ItemStack.deserializeBytes(ref);
+                        ItemStack taken = ItemStack.deserializeBytes(ref);
+                        if (blueprint(taken)) {
+                            plugin.blueprints().deposit(taken, "не для аукциона: участок " + e.plotId);
+                            return null;
+                        }
+                        return taken;
                     }
                 }
             }
@@ -231,15 +268,22 @@ public final class StorageService {
                 int moved = 0;
                 for (StorageEntry e : list) {
                     if (e.expired(now, storageDays)) {
+                        extractBlueprints(e, "срок хранения истёк: участок " + e.plotId);
                         e.state = StorageEntry.State.AUCTION;
                         moved++;
                     }
                 }
                 if (moved > 0) {
+                    list.removeIf(e -> e.state == StorageEntry.State.AUCTION && e.stacks.isEmpty());
                     removed += moved;
                     save(owner);
                 }
                 continue;
+            }
+            for (StorageEntry e : list) {
+                if (e.expired(now, storageDays)) {
+                    extractBlueprints(e, "срок хранения истёк: участок " + e.plotId);
+                }
             }
             list.removeIf(e -> e.expired(now, storageDays));
             if (list.size() != before) {
@@ -281,6 +325,13 @@ public final class StorageService {
         int n = 0;
         java.util.function.Predicate<StorageEntry> match = e -> e.state == StorageEntry.State.ARRESTED
                 && (entryId == null || e.id.equals(entryId));
+        if (newState == null || newState == StorageEntry.State.AUCTION) {   // удалить или на аукцион: чертежи уходят в хранилище администрации
+            for (StorageEntry e : list) {
+                if (match.test(e)) {
+                    extractBlueprints(e, "решение по арестованному: участок " + e.plotId);
+                }
+            }
+        }
         if (newState == null) { // удалить
             n = (int) list.stream().filter(match).count();
             list.removeIf(match);
@@ -291,6 +342,7 @@ public final class StorageService {
                     n++;
                 }
             }
+            list.removeIf(e -> e.state == newState && e.stacks.isEmpty());
         }
         if (n > 0) {
             save(owner);

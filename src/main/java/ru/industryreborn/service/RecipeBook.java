@@ -421,6 +421,18 @@ public final class RecipeBook {
     // ------------------------------------------------------------ рецепты администратора
 
     private final Map<String, Recipe> custom = new LinkedHashMap<>();
+    private final Map<String, Double> blueprintPrice = new LinkedHashMap<>();
+    private final Map<String, String> blueprintItem = new LinkedHashMap<>();
+
+    /** Цена чертежа в магазине администрации (0 - не продаётся). */
+    public double blueprintPrice(String recipeId) {
+        return blueprintPrice.getOrDefault(recipeId, 0.0);
+    }
+
+    /** Предмет-основа чертежа (ссылка вида ir:id / nexo:id) либо null - обычная бумага. */
+    public String blueprintItem(String recipeId) {
+        return blueprintItem.get(recipeId);
+    }
 
     public java.io.File customFolder() {
         return new java.io.File(plugin.getDataFolder(), "recipes");
@@ -446,6 +458,8 @@ public final class RecipeBook {
     /** Читает recipes/*.yml. Возвращает список ошибок (неверные рецепты пропускаются). */
     public List<String> loadCustom() {
         custom.clear();
+        blueprintPrice.clear();
+        blueprintItem.clear();
         List<String> errors = new ArrayList<>();
         java.io.File[] files = customFolder().listFiles((d, n) -> n.toLowerCase(Locale.ROOT).endsWith(".yml"));
         if (files == null) {
@@ -531,6 +545,21 @@ public final class RecipeBook {
         int outAmount = out == null ? 1 : out.getInt("amount", 1);
         if (outRef == null || !items.known(outRef) || outAmount < 1 || outAmount > 64) {
             return "«" + key + "»: у результата нужен известный item и amount от 1 до 64";
+        }
+        double price = s.getDouble("blueprint_price", 0);
+        if (price < 0 || Double.isNaN(price) || Double.isInfinite(price)) {
+            return "«" + key + "»: blueprint_price - число не меньше нуля";
+        }
+        String bpItem = s.getString("blueprint_item");
+        if (bpItem != null && !bpItem.isBlank()) {
+            var bpRef = ru.industryreborn.items.ItemRef.parse(bpItem);
+            if (bpRef == null || !items.known(bpRef)) {
+                return "«" + key + "»: неизвестный blueprint_item «" + bpItem + "»";
+            }
+            blueprintItem.put(id, bpRef.key());
+        }
+        if (price > 0) {
+            blueprintPrice.put(id, price);
         }
         custom.put(id, new Recipe(id, Kind.ASSEMBLE, station, List.copyOf(inputs), items.baseMaterial(outRef), outAmount, seconds,
                 s.getString("category", "Особые"), null, 0, outRef.custom() ? outRef.key() : null, s.getBoolean("free", false)));

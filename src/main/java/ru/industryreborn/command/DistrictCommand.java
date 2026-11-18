@@ -42,7 +42,7 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
 
     private static final List<String> PLAYER_SUBS = List.of("menu", "list", "info", "buy", "rent", "extend",
             "autorenew", "autoreset", "release", "trust", "untrust", "perm", "account", "power", "warnings", "tp",
-            "storage", "claim", "journal", "name", "desc", "bank", "service", "factory", "room", "region", "job", "hologram", "machine", "chest", "shop", "goods", "storefront", "link", "unlink", "enchant", "ui", "plots", "business", "hotel", "admin", "holoshop", "build", "lot", "recipe", "help");
+            "storage", "claim", "journal", "name", "desc", "bank", "service", "factory", "room", "region", "job", "hologram", "machine", "chest", "shop", "goods", "storefront", "link", "unlink", "enchant", "ui", "plots", "business", "hotel", "admin", "holoshop", "build", "lot", "recipe", "blueprint", "help");
     private static final List<String> ADMIN_SUBS = List.of("wand", "pos1", "pos2", "create", "delete", "evict",
             "setprice", "setrent", "setspawn", "resnapshot", "reload", "seize", "reset", "holo", "category",
             "moderation", "arrest", "auction", "show", "module", "balance", "webhook", "item");
@@ -217,6 +217,7 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
                 case "enchant" -> new EnchantCommands(plugin).handle(sender, rest);
                 case "item" -> new ItemCommands(plugin).item(sender, rest);
                 case "recipe" -> new ItemCommands(plugin).recipe(sender, rest);
+                case "blueprint" -> new ItemCommands(plugin).blueprint(sender, rest);
                 case "shop" -> new GoodsCommands(plugin).shop(sender, rest);
                 case "goods" -> new GoodsCommands(plugin).goods(sender, rest);
                 case "storefront" -> new GoodsCommands(plugin).storefront(sender, rest);
@@ -1961,7 +1962,7 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
         if (sub.equals("enchant")) {
             return filter(new EnchantCommands(plugin).complete(sender, args), args[args.length - 1]);
         }
-        if (sub.equals("item") || sub.equals("recipe")) {
+        if (sub.equals("item") || sub.equals("recipe") || sub.equals("blueprint")) {
             return filter(new ItemCommands(plugin).complete(sub, sender, args), args[args.length - 1]);
         }
         if (sub.equals("machine")) {

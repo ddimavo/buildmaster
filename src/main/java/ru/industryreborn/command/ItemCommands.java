@@ -169,6 +169,98 @@ final class ItemCommands {
         }
     }
 
+    // ------------------------------------------------------------ blueprint
+
+    void blueprint(CommandSender sender, String[] args) {
+        String sub = args.length == 0 ? "use" : args[0].toLowerCase(Locale.ROOT);
+        String[] rest = args.length == 0 ? new String[0] : Arrays.copyOfRange(args, 1, args.length);
+        var bp = plugin.blueprints();
+        switch (sub) {
+            case "use" -> {
+                Player p = player(sender);
+                String error = bp.learnFromHand(p, bp.resolvePlot(p, rest.length > 0 ? rest[0] : null));
+                if (error != null) {
+                    throw new CommandError(error);
+                }
+            }
+            case "info" -> {
+                Player p = player(sender);
+                var info = bp.read(p.getInventory().getItemInMainHand());
+                if (info == null) {
+                    throw new CommandError("В руке нет чертежа.");
+                }
+                RecipeBook.Recipe r = plugin.recipes().get(info.recipeId());
+                Text.send(sender, "<yellow>Чертёж: <white>" + Text.esc(r == null ? info.recipeId() : plugin.recipes().outputName(r))
+                        + "<gray> (рецепт " + Text.esc(info.recipeId().replace("custom:", "")) + ")"
+                        + (bp.used(info.serial()) ? " <red>уже использован" : " <green>не использован"));
+            }
+            case "shop" -> {
+                if (!bp.enabled()) {
+                    throw new CommandError("Чертежи сейчас отключены.");
+                }
+                new ru.industryreborn.gui.BlueprintShopMenu(plugin, player(sender), null, 0).open();
+            }
+            case "buy" -> {
+                if (rest.length < 1) {
+                    usage("blueprint buy <рецепт>");
+                }
+                String error = bp.buy(player(sender), rest[0]);
+                if (error != null) {
+                    throw new CommandError(error);
+                }
+            }
+            case "give" -> {
+                requireAdmin(sender);
+                if (rest.length < 2) {
+                    usage("blueprint give <игрок> <рецепт> [количество]");
+                }
+                Player target = org.bukkit.Bukkit.getPlayerExact(rest[0]);
+                if (target == null) {
+                    throw new CommandError("Игрок «" + rest[0] + "» не в сети.");
+                }
+                int amount = 1;
+                if (rest.length > 2) {
+                    try {
+                        amount = Integer.parseInt(rest[2]);
+                    } catch (NumberFormatException e) {
+                        throw new CommandError("Количество - целое число.");
+                    }
+                }
+                String error = bp.give(target, rest[1], amount);
+                if (error != null) {
+                    throw new CommandError(error);
+                }
+                Text.ok(sender, "Выдано " + target.getName() + ": чертёж «" + rest[1] + "» × " + amount + ".");
+            }
+            case "vault" -> {
+                if (!bp.mayUseVault(sender)) {
+                    throw new CommandError("Недостаточно прав: нужно право industryreborn.vault.");
+                }
+                Player p = player(sender);
+                String what = rest.length == 0 ? "open" : rest[0].toLowerCase(Locale.ROOT);
+                if (what.equals("put")) {
+                    ItemStack hand = p.getInventory().getItemInMainHand();
+                    if (hand.getType().isAir()) {
+                        throw new CommandError("Возьмите в руку предмет, который нужно положить в хранилище.");
+                    }
+                    bp.deposit(hand.clone(), "положил " + p.getName());
+                    p.getInventory().setItemInMainHand(null);
+                    Text.ok(sender, "Предмет положен в хранилище администрации.");
+                } else {
+                    new ru.industryreborn.gui.BlueprintVaultMenu(plugin, p, 0).open();
+                }
+            }
+            default -> usage("blueprint [use [участок]|info|shop|buy <рецепт>|give <игрок> <рецепт> [кол-во]|vault [put]]");
+        }
+    }
+
+    private Player player(CommandSender sender) {
+        if (sender instanceof Player p) {
+            return p;
+        }
+        throw new CommandError("Эту команду можно выполнить только игроку.");
+    }
+
     private RecipeBook.Recipe recipeArg(String id) {
         RecipeBook.Recipe r = plugin.recipes().get("custom:" + id.toLowerCase(Locale.ROOT));
         if (r == null) {
@@ -180,6 +272,21 @@ final class ItemCommands {
     List<String> complete(String sub, CommandSender sender, String[] args) {
         List<String> out = new ArrayList<>();
         int n = args.length;
+        if (sub.equals("blueprint")) {
+            if (n == 2) {
+                return List.of("use", "info", "shop", "buy", "give", "vault");
+            }
+            if (n == 3 && args[1].equalsIgnoreCase("vault")) {
+                return List.of("put");
+            }
+            if ((n == 3 && args[1].equalsIgnoreCase("buy")) || (n == 4 && args[1].equalsIgnoreCase("give"))) {
+                plugin.recipes().customRecipes().forEach(r -> out.add(r.id().substring(7)));
+            }
+            if (n == 3 && args[1].equalsIgnoreCase("give")) {
+                org.bukkit.Bukkit.getOnlinePlayers().forEach(pl -> out.add(pl.getName()));
+            }
+            return out;
+        }
         if (sub.equals("item")) {
             if (n == 2) {
                 return List.of("list", "info", "give", "reload", "export-nexo");
