@@ -225,6 +225,31 @@ class RoomAutoTest extends PluginTestBase {
     // ------------------------------------------------------------ подтверждение и отмена
 
     @Test
+    void anAdminCreatesRoomsOfAnyClassWithoutReviewAndEconomyByDefault() {
+        Block door = door(5, 3);
+        lookAt(door, 5.5, 1.5);
+        plugin.roomAuto().analyze(boss, "101", 75);
+        assertEquals(ru.industryreborn.model.RoomClass.ECONOMY, plugin.roomAuto().pending(boss).roomClass(), "по умолчанию эконом");
+        plugin.roomAuto().cancel(boss);
+        assertNull(plugin.roomAuto().analyze(boss, "101", 75, ru.industryreborn.model.RoomClass.LUXURY));
+        assertNull(plugin.roomAuto().confirm(boss));
+        server.getScheduler().performTicks(5);
+        assertEquals(ru.industryreborn.model.RoomClass.LUXURY, plugin.plots().get("h-101").roomClass, "люкс сразу, без заявки");
+        assertTrue(plugin.moderation().pending().isEmpty());
+    }
+
+    @Test
+    void roomAutoCommandTakesAnOptionalClass() {
+        Block door = door(5, 3);
+        lookAt(door, 5.5, 1.5);
+        boss.performCommand("district room auto 101 75 комфорт");
+        assertEquals(ru.industryreborn.model.RoomClass.COMFORT, plugin.roomAuto().pending(boss).roomClass());
+        plugin.roomAuto().cancel(boss);
+        boss.performCommand("district room auto 101 75 президентский");
+        assertNull(plugin.roomAuto().pending(boss), "неизвестный класс - ошибка, предложения нет");
+    }
+
+    @Test
     void confirmCreatesTheRoomWithTheDoorAndRate() {
         Block door = door(5, 3);
         lookAt(door, 5.5, 1.5);

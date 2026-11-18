@@ -26,6 +26,7 @@ public final class DoorText {
         if (hotel != null) {
             lines.add("<gray>" + Text.esc(hotel.displayName()));
         }
+        lines.add(room.roomClass.badge());
         if (room.name != null && !room.name.isBlank()) {
             lines.add("<white>" + Text.esc(room.name));
         }

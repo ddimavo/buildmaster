@@ -178,6 +178,12 @@ public final class PlotService {
      */
     public void createRoom(Player admin, Plot hotel, String roomId, Box box, double rate, List<int[]> doors,
                            java.util.function.Consumer<Boolean> done) {
+        createRoom(admin, hotel, roomId, box, rate, doors, ru.industryreborn.model.RoomClass.ECONOMY, done);
+    }
+
+    /** То же, но с указанным классом: администратор создаёт номер любого класса без проверки. */
+    public void createRoom(Player admin, Plot hotel, String roomId, Box box, double rate, List<int[]> doors,
+                           ru.industryreborn.model.RoomClass roomClass, java.util.function.Consumer<Boolean> done) {
         if (!plugin.modules().check(admin, Module.HOTELS)) {
             done.accept(false);
             return;
@@ -216,12 +222,13 @@ public final class PlotService {
             room.rentPerDay = rate;
             room.resetOnRelease = true;
             room.doors.addAll(doors);
+            room.roomClass = roomClass == null ? ru.industryreborn.model.RoomClass.ECONOMY : roomClass;
             plugin.plots().add(room);
             plugin.plots().save();
             plugin.stations().register(room);
             plugin.hotels().invalidate();
             plugin.journal().add(id, null, admin.getName(), Journal.Action.HOTEL,
-                    "Создан номер в отеле " + hotel.id + ", " + box.describe() + ", " + priceText(rate) + " за сутки");
+                    "Создан номер в отеле " + hotel.id + ", " + box.describe() + ", " + priceText(rate) + " за сутки, класс: " + room.roomClass.title());
             creating.remove(key);
             Text.ok(admin, "Номер <white>" + id + "</white> создан (" + box.describe() + ", " + priceText(rate) + " за сутки).");
             done.accept(true);

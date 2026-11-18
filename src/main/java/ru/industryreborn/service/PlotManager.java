@@ -16,6 +16,7 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import ru.industryreborn.IndustryRebornPlugin;
 import ru.industryreborn.model.Box;
 import ru.industryreborn.model.Plot;
+import ru.industryreborn.model.RoomClass;
 
 /** Хранилище участков: загрузка/сохранение и быстрый поиск по координатам. */
 public final class PlotManager {
@@ -267,6 +268,8 @@ public final class PlotManager {
         }
         p.parentId = s.getString("parent");
         p.maxRoomRate = s.getDouble("max-room-rate");
+        RoomClass loadedClass = RoomClass.parse(s.getString("room-class"));
+        p.roomClass = loadedClass == null ? RoomClass.ECONOMY : loadedClass;
         for (String d : s.getStringList("doors")) {
             String[] c = d.split(",");
             p.doors.add(new int[] {Integer.parseInt(c[0].trim()), Integer.parseInt(c[1].trim()), Integer.parseInt(c[2].trim())});
@@ -407,6 +410,9 @@ public final class PlotManager {
             }
             yml.set(k + "parent", p.parentId);
             yml.set(k + "max-room-rate", p.maxRoomRate);
+            if (p.roomClass != RoomClass.ECONOMY) {
+                yml.set(k + "room-class", p.roomClass.name());
+            }
             yml.set(k + "doors", p.doors.stream().map(d -> d[0] + "," + d[1] + "," + d[2]).toList());
             yml.set(k + "factory.level", p.level);
             for (var m : p.machineStates.entrySet()) {

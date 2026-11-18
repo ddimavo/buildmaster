@@ -28,6 +28,7 @@ public final class RoomsMenu extends Menu {
             Plot room = rooms.get(index);
             boolean mine = room.involves(player.getUniqueId());
             List<String> lore = new ArrayList<>();
+            lore.add("<gray>Класс: " + room.roomClass.badge());
             lore.add("<gray>Цена: <white>" + plugin.economy().format(room.rentPerDay) + " за сутки");
             lore.add("<gray>Размер: <white>" + room.box.describe());
             if (room.isFree()) {

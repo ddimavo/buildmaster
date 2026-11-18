@@ -135,6 +135,8 @@ public final class Plot {
     public String parentId;
     /** Блоки дверей номера (x, y, z): открываются только гостем, его доверенными и управляющим отеля. */
     public final java.util.List<int[]> doors = new java.util.ArrayList<>();
+    /** Класс номера отеля (только для номеров): по умолчанию эконом. */
+    public RoomClass roomClass = RoomClass.ECONOMY;
     /** Отель: максимальная цена номера за сутки, которую может назначить управляющий (0 - только администратор). */
     public double maxRoomRate;
     /** Уровень улучшений мастерской (0 - базовый) и производственные линии. */

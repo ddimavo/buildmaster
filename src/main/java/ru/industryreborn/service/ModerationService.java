@@ -102,6 +102,42 @@ public final class ModerationService {
         }
     }
 
+    // ------------------------------------------------------------ класс номера
+
+    /** Заявка управляющего на смену класса номера; решение принимает администратор (проверка номера на месте). */
+    public void submitRoomClass(Player player, Plot room, ru.industryreborn.model.RoomClass target) {
+        requests.add(new Request(UUID.randomUUID(), Request.Type.ROOM_CLASS, room.id, player.getUniqueId(), player.getName(),
+                target.name(), System.currentTimeMillis()));
+        save();
+        for (Player a : Bukkit.getOnlinePlayers()) {
+            if (a.hasPermission("industryreborn.admin")) {
+                Text.send(a, "<yellow>Новая заявка: класс номера " + Text.esc(room.id) + " → " + Text.esc(target.title())
+                        + ". Проверьте номер и откройте /district moderation");
+            }
+        }
+    }
+
+    /** Ожидающая заявка на смену класса номера или null. */
+    public Request pendingRoomClass(String roomId) {
+        for (Request r : requests) {
+            if (r.status == Request.Status.PENDING && r.type == Request.Type.ROOM_CLASS && r.plotId.equalsIgnoreCase(roomId)) {
+                return r;
+            }
+        }
+        return null;
+    }
+
+    /** Текст заявки для людей: для класса номера «Эконом → Люкс», иначе как есть. */
+    public String describe(Request r) {
+        if (r.type == Request.Type.ROOM_CLASS) {
+            Plot room = plugin.plots().get(r.plotId);
+            ru.industryreborn.model.RoomClass target = ru.industryreborn.model.RoomClass.parse(r.text);
+            String from = room == null ? "?" : room.roomClass.title();
+            return from + " → " + (target == null ? r.text : target.title());
+        }
+        return r.text;
+    }
+
     /** Ожидающие заявки на зачарования мастерской. */
     public List<Request> pendingEnchants(String plotId) {
         List<Request> list = new ArrayList<>();
@@ -314,6 +350,27 @@ public final class ModerationService {
             }
             plot.approvedEnchants.add(r.text);
             plugin.plots().save();
+        } else if (r.type == Request.Type.ROOM_CLASS) {
+            ru.industryreborn.model.RoomClass target = ru.industryreborn.model.RoomClass.parse(r.text);
+            Plot hotel = plot == null ? null : plugin.hotels().hotelOf(plot);
+            String stale = plot == null || plot.category != ru.industryreborn.model.Category.ROOM ? "номера больше нет"
+                    : hotel == null || !hotel.isOwner(r.requester) ? "отель сменил управляющего"
+                    : target == null ? "неизвестный класс"
+                    : plot.roomClass == target ? "номер уже этого класса" : null;
+            if (stale != null) {
+                r.status = Request.Status.REJECTED;
+                r.reason = "Заявка устарела: " + stale;
+                plugin.journal().add(r.plotId, r.requester, adminName, Journal.Action.HOTEL, "Класс номера: " + r.reason);
+                notifyRequester(r, "<red>Класс номера " + Text.esc(r.plotId) + " не изменён: " + Text.esc(stale));
+                trim();
+                save();
+                return;
+            }
+            plugin.hotels().applyClass(plot, target, adminName, "по заявке " + r.requesterName, r.requester);
+            notifyRequester(r, "<green>Класс номера " + Text.esc(r.plotId) + " изменён: " + target.badge());
+            trim();
+            save();
+            return;
         } else if (r.type == Request.Type.HOLO) {
             org.bukkit.Location at = plot == null ? null : holoParse(plot, r.text);
             String stale = plot == null || at == null || holoKind(r.text) == null ? "участок или позиция больше недействительны"
@@ -362,14 +419,14 @@ public final class ModerationService {
         return t == Request.Type.NAME ? Journal.Action.NAME_APPROVED
                 : t == Request.Type.DESCRIPTION ? Journal.Action.DESC_APPROVED
                 : t == Request.Type.HOLO ? Journal.Action.HOLO : t == Request.Type.ENCHANT ? Journal.Action.ENCHANT
-                : Journal.Action.PLAYER_PLOT;
+                : t == Request.Type.ROOM_CLASS ? Journal.Action.HOTEL : Journal.Action.PLAYER_PLOT;
     }
 
     private static Journal.Action journalRejected(Request.Type t) {
         return t == Request.Type.NAME ? Journal.Action.NAME_REJECTED
                 : t == Request.Type.DESCRIPTION ? Journal.Action.DESC_REJECTED
                 : t == Request.Type.HOLO ? Journal.Action.HOLO : t == Request.Type.ENCHANT ? Journal.Action.ENCHANT
-                : Journal.Action.PLAYER_PLOT;
+                : t == Request.Type.ROOM_CLASS ? Journal.Action.HOTEL : Journal.Action.PLAYER_PLOT;
     }
 
     private void notifyRequester(Request r, String message) {

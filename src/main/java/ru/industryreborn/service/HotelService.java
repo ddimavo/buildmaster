@@ -12,6 +12,7 @@ import ru.industryreborn.IndustryRebornPlugin;
 import ru.industryreborn.model.Box;
 import ru.industryreborn.model.Category;
 import ru.industryreborn.model.Plot;
+import ru.industryreborn.model.RoomClass;
 import ru.industryreborn.util.Text;
 
 /**
@@ -151,6 +152,65 @@ public final class HotelService {
         return null;
     }
 
+    // ------------------------------------------------------------ классы номеров
+
+    /**
+     * Смена класса номера. Администратор меняет сразу и без проверки; управляющий отеля подаёт заявку, которую одобряет администратор.
+     * Возвращает ошибку, null при немедленной смене и пустую строку, если заявка подана.
+     */
+    public String changeClass(Player who, Plot room, RoomClass target) {
+        String moduleOff = plugin.modules().refusal(ru.industryreborn.service.Module.HOTELS);
+        if (moduleOff != null) {
+            return moduleOff;
+        }
+        if (room.category != Category.ROOM) {
+            return "«" + room.id + "» не номер отеля.";
+        }
+        if (target == null) {
+            return "Неизвестный класс. Доступны: " + classList();
+        }
+        boolean admin = who.hasPermission("industryreborn.admin");
+        Plot hotel = hotelOf(room);
+        if (!admin && (hotel == null || !hotel.isOwner(who.getUniqueId()))) {
+            return "Класс номера меняет администратор; управляющий отеля может подать заявку.";
+        }
+        if (room.roomClass == target && (admin || plugin.moderation().pendingRoomClass(room.id) == null)) {
+            return "Номер " + room.id + " уже имеет класс «" + target.title() + "».";
+        }
+        if (admin) {
+            applyClass(room, target, who.getName(), "администратор");
+            return null;
+        }
+        if (plugin.moderation().pendingRoomClass(room.id) != null) {
+            return "Заявка на смену класса этого номера уже ждёт решения администратора.";
+        }
+        plugin.moderation().submitRoomClass(who, room, target);
+        return "";
+    }
+
+    /** Ставит класс и обновляет всё, что его показывает. */
+    public void applyClass(Plot room, RoomClass target, String by, String how) {
+        applyClass(room, target, by, how, null);
+    }
+
+    /** subject - игрок, чью заявку исполнили: запись попадёт и в его журнал. */
+    public void applyClass(Plot room, RoomClass target, String by, String how, java.util.UUID subject) {
+        RoomClass old = room.roomClass;
+        room.roomClass = target;
+        plugin.plots().save();
+        plugin.holograms().update(room);
+        plugin.journal().add(room.id, subject, by, Journal.Action.HOTEL,
+                "Класс номера: " + old.title() + " → " + target.title() + " (" + how + ")");
+    }
+
+    public static String classList() {
+        StringBuilder sb = new StringBuilder();
+        for (RoomClass c : RoomClass.values()) {
+            sb.append(sb.length() == 0 ? "" : ", ").append(c.key()).append(" (").append(c.title()).append(")");
+        }
+        return sb.toString();
+    }
+
     // ------------------------------------------------------------ двери
 
     private static String doorKey(String world, int x, int y, int z) {
@@ -274,6 +334,11 @@ public final class HotelService {
      */
     public String template(Player admin, Plot hotel, String prefix, Box first, boolean axisX, int step, int count,
                            double rate, int[] doorOffset, Consumer<Integer> done) {
+        return template(admin, hotel, prefix, first, axisX, step, count, rate, doorOffset, RoomClass.ECONOMY, done);
+    }
+
+    public String template(Player admin, Plot hotel, String prefix, Box first, boolean axisX, int step, int count,
+                           double rate, int[] doorOffset, RoomClass roomClass, Consumer<Integer> done) {
         String moduleOff = plugin.modules().refusal(ru.industryreborn.service.Module.HOTELS);
         if (moduleOff != null) {
             return moduleOff;
@@ -301,12 +366,12 @@ public final class HotelService {
             }
             boxes.add(b);
         }
-        createChain(admin, hotel, prefix, boxes, 0, rate, first, doorOffset, 0, done);
+        createChain(admin, hotel, prefix, boxes, 0, rate, first, doorOffset, 0, roomClass, done);
         return null;
     }
 
     private void createChain(Player admin, Plot hotel, String prefix, List<Box> boxes, int index, double rate, Box first,
-                             int[] doorOffset, int created, Consumer<Integer> done) {
+                             int[] doorOffset, int created, RoomClass roomClass, Consumer<Integer> done) {
         if (index >= boxes.size()) {
             done.accept(created);
             return;
@@ -316,8 +381,8 @@ public final class HotelService {
         if (doorOffset != null) {
             doors.add(new int[] {b.minX() + doorOffset[0], b.minY() + doorOffset[1], b.minZ() + doorOffset[2]});
         }
-        plugin.service().createRoom(admin, hotel, prefix + (index + 1), b, rate, doors, ok ->
-                createChain(admin, hotel, prefix, boxes, index + 1, rate, first, doorOffset, created + (ok ? 1 : 0), done));
+        plugin.service().createRoom(admin, hotel, prefix + (index + 1), b, rate, doors, roomClass, ok ->
+                createChain(admin, hotel, prefix, boxes, index + 1, rate, first, doorOffset, created + (ok ? 1 : 0), roomClass, done));
     }
 
     /** Удаляет свободный номер вместе со снимком и книгой учёта. */

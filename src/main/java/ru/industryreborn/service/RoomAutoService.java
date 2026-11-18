@@ -27,7 +27,7 @@ public final class RoomAutoService {
 
     /** Предложенный номер, ожидающий подтверждения. */
     public record Pending(UUID admin, String hotelId, String roomId, double rate, Box box, int[] door, int cells,
-                          long createdAt) { }
+                          long createdAt, ru.industryreborn.model.RoomClass roomClass) { }
 
     private final IndustryRebornPlugin plugin;
     private final Map<UUID, Pending> pending = new HashMap<>();
@@ -74,6 +74,11 @@ public final class RoomAutoService {
 
     /** Ищет номер за дверью, на которую смотрит игрок. Возвращает сообщение об ошибке или null. */
     public String analyze(Player player, String roomId, double rate) {
+        return analyze(player, roomId, rate, ru.industryreborn.model.RoomClass.ECONOMY);
+    }
+
+    /** То же с классом номера (администратор создаёт номер любого класса без проверки). */
+    public String analyze(Player player, String roomId, double rate, ru.industryreborn.model.RoomClass roomClass) {
         Block target = targetFinder.apply(player);
         if (target == null) {
             return "Наведите взгляд на дверь номера (не дальше 6 блоков).";
@@ -116,7 +121,8 @@ public final class RoomAutoService {
             return error;
         }
         Pending p = new Pending(player.getUniqueId(), hotel.id, roomId, rate, scan.box(),
-                new int[] {target.getX(), target.getY(), target.getZ()}, scan.cells(), System.currentTimeMillis());
+                new int[] {target.getX(), target.getY(), target.getZ()}, scan.cells(), System.currentTimeMillis(),
+                roomClass == null ? ru.industryreborn.model.RoomClass.ECONOMY : roomClass);
         pending.put(player.getUniqueId(), p);
         Text.send(player, "<yellow>Найден номер <white>" + Text.esc(hotel.id + "-" + roomId) + "</white>: размер <white>"
                 + scan.box().describe() + "</white>, объём <white>" + scan.box().volume() + "</white> блоков. "
@@ -145,7 +151,7 @@ public final class RoomAutoService {
         }
         pending.remove(player.getUniqueId());
         Text.send(player, "<yellow>Создаю номер...");
-        plugin.service().createRoom(player, hotel, p.roomId(), p.box(), p.rate(), List.of(p.door()), ok -> { });
+        plugin.service().createRoom(player, hotel, p.roomId(), p.box(), p.rate(), List.of(p.door()), p.roomClass(), ok -> { });
         return null;
     }
 }

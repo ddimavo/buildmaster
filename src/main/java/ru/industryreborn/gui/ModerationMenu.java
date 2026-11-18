@@ -32,7 +32,7 @@ public final class ModerationMenu extends Menu {
             lore.add("<gray>Игрок: <white>" + Text.esc(r.requesterName));
             lore.add("<gray>Подано: <white>" + Text.date(r.createdAt));
             lore.add("<gray>Текст:");
-            for (String l : TextRules.wrap(r.text, 38)) {
+            for (String l : TextRules.wrap(plugin.moderation().describe(r), 38)) {
                 lore.add("<white>" + Text.esc(l));
             }
             lore.add("");
@@ -44,7 +44,8 @@ public final class ModerationMenu extends Menu {
             }
             set(FIRST + i, Text.icon(r.type == Request.Type.NAME ? Material.NAME_TAG
                             : r.type == Request.Type.HOLO ? Material.ENDER_EYE
-                            : r.type == Request.Type.ENCHANT ? Material.ENCHANTED_BOOK : Material.WRITABLE_BOOK,
+                            : r.type == Request.Type.ENCHANT ? Material.ENCHANTED_BOOK
+                            : r.type == Request.Type.ROOM_CLASS ? Material.RED_BED : Material.WRITABLE_BOOK,
                     "<gold>" + r.type.title(), lore.toArray(new String[0])), e -> {
                         if (e.isShiftClick()) {
                             Plot plot = plugin.plots().get(r.plotId);

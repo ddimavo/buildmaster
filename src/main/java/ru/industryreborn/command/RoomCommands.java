@@ -79,6 +79,18 @@ final class RoomCommands {
         }
     }
 
+    /** Необязательный аргумент «класс» на позиции index: по умолчанию эконом, неверное значение - ошибка. */
+    private static ru.industryreborn.model.RoomClass roomClassArg(String[] args, int index) {
+        if (args.length <= index) {
+            return ru.industryreborn.model.RoomClass.ECONOMY;
+        }
+        var c = ru.industryreborn.model.RoomClass.parse(args[index]);
+        if (c == null) {
+            throw new CommandError("Неизвестный класс «" + args[index] + "». Доступны: " + ru.industryreborn.service.HotelService.classList());
+        }
+        return c;
+    }
+
     private Box selection(Player p, Plot hotel) {
         SelectionListener.Selection sel = plugin.selection().get(p);
         Box box = sel == null ? null : sel.box();
@@ -106,7 +118,7 @@ final class RoomCommands {
             case "create" -> {
                 requireAdmin(sender);
                 if (rest.length < 3) {
-                    throw new CommandError("Использование: /district room create <отель> <номер комнаты> <цена за сутки>");
+                    throw new CommandError("Использование: /district room create <отель> <номер комнаты> <цена за сутки> [класс]");
                 }
                 Player p = player(sender);
                 Plot hotel = hotel(rest[0]);
@@ -115,13 +127,13 @@ final class RoomCommands {
                 if (error != null) {
                     throw new CommandError(error);
                 }
-                plugin.service().createRoom(p, hotel, rest[1], box, number(rest[2], "Цена"), List.of(), ok -> { });
+                plugin.service().createRoom(p, hotel, rest[1], box, number(rest[2], "Цена"), List.of(), roomClassArg(rest, 3), ok -> { });
             }
             case "template" -> {
                 requireAdmin(sender);
                 if (rest.length < 6) {
                     throw new CommandError("Использование: /district room template <отель> <префикс> <x|z> <шаг> <количество> "
-                            + "<цена за сутки> [dx dy dz - смещение двери от угла номера]");
+                            + "<цена за сутки> [dx dy dz - смещение двери от угла номера] [класс]");
                 }
                 Player p = player(sender);
                 Plot hotel = hotel(rest[0]);
@@ -131,11 +143,16 @@ final class RoomCommands {
                     default -> throw new CommandError("Ось: x или z.");
                 };
                 int[] door = null;
+                ru.industryreborn.model.RoomClass tplClass = ru.industryreborn.model.RoomClass.ECONOMY;
+                if (rest.length == 7 || rest.length == 10) {      // последний аргумент - класс номеров
+                    tplClass = roomClassArg(rest, rest.length - 1);
+                    rest = Arrays.copyOf(rest, rest.length - 1);
+                }
                 if (rest.length >= 9) {
                     door = new int[] {integer(rest[6], "dx"), integer(rest[7], "dy"), integer(rest[8], "dz")};
                 }
                 String error = plugin.hotels().template(p, hotel, rest[1], selection(p, hotel), axisX,
-                        integer(rest[3], "Шаг"), integer(rest[4], "Количество"), number(rest[5], "Цена"), door,
+                        integer(rest[3], "Шаг"), integer(rest[4], "Количество"), number(rest[5], "Цена"), door, tplClass,
                         created -> Text.ok(p, "Шаблон выполнен: создано номеров - " + created + "."));
                 if (error != null) {
                     throw new CommandError(error);
@@ -165,10 +182,10 @@ final class RoomCommands {
             case "auto" -> {
                 requireAdmin(sender);
                 if (rest.length < 2) {
-                    throw new CommandError("Использование: /district room auto <номер комнаты> <цена за сутки> "
+                    throw new CommandError("Использование: /district room auto <номер комнаты> <цена за сутки> [класс] "
                             + "(смотрите на дверь номера, стоя в коридоре)");
                 }
-                String error = plugin.roomAuto().analyze(player(sender), rest[0], number(rest[1], "Цена"));
+                String error = plugin.roomAuto().analyze(player(sender), rest[0], number(rest[1], "Цена"), roomClassArg(rest, 2));
                 if (error != null) {
                     throw new CommandError(error);
                 }
@@ -199,6 +216,34 @@ final class RoomCommands {
                 }
                 Text.ok(sender, "Номер удалён.");
             }
+            case "class" -> {
+                if (rest.length < 1) {
+                    throw new CommandError("Использование: /district room class <номер> [класс]");
+                }
+                Plot room = room(rest[0]);
+                if (rest.length == 1) {
+                    Text.send(sender, "<gray>Класс номера " + Text.esc(room.id) + ": " + room.roomClass.badge());
+                    var pending = plugin.moderation().pendingRoomClass(room.id);
+                    if (pending != null) {
+                        Text.send(sender, "<yellow>Ждёт решения администратора: " + Text.esc(plugin.moderation().describe(pending)));
+                    }
+                    return;
+                }
+                var target = ru.industryreborn.model.RoomClass.parse(rest[1]);
+                if (target == null) {
+                    throw new CommandError("Неизвестный класс. Доступны: " + ru.industryreborn.service.HotelService.classList());
+                }
+                String error = plugin.hotels().changeClass(player(sender), room, target);
+                if (error != null && !error.isEmpty()) {
+                    throw new CommandError(error);
+                }
+                if (error == null) {
+                    Text.ok(sender, "Класс номера " + room.id + ": " + target.plain() + ".");
+                } else {
+                    Text.ok(sender, "Заявка на смену класса номера " + room.id + " на «" + target.title()
+                            + "» отправлена администратору. Решение придёт в чат и в журнал.");
+                }
+            }
             case "maxrate" -> {
                 requireAdmin(sender);
                 if (rest.length < 2) {
@@ -211,7 +256,7 @@ final class RoomCommands {
                         + plugin.economy().format(hotel.maxRoomRate) + " за сутки"
                         + (hotel.maxRoomRate <= 0 ? " (то есть не может)." : "."));
             }
-            default -> throw new CommandError("Использование: /district room [list|rate|create|auto|confirm|cancel|template|door|delete|maxrate]");
+            default -> throw new CommandError("Использование: /district room [list|rate|create|auto|confirm|cancel|template|door|delete|maxrate|class]");
         }
     }
 
@@ -234,7 +279,7 @@ final class RoomCommands {
                 + plugin.hotels().freeRooms(hotel) + " из " + rooms.size() + "):");
         for (Plot r : rooms) {
             String state = r.isFree() ? "<green>свободен" : "<red>занят до " + Text.date(r.rentedUntil);
-            sender.sendMessage(Text.mm("<gray> <white>" + Text.esc(r.id) + "</white> - " + state + "<gray>, "
+            sender.sendMessage(Text.mm("<gray> <white>" + Text.esc(r.id) + "</white> " + r.roomClass.badge() + "<gray> - " + state + "<gray>, "
                     + plugin.economy().format(r.rentPerDay) + " за сутки, " + r.box.describe()));
         }
     }
@@ -242,7 +287,7 @@ final class RoomCommands {
     List<String> complete(CommandSender sender, String[] args) {
         int n = args.length; // args[0] = "room"
         if (n == 2) {
-            return List.of("list", "rate", "create", "auto", "confirm", "cancel", "template", "door", "delete", "maxrate");
+            return List.of("list", "rate", "create", "auto", "confirm", "cancel", "template", "door", "delete", "maxrate", "class");
         }
         String sub = args[1].toLowerCase(Locale.ROOT);
         List<String> hotels = plugin.plots().all().stream().filter(p -> p.category == Category.HOTEL).map(p -> p.id).toList();
@@ -250,7 +295,7 @@ final class RoomCommands {
         if (n == 3 && List.of("create", "template", "maxrate", "list").contains(sub)) {
             return hotels;
         }
-        if (n == 3 && List.of("rate", "delete").contains(sub)) {
+        if (n == 3 && List.of("rate", "delete", "class").contains(sub)) {
             return rooms;
         }
         if (n == 3 && sub.equals("door")) {
@@ -258,6 +303,9 @@ final class RoomCommands {
         }
         if (n == 4 && sub.equals("door") && args[2].equalsIgnoreCase("clear")) {
             return rooms;
+        }
+        if (n == 4 && sub.equals("class")) {
+            return java.util.Arrays.stream(ru.industryreborn.model.RoomClass.values()).map(ru.industryreborn.model.RoomClass::key).toList();
         }
         if (n == 4 && sub.equals("template")) {
             return List.of("room");
