@@ -50,7 +50,8 @@ public final class ModerationMenu extends Menu {
             set(FIRST + i, Text.icon(r.type == Request.Type.NAME ? Material.NAME_TAG
                             : r.type == Request.Type.HOLO ? Material.ENDER_EYE
                             : r.type == Request.Type.ENCHANT ? Material.ENCHANTED_BOOK
-                            : r.type == Request.Type.ROOM_CLASS ? Material.RED_BED : Material.WRITABLE_BOOK,
+                            : r.type == Request.Type.ROOM_CLASS ? Material.RED_BED
+                            : r.type == Request.Type.RECIPE ? Material.CRAFTING_TABLE : Material.WRITABLE_BOOK,
                     "<gold>" + r.type.title(), lore.toArray(new String[0])), e -> {
                         if (e.isShiftClick()) {
                             Plot plot = plugin.plots().get(r.plotId);

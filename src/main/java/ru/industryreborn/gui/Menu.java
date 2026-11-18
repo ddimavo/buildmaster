@@ -105,6 +105,9 @@ public abstract class Menu implements InventoryHolder {
         }
     }
 
+    /** Клик по нижнему инвентарю игрока (по умолчанию ничего; меню-конструкторы выбирают предметы из инвентаря). */
+    public void handleBottomClick(InventoryClickEvent event) { }
+
     protected int rows() {
         return inventory.getSize() / 9;
     }

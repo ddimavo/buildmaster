@@ -422,6 +422,17 @@ public final class RecipeBook {
 
     private final Map<String, Recipe> custom = new LinkedHashMap<>();
     private final Map<String, Double> blueprintPrice = new LinkedHashMap<>();
+    private final Map<String, String> authors = new LinkedHashMap<>();
+
+    /** Предприятие-автор рецепта игрока (одобренная заявка) либо null - рецепт администратора из файла. */
+    public String author(String recipeId) {
+        return authors.get(recipeId);
+    }
+
+    /** Файл рецептов, одобренных по заявкам игроков (читается вместе с остальными recipes/*.yml). */
+    public java.io.File playerFile() {
+        return new java.io.File(customFolder(), "_player.yml");
+    }
     private final Map<String, String> blueprintItem = new LinkedHashMap<>();
 
     /** Цена чертежа в магазине администрации (0 - не продаётся). */
@@ -460,6 +471,7 @@ public final class RecipeBook {
         custom.clear();
         blueprintPrice.clear();
         blueprintItem.clear();
+        authors.clear();
         List<String> errors = new ArrayList<>();
         java.io.File[] files = customFolder().listFiles((d, n) -> n.toLowerCase(Locale.ROOT).endsWith(".yml"));
         if (files == null) {
@@ -546,6 +558,7 @@ public final class RecipeBook {
         if (outRef == null || !items.known(outRef) || outAmount < 1 || outAmount > 64) {
             return "«" + key + "»: у результата нужен известный item и amount от 1 до 64";
         }
+        String authorPlot = s.getString("author");
         double price = s.getDouble("blueprint_price", 0);
         if (price < 0 || Double.isNaN(price) || Double.isInfinite(price)) {
             return "«" + key + "»: blueprint_price - число не меньше нуля";
@@ -563,6 +576,108 @@ public final class RecipeBook {
         }
         custom.put(id, new Recipe(id, Kind.ASSEMBLE, station, List.copyOf(inputs), items.baseMaterial(outRef), outAmount, seconds,
                 s.getString("category", "Особые"), null, 0, outRef.custom() ? outRef.key() : null, s.getBoolean("free", false)));
+        if (authorPlot != null && !authorPlot.isBlank()) {
+            authors.put(id, authorPlot);
+        }
+        return null;
+    }
+
+    private static final String PLAYER_CATEGORY = "Рецепты игроков";
+
+    /**
+     * Добавляет рецепт, одобренный по заявке: проверяет его как обычный, записывает в recipes/_player.yml и подключает.
+     * Возвращает id рецепта («custom:...») либо null и ошибку в error[0].
+     */
+    public String addPlayerRecipe(String slug, String authorPlot, String station, double seconds, List<String[]> inputs, String[] output,
+                                  double bpPrice, String[] error) {
+        String base = slug.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9_]", "_");
+        if (base.length() > 32) {
+            base = base.substring(0, 32);
+        }
+        String key = base;
+        for (int n = 2; custom.containsKey("custom:" + key); n++) {
+            key = base + "_" + n;
+        }
+        org.bukkit.configuration.file.YamlConfiguration yml = new org.bukkit.configuration.file.YamlConfiguration();
+        String p = key + ".";
+        yml.set(p + "station", station);
+        yml.set(p + "seconds", seconds);
+        yml.set(p + "category", PLAYER_CATEGORY);
+        yml.set(p + "free", false);
+        yml.set(p + "author", authorPlot);
+        yml.set(p + "blueprint_price", bpPrice);
+        List<Map<String, Object>> in = new ArrayList<>();
+        for (String[] part : inputs) {
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("item", part[0]);
+            m.put("amount", Integer.parseInt(part[1]));
+            in.add(m);
+        }
+        yml.set(p + "inputs", in);
+        yml.set(p + "output.item", output[0]);
+        yml.set(p + "output.amount", Integer.parseInt(output[1]));
+        String err = addCustom(key, yml.getConfigurationSection(key));
+        if (err != null) {
+            error[0] = err;
+            return null;
+        }
+        try {
+            java.io.File file = playerFile();
+            org.bukkit.configuration.file.YamlConfiguration all = file.exists()
+                    ? org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(file) : new org.bukkit.configuration.file.YamlConfiguration();
+            all.set(key, yml.get(key));
+            file.getParentFile().mkdirs();
+            all.save(file);
+        } catch (java.io.IOException e) {
+            custom.remove("custom:" + key);
+            authors.remove("custom:" + key);
+            blueprintPrice.remove("custom:" + key);
+            error[0] = "Не удалось записать recipes/_player.yml: " + e.getMessage();
+            return null;
+        }
+        return "custom:" + key;
+    }
+
+    /** Меняет цену чертежа рецепта игрока (в памяти и в _player.yml). Возвращает ошибку или null. */
+    public String setPlayerBlueprintPrice(String recipeId, double price) {
+        if (!authors.containsKey(recipeId)) {
+            return "Цену чертежа можно менять только у рецептов игроков; остальные задаются в файлах recipes/.";
+        }
+        if (price < 0 || Double.isNaN(price) || Double.isInfinite(price)) {
+            return "Цена - число не меньше нуля.";
+        }
+        String key = recipeId.substring(7);
+        try {
+            org.bukkit.configuration.file.YamlConfiguration all = org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(playerFile());
+            all.set(key + ".blueprint_price", price);
+            all.save(playerFile());
+        } catch (java.io.IOException e) {
+            return "Не удалось записать recipes/_player.yml: " + e.getMessage();
+        }
+        if (price > 0) {
+            blueprintPrice.put(recipeId, price);
+        } else {
+            blueprintPrice.remove(recipeId);
+        }
+        return null;
+    }
+
+    /** Убирает рецепт игрока из каталога и из файла. Изученные предприятиями записи остаются безвредными. Возвращает ошибку или null. */
+    public String removePlayerRecipe(String recipeId) {
+        if (!authors.containsKey(recipeId)) {
+            return "Удалять можно только рецепты игроков; остальные убираются из файлов recipes/.";
+        }
+        try {
+            org.bukkit.configuration.file.YamlConfiguration all = org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(playerFile());
+            all.set(recipeId.substring(7), null);
+            all.save(playerFile());
+        } catch (java.io.IOException e) {
+            return "Не удалось записать recipes/_player.yml: " + e.getMessage();
+        }
+        custom.remove(recipeId);
+        authors.remove(recipeId);
+        blueprintPrice.remove(recipeId);
+        blueprintItem.remove(recipeId);
         return null;
     }
 }

@@ -146,6 +146,69 @@ final class ItemCommands {
                 Text.send(sender, "<gray>  выход: <white>" + r.outputAmount() + " × " + Text.esc(plugin.recipes().outputName(r))
                         + (plugin.recipes().available(r) ? "" : " <red>(предмет сейчас недоступен)"));
             }
+            case "request" -> request(sender, rest);
+            case "requests" -> {
+                Player p = player(sender);
+                boolean any = false;
+                for (var r : plugin.moderation().forPlayer(p.getUniqueId())) {
+                    if (r.type != ru.industryreborn.model.Request.Type.RECIPE) {
+                        continue;
+                    }
+                    any = true;
+                    String state = switch (r.status) {
+                        case PENDING -> "<yellow>ждёт решения";
+                        case APPROVED -> "<green>одобрена";
+                        case REJECTED -> "<red>отклонена: " + Text.esc(String.valueOf(r.reason));
+                    };
+                    Text.send(p, "<gray> <white>" + ru.industryreborn.service.ModerationService.shortId(r) + "</white> " + Text.esc(r.plotId) + ": "
+                            + Text.esc(plugin.moderation().describe(r)) + " - " + state);
+                }
+                if (!any) {
+                    Text.send(p, "<gray>Заявок на рецепты нет. Подать: /district recipe request");
+                }
+            }
+            case "cancel" -> {
+                if (rest.length < 1) {
+                    usage("recipe cancel <№ заявки>");
+                }
+                var r = plugin.moderation().findPending(rest[0]);
+                if (r == null || r.type != ru.industryreborn.model.Request.Type.RECIPE) {
+                    throw new CommandError("Заявка «" + rest[0] + "» не найдена среди ожидающих (номера: /district recipe requests).");
+                }
+                String error = plugin.moderation().cancel(player(sender), r);
+                if (error != null) {
+                    throw new CommandError(error);
+                }
+                Text.ok(sender, "Заявка отозвана.");
+            }
+            case "price" -> {
+                requireAdmin(sender);
+                if (rest.length < 2) {
+                    usage("recipe price <рецепт> <цена чертежа>");
+                }
+                double price;
+                try {
+                    price = Double.parseDouble(rest[1].replace(',', '.'));
+                } catch (NumberFormatException e) {
+                    throw new CommandError("Цена - число.");
+                }
+                String error = plugin.recipes().setPlayerBlueprintPrice(recipeArg(rest[0]).id(), price);
+                if (error != null) {
+                    throw new CommandError(error);
+                }
+                Text.ok(sender, "Цена чертежа «" + rest[0] + "»: " + plugin.economy().format(price) + (price <= 0 ? " (не продаётся)." : "."));
+            }
+            case "remove" -> {
+                requireAdmin(sender);
+                if (rest.length < 1) {
+                    usage("recipe remove <рецепт игрока>");
+                }
+                String error = plugin.recipes().removePlayerRecipe(recipeArg(rest[0]).id());
+                if (error != null) {
+                    throw new CommandError(error);
+                }
+                Text.ok(sender, "Рецепт убран из каталога. Станки с этим заданием остановятся.");
+            }
             case "learn", "forget" -> {
                 requireAdmin(sender);
                 if (rest.length < 2) {
@@ -165,7 +228,70 @@ final class ItemCommands {
                 Text.ok(sender, sub.equals("learn") ? "Рецепт «" + r.id().substring(7) + "» изучен предприятием " + plot.id + "."
                         : "Рецепт «" + r.id().substring(7) + "» у предприятия " + plot.id + " снят.");
             }
-            default -> usage("recipe [list|info <рецепт>|learn <участок> <рецепт>|forget <участок> <рецепт>]");
+            default -> usage("recipe [list|info <рецепт>|request ...|requests|cancel <№>|learn|forget <участок> <рецепт>|price <рецепт> <цена>|remove <рецепт>]");
+        }
+    }
+
+    /**
+     * /district recipe request - меню-конструктор; /district recipe request <станок> <секунды> <вход[*кол]>... -> <результат[*кол]> [участок=<id>].
+     * Предметы: МАТЕРИАЛ, ir:id, nexo:id.
+     */
+    private void request(CommandSender sender, String[] args) {
+        Player p = player(sender);
+        String plotArg = null;
+        List<String> tokens = new ArrayList<>();
+        for (String a : args) {
+            if (a.toLowerCase(Locale.ROOT).startsWith("plot=") || a.toLowerCase(Locale.ROOT).startsWith("участок=")) {
+                plotArg = a.substring(a.indexOf('=') + 1);
+            } else {
+                tokens.add(a);
+            }
+        }
+        Plot plot = plugin.blueprints().resolvePlot(p, plotArg);
+        if (plot == null) {
+            throw new CommandError("Укажите мастерскую: участок=<номер> в конце команды или встаньте в неё.");
+        }
+        if (!plugin.recipeRequests().mayRequest(p, plot) && !p.hasPermission("industryreborn.admin")) {
+            throw new CommandError("Заявку подаёт управляющий или работник мастерской.");
+        }
+        if (tokens.isEmpty()) {
+            if (!plugin.recipeRequests().enabled()) {
+                throw new CommandError("Заявки на рецепты сейчас отключены.");
+            }
+            new ru.industryreborn.gui.RecipeRequestMenu(plugin, p, plot, null, null).open();
+            return;
+        }
+        int arrow = tokens.indexOf("->");
+        if (tokens.size() < 5 || arrow < 3 || arrow != tokens.size() - 2) {
+            usage("recipe request <станок> <секунды> <вход[*кол]>... -> <результат[*кол]> [участок=<id>]  (станки: furnace, blast, smoker, craft)");
+        }
+        String station = ru.industryreborn.items.RecipeRequests.normalizeStation(tokens.get(0));
+        double seconds;
+        try {
+            seconds = Double.parseDouble(tokens.get(1).replace(',', '.'));
+        } catch (NumberFormatException e) {
+            throw new CommandError("Время партии - число секунд.");
+        }
+        List<ru.industryreborn.items.RecipeRequests.Part> inputs = new ArrayList<>();
+        for (String t : tokens.subList(2, arrow)) {
+            var part = ru.industryreborn.items.RecipeRequests.parsePart(t);
+            if (part == null) {
+                throw new CommandError("Не понял предмет «" + t + "»: формат МАТЕРИАЛ*кол, ir:id*кол или nexo:id*кол.");
+            }
+            inputs.add(part);
+        }
+        var output = ru.industryreborn.items.RecipeRequests.parsePart(tokens.get(tokens.size() - 1));
+        if (output == null) {
+            throw new CommandError("Не понял результат «" + tokens.get(tokens.size() - 1) + "».");
+        }
+        var spec = new ru.industryreborn.items.RecipeRequests.Spec(station, seconds, inputs, output);
+        String result = plugin.recipeRequests().submit(p, plot, spec);
+        if (result == null) {
+            Text.ok(sender, "Заявка отправлена администратору: " + plugin.recipeRequests().describe(spec) + ". Статус: /district recipe requests");
+        } else if (result.isEmpty()) {
+            Text.ok(sender, "Рецепт создан и изучен мастерской " + plot.id + " (администратору одобрение не нужно).");
+        } else {
+            throw new CommandError(result);
         }
     }
 
@@ -294,13 +420,23 @@ final class ItemCommands {
             if (n == 3 && args[1].equalsIgnoreCase("give")) {
                 org.bukkit.Bukkit.getOnlinePlayers().forEach(p -> out.add(p.getName()));
             }
-            if ((n == 3 && args[1].equalsIgnoreCase("info")) || (n == 4 && args[1].equalsIgnoreCase("give"))) {
+            if (n >= 3 && args[1].equalsIgnoreCase("request")) {
+            if (n == 3) {
+                return ru.industryreborn.items.RecipeRequests.stations();
+            }
+            if (n >= 5) {
+                plugin.customItems().all().forEach(d -> out.add("ir:" + d.id()));
+                out.add("->");
+            }
+            return out;
+        }
+        if ((n == 3 && List.of("info", "price", "remove").contains(args[1].toLowerCase(Locale.ROOT))) || (n == 4 && args[1].equalsIgnoreCase("give"))) {
                 plugin.customItems().all().forEach(d -> out.add(d.id()));
             }
             return out;
         }
         if (n == 2) {
-            return List.of("list", "info", "learn", "forget");
+            return List.of("list", "info", "request", "requests", "cancel", "learn", "forget", "price", "remove");
         }
         if ((n == 3 && args[1].equalsIgnoreCase("info")) || (n == 4 && List.of("learn", "forget").contains(args[1].toLowerCase(Locale.ROOT)))) {
             plugin.recipes().customRecipes().forEach(r -> out.add(r.id().substring(7)));

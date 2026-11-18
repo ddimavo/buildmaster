@@ -120,6 +120,15 @@ public final class FactoryMenu extends Menu {
                     });
         }
 
+        if (plugin.recipeRequests().enabled()) {
+            set(16, Text.icon(Material.WRITABLE_BOOK, "<aqua>Заявка на рецепт",
+                    "<gray>Предложите свой рецепт станка:", "<gray>администратор проверит и одобрит.",
+                    "<gray>Изучено своих рецептов: <white>" + plugin.recipeRequests().authored(plot.id) + "<gray>, на рассмотрении: <white>"
+                            + plugin.recipeRequests().pending(plot.id).size(),
+                    "<yellow>Нажмите, чтобы составить рецепт"),
+                    e -> new RecipeRequestMenu(plugin, player, plot, () -> new FactoryMenu(plugin, player, plot, back).open(), null).open());
+        }
+
         // ---- станки ----
         set(18, Ui.section("Станки", Material.ORANGE_STAINED_GLASS_PANE));
         int[] slots = {20, 21, 22, 23, 24, 25, 26, 29, 30, 31, 32, 33, 34, 35};

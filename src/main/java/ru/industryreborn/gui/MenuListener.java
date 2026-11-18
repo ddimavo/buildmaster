@@ -14,6 +14,8 @@ public final class MenuListener implements Listener {
             event.setCancelled(true);
             if (event.getClickedInventory() == event.getView().getTopInventory()) {
                 menu.handleClick(event);
+            } else if (event.getClickedInventory() != null) {
+                menu.handleBottomClick(event);
             }
         }
     }

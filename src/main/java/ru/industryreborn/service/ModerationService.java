@@ -117,6 +117,33 @@ public final class ModerationService {
         }
     }
 
+    // ------------------------------------------------------------ рецепты станков
+
+    /** Заявка управляющего или работника на рецепт станка. */
+    public void submitRecipe(Player player, Plot plot, ru.industryreborn.items.RecipeRequests.Spec spec) {
+        requests.add(new Request(UUID.randomUUID(), Request.Type.RECIPE, plot.id, player.getUniqueId(), player.getName(),
+                spec.serialize(), System.currentTimeMillis()));
+        save();
+        for (Player a : Bukkit.getOnlinePlayers()) {
+            if (a.hasPermission("industryreborn.admin")) {
+                Text.send(a, "<yellow>Новая заявка: рецепт станка мастерской " + Text.esc(plot.id) + ". Откройте /district moderation");
+            }
+        }
+    }
+
+    /** Отзывает ожидающую заявку (её автор). Возвращает ошибку или null. */
+    public String cancel(Player player, Request r) {
+        if (r.status != Request.Status.PENDING) {
+            return "Заявка уже рассмотрена.";
+        }
+        if (!r.requester.equals(player.getUniqueId()) && !player.hasPermission("industryreborn.admin")) {
+            return "Отозвать заявку может её автор.";
+        }
+        requests.remove(r);
+        save();
+        return null;
+    }
+
     /** Ожидающая заявка на смену класса номера или null. */
     public Request pendingRoomClass(String roomId) {
         for (Request r : requests) {
@@ -155,6 +182,10 @@ public final class ModerationService {
 
     /** Текст заявки для людей: для класса номера «Эконом → Люкс», иначе как есть. */
     public String describe(Request r) {
+        if (r.type == Request.Type.RECIPE) {
+            var spec = ru.industryreborn.items.RecipeRequests.Spec.parse(r.text);
+            return spec == null ? "повреждённая заявка" : plugin.recipeRequests().describe(spec);
+        }
         if (r.type == Request.Type.ROOM_CLASS) {
             Plot room = plugin.plots().get(r.plotId);
             ru.industryreborn.model.RoomClass target = ru.industryreborn.model.RoomClass.parse(r.text);
@@ -347,6 +378,11 @@ public final class ModerationService {
     }
 
     public void approve(Request r, String adminName) {
+        approve(r, adminName, null);
+    }
+
+    /** Одобряет заявку; blueprintPrice - цена чертежа для заявки на рецепт (null - по умолчанию из настроек). */
+    public void approve(Request r, String adminName, Double blueprintPrice) {
         if (r.status != Request.Status.PENDING) {
             return;
         }
@@ -376,6 +412,23 @@ public final class ModerationService {
             }
             plot.approvedEnchants.add(r.text);
             plugin.plots().save();
+        } else if (r.type == Request.Type.RECIPE) {
+            String stale = plugin.recipeRequests().approve(r, adminName,
+                    blueprintPrice != null ? blueprintPrice : plugin.recipeRequests().defaultBlueprintPrice());
+            if (stale != null) {
+                r.status = Request.Status.REJECTED;
+                r.reason = "Заявка устарела или не прошла проверку: " + stale;
+                plugin.journal().add(r.plotId, r.requester, adminName, Journal.Action.FACTORY, "Рецепт: " + r.reason);
+                notifyRequester(r, "<red>Рецепт мастерской " + Text.esc(r.plotId) + " не создан: " + Text.esc(stale));
+                trim();
+                save();
+                return;
+            }
+            notifyRequester(r, "<green>Рецепт мастерской " + Text.esc(r.plotId) + " одобрен: «" + Text.esc(describe(r))
+                    + "». Он уже изучен вашей мастерской, остальным нужен чертёж.");
+            trim();
+            save();
+            return;
         } else if (r.type == Request.Type.ROOM_CLASS) {
             ru.industryreborn.model.RoomClass target = ru.industryreborn.model.RoomClass.parse(r.text);
             Plot hotel = plot == null ? null : plugin.hotels().hotelOf(plot);
@@ -445,14 +498,14 @@ public final class ModerationService {
         return t == Request.Type.NAME ? Journal.Action.NAME_APPROVED
                 : t == Request.Type.DESCRIPTION ? Journal.Action.DESC_APPROVED
                 : t == Request.Type.HOLO ? Journal.Action.HOLO : t == Request.Type.ENCHANT ? Journal.Action.ENCHANT
-                : t == Request.Type.ROOM_CLASS ? Journal.Action.HOTEL : Journal.Action.PLAYER_PLOT;
+                : t == Request.Type.ROOM_CLASS ? Journal.Action.HOTEL : t == Request.Type.RECIPE ? Journal.Action.FACTORY : Journal.Action.PLAYER_PLOT;
     }
 
     private static Journal.Action journalRejected(Request.Type t) {
         return t == Request.Type.NAME ? Journal.Action.NAME_REJECTED
                 : t == Request.Type.DESCRIPTION ? Journal.Action.DESC_REJECTED
                 : t == Request.Type.HOLO ? Journal.Action.HOLO : t == Request.Type.ENCHANT ? Journal.Action.ENCHANT
-                : t == Request.Type.ROOM_CLASS ? Journal.Action.HOTEL : Journal.Action.PLAYER_PLOT;
+                : t == Request.Type.ROOM_CLASS ? Journal.Action.HOTEL : t == Request.Type.RECIPE ? Journal.Action.FACTORY : Journal.Action.PLAYER_PLOT;
     }
 
     private void notifyRequester(Request r, String message) {

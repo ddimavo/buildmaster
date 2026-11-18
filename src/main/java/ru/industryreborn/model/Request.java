@@ -6,7 +6,7 @@ import java.util.UUID;
 public final class Request {
 
     public enum Type {
-        NAME("Название"), DESCRIPTION("Описание"), PLOT("Участок игрока"), HOLO("Позиция голограммы"), ENCHANT("Зачарование для станка"), ROOM_CLASS("Класс номера");
+        NAME("Название"), DESCRIPTION("Описание"), PLOT("Участок игрока"), HOLO("Позиция голограммы"), ENCHANT("Зачарование для станка"), ROOM_CLASS("Класс номера"), RECIPE("Рецепт станка");
 
         private final String title;
 

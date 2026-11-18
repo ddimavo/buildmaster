@@ -1691,8 +1691,16 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
                     throw new CommandError("Заявка «" + args[1] + "» не найдена среди ожидающих.");
                 }
                 if (sub.equals("approve")) {
-                    plugin.moderation().approve(r, p.getName());
-                    Text.ok(p, "Заявка одобрена.");
+                    Double blueprintPrice = null;
+                    if (r.type == Request.Type.RECIPE && args.length > 2) {
+                        try {
+                            blueprintPrice = Double.parseDouble(args[2].replace(',', '.'));
+                        } catch (NumberFormatException e) {
+                            throw new CommandError("Цена чертежа - число (необязательный аргумент): /district moderation approve <№> [цена чертежа]");
+                        }
+                    }
+                    plugin.moderation().approve(r, p.getName(), blueprintPrice);
+                    Text.ok(p, r.status == Request.Status.APPROVED ? "Заявка одобрена." : "Заявка не применена: " + r.reason);
                 } else if (sub.equals("reject")) {
                     plugin.moderation().reject(r, p.getName(), String.join(" ", Arrays.copyOfRange(args, 2, args.length)));
                     Text.ok(p, "Заявка отклонена.");
