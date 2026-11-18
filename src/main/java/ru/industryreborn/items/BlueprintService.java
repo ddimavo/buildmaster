@@ -110,6 +110,11 @@ public final class BlueprintService {
         return read(stack) != null;
     }
 
+    /** Сколько чертежей уже использовано. */
+    public int usedCount() {
+        return used.size();
+    }
+
     public boolean used(String serial) {
         return used.contains(serial);
     }

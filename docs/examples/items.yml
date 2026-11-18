@@ -1,0 +1,15 @@
+# Пример plugins/IndustryReborn/items/metal.yml: предметы плагина.
+# id: латиница в нижнем регистре, цифры, _ (до 40 знаков). Ссылка на предмет в рецептах и товарах: ir:<id>.
+steel:
+  material: IRON_INGOT
+  name: "<gray>Стальной слиток"
+  lore: ["Прочный сплав"]
+  custom_model_data: 1001            # необязательно
+  # item_model: industryreborn:steel # необязательно
+gear:
+  material: IRON_NUGGET
+  name: "<gold>Шестерня"
+rune:
+  material: PAPER
+  name: "<light_purple>Руна"
+  nexo: rune_blue                    # внешний вид берётся из предмета Nexo rune_blue (метка плагина добавляется сама)

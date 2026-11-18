@@ -1,0 +1,20 @@
+# Пример plugins/IndustryReborn/recipes/metal.yml: рецепты станков администратора.
+# station: furnace | blast | smoker | craft. Вход: item - материал, ir:<id> или nexo:<id> (можно списком вариантов), amount 1-64; от 1 до 4 входов.
+steel_ingot:
+  station: blast
+  seconds: 30
+  category: "Металлы"
+  free: false                         # false - нужен чертёж (мастерская изучает его), true - доступен всем
+  blueprint_price: 500                # цена чертежа в магазине администрации (0 - не продаётся)
+  blueprint_item: ir:rune             # необязательно: внешний вид чертежа (ir:<id> или nexo:<id>)
+  inputs:
+    - {item: IRON_INGOT, amount: 3}
+    - {item: [COAL, CHARCOAL], amount: 1}
+  output: {item: ir:steel, amount: 2}
+gear_press:
+  station: furnace
+  seconds: 10
+  free: true
+  inputs:
+    - {item: ir:steel, amount: 2}
+  output: {item: ir:gear, amount: 1}

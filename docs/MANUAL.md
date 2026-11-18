@@ -560,7 +560,10 @@ steel_ingot:
 
 `/district item export-nexo` записывает `plugins/IndustryReborn/nexo-export/industryreborn_items.yml` - заготовку предметов для Nexo: каждый предмет с
 `PersistentData` (`industryreborn:item`), чтобы предмет, сделанный в Nexo, распознавался плагином и без API Nexo. Текстуры, модели и `Pack` дописываются в Nexo (удобно в NexoHelper).
-Включается и выключается `custom-items.enabled` в `config.yml`.
+Включается и выключается `custom-items.enabled` в `config.yml`. Готовые примеры файлов: `docs/examples/items.yml`, `docs/examples/recipes.yml`.
+
+Статистика: число предметов плагина, рецептов администратора и игроков, изученных рецептов, ожидающих заявок, использованных чертежей и предметов в хранилище администрации попадает в сводку
+вебхуков (раздел «Производство») и в Plan (вкладка «Производство»).
 
 ## 7. Услуги мастерских (заказы)
 

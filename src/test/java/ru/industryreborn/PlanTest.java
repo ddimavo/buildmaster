@@ -248,6 +248,34 @@ class PlanTest extends PluginTestBase {
     }
 
     @Test
+    void customContentMetricsAreExposedToPlanAndStats() throws Exception {
+        java.io.File dir = new java.io.File(plugin.getDataFolder(), "items");
+        dir.mkdirs();
+        java.nio.file.Files.writeString(new java.io.File(dir, "a.yml").toPath(), "steel:\n  material: IRON_INGOT\n");
+        java.io.File rdir = new java.io.File(plugin.getDataFolder(), "recipes");
+        rdir.mkdirs();
+        java.nio.file.Files.writeString(new java.io.File(rdir, "a.yml").toPath(),
+                "one:\n  station: furnace\n  seconds: 5\n  inputs: [{item: COAL}]\n  output: {item: ir:steel}\n"
+                        + "three:\n  station: smoker\n  seconds: 5\n  inputs: [{item: COAL, amount: 3}]\n  output: {item: ir:steel}\n"
+                        + "two:\n  station: blast\n  seconds: 5\n  author: s\n  inputs: [{item: COAL, amount: 2}]\n  output: {item: ir:steel}\n");
+        assertTrue(plugin.reloadCustomContent().isEmpty());
+        plugin.plots().all().iterator().next().learnedRecipes.add("custom:one");
+        plugin.blueprints().deposit(new org.bukkit.inventory.ItemStack(org.bukkit.Material.PAPER), "тест");
+        var stats = plugin.stats().collect();
+        assertEquals(1, stats.metric("production", "custom-items").value(), 0);
+        assertEquals(2, stats.metric("production", "recipes-admin").value(), 0);
+        assertEquals(1, stats.metric("production", "recipes-player").value(), 0);
+        assertEquals(1, stats.metric("production", "recipes-learned").value(), 0);
+        assertEquals(1, stats.metric("production", "blueprints-vault").value(), 0);
+        assertEquals(0, stats.metric("production", "blueprints-used").value(), 0);
+        plugin.planHook().refresh();
+        assertEquals(2, extension.adminRecipes());
+        assertEquals(1, extension.playerRecipes());
+        assertEquals(1, extension.learnedRecipes());
+        assertEquals(0, extension.blueprintsUsed());
+    }
+
+    @Test
     void everyProviderIsPublicAndFollowsPlansSignatureRules() {
         long providers = Arrays.stream(IndustryRebornExtension.class.getMethods())
                 .filter(m -> m.isAnnotationPresent(NumberProvider.class)).count();

@@ -162,6 +162,28 @@ public final class StatsService {
             pr.add(num("machines", "Станков", machines));
             pr.add(num("assigned", "Станков с заданием", assigned));
             pr.add(num("working", "Работают сейчас", working));
+            // предметы плагина, рецепты администратора и игроков, чертежи
+            int adminRecipes = 0;
+            int playerRecipes = 0;
+            for (var r : plugin.recipes().customRecipes()) {
+                if (plugin.recipes().author(r.id()) == null) {
+                    adminRecipes++;
+                } else {
+                    playerRecipes++;
+                }
+            }
+            int learned = 0;
+            for (Plot p : plots) {
+                learned += p.learnedRecipes.size();
+            }
+            int pendingRequests = (int) plugin.moderation().pending().stream().filter(r -> r.type == ru.industryreborn.model.Request.Type.RECIPE).count();
+            pr.add(num("custom-items", "Предметов плагина", plugin.customItems().all().size()));
+            pr.add(num("recipes-admin", "Рецептов администратора", adminRecipes));
+            pr.add(num("recipes-player", "Рецептов игроков", playerRecipes));
+            pr.add(num("recipes-learned", "Изучено рецептов (по предприятиям)", learned));
+            pr.add(num("recipe-requests", "Заявок на рецепты ждут решения", pendingRequests));
+            pr.add(num("blueprints-used", "Использовано чертежей", plugin.blueprints() == null ? 0 : plugin.blueprints().usedCount()));
+            pr.add(num("blueprints-vault", "Предметов в хранилище администрации", plugin.blueprints() == null ? 0 : plugin.blueprints().vaultSize()));
             sections.add(new Section("production", "Производство", pr));
         }
 

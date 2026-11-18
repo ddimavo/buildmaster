@@ -202,6 +202,30 @@ public class IndustryRebornExtension implements DataExtension {
         return n("production", "working");
     }
 
+    @Tab("Производство")
+    @NumberProvider(text = "Рецептов администратора", priority = 60, iconName = "scroll", iconColor = Color.BROWN)
+    public long adminRecipes() {
+        return n("production", "recipes-admin");
+    }
+
+    @Tab("Производство")
+    @NumberProvider(text = "Рецептов игроков", priority = 50, iconName = "pen-ruler", iconColor = Color.BROWN)
+    public long playerRecipes() {
+        return n("production", "recipes-player");
+    }
+
+    @Tab("Производство")
+    @NumberProvider(text = "Изучено рецептов", priority = 40, iconName = "book-open", iconColor = Color.GREEN)
+    public long learnedRecipes() {
+        return n("production", "recipes-learned");
+    }
+
+    @Tab("Производство")
+    @NumberProvider(text = "Использовано чертежей", priority = 30, iconName = "map", iconColor = Color.AMBER)
+    public long blueprintsUsed() {
+        return n("production", "blueprints-used");
+    }
+
     // ------------------------------------------------------------ отели
 
     @Tab("Отели")
