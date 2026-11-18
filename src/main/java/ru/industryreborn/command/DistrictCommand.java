@@ -42,7 +42,7 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
 
     private static final List<String> PLAYER_SUBS = List.of("menu", "list", "info", "buy", "rent", "extend",
             "autorenew", "autoreset", "release", "trust", "untrust", "perm", "account", "power", "warnings", "tp",
-            "storage", "claim", "journal", "name", "desc", "bank", "service", "factory", "room", "region", "job", "hologram", "machine", "chest", "shop", "goods", "storefront", "link", "unlink", "enchant", "ui", "plots", "business", "hotel", "admin", "holoshop", "build", "help");
+            "storage", "claim", "journal", "name", "desc", "bank", "service", "factory", "room", "region", "job", "hologram", "machine", "chest", "shop", "goods", "storefront", "link", "unlink", "enchant", "ui", "plots", "business", "hotel", "admin", "holoshop", "build", "lot", "help");
     private static final List<String> ADMIN_SUBS = List.of("wand", "pos1", "pos2", "create", "delete", "evict",
             "setprice", "setrent", "setspawn", "resnapshot", "reload", "seize", "reset", "holo", "category",
             "moderation", "arrest", "auction", "show", "module", "balance", "webhook");
@@ -71,7 +71,8 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
             java.util.Map.entry("balance", ru.industryreborn.service.Module.AUTO_BALANCE),
             java.util.Map.entry("webhook", ru.industryreborn.service.Module.WEBHOOKS),
             java.util.Map.entry("holoshop", ru.industryreborn.service.Module.HOLO_SHOP),
-            java.util.Map.entry("build", ru.industryreborn.service.Module.AUTO_BUILD));
+            java.util.Map.entry("build", ru.industryreborn.service.Module.AUTO_BUILD),
+            java.util.Map.entry("lot", ru.industryreborn.service.Module.PLOT_AUCTION));
 
     private final IndustryRebornPlugin plugin;
 
@@ -113,6 +114,7 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
                 case "balance" -> balance(sender, rest);
                 case "webhook" -> webhook(sender, rest);
                 case "holoshop" -> withPlayer(sender, p -> holoShop(p, rest));
+                case "lot" -> withPlayer(sender, p -> lot(p, rest));
                 case "menu" -> withPlayer(sender, p -> {
                     if (rest.length > 0 && rest[0].equalsIgnoreCase("classic") || !plugin.htmlMenus().open(p, ru.industryreborn.html.HtmlMenus.Kind.MAIN)) {
                         new MainMenu(plugin, p).open();
@@ -1037,7 +1039,16 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
         if (plugin.service().isLocked(plot)) {
             throw new CommandError("Участок сейчас обрабатывается.");
         }
-        String reason = String.join(" ", Arrays.copyOfRange(args, 1, args.length));
+        int from = 1;
+        Boolean keep = null;
+        if (action != Journal.Action.RESET && (args[1].equalsIgnoreCase("keep") || args[1].equalsIgnoreCase("reset"))) {
+            keep = args[1].equalsIgnoreCase("keep");
+            from = 2;
+            if (args.length < 3) {
+                throw new CommandError("Использование: /district " + name + " <номер> [keep|reset] <причина>  (причина обязательна)");
+            }
+        }
+        String reason = String.join(" ", Arrays.copyOfRange(args, from, args.length));
         if (action == Journal.Action.RESET) {
             String error = plugin.service().reset(plot, sender.getName(), reason);
             if (error != null) {
@@ -1049,10 +1060,14 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
         if (plot.isFree()) {
             throw new CommandError("Участок свободен. Для сброса здания: /district reset " + plot.id + " <причина>");
         }
-        plugin.service().evict(plot, new PlotService.Release(sender.getName(), reason, action,
-                action == Journal.Action.SEIZED, Plot.RestoreMode.FULL));
-        Text.ok(sender, "Участок " + plot.id + (action == Journal.Action.SEIZED
-                ? " изъят, вещи арестованы." : " освобождён, вещи отправлены в хранилище владельца."));
+        boolean keepBuilding = keep != null ? keep : plugin.getConfig().getBoolean("keep-building." + (action == Journal.Action.SEIZED ? "on-seize" : "on-evict"), false);
+        boolean seized = action == Journal.Action.SEIZED;
+        plugin.service().evict(plot, keepBuilding && !plot.isPlayerPlot() && !plot.category.isRentOnly()
+                ? PlotService.Release.keeping(sender.getName(), reason, action, seized)
+                : new PlotService.Release(sender.getName(), reason, action, seized, Plot.RestoreMode.FULL));
+        Text.ok(sender, "Участок " + plot.id + (seized
+                ? " изъят, вещи арестованы." : " освобождён, вещи отправлены в хранилище владельца.")
+                + (keepBuilding ? " Здание осталось на участке." : ""));
     }
 
     private void holo(Player p, String[] args) {
@@ -1250,6 +1265,8 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
         Text.send(p, "<yellow>Строю здание «" + Text.esc(template.title()) + "» на участке " + plot.id + "...");
         svc.build(world, template, (ru.industryreborn.building.BuildingService.Placement) planned, () -> {
             Text.ok(p, "Здание построено. Сохраняю его как исходный вид участка.");
+            plot.hasBuilding = true;
+            plugin.plots().save();
             plugin.service().resnapshot(p, plot);
         }, error -> Text.err(p, "Не удалось построить здание: " + error));
     }
@@ -1319,6 +1336,152 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
                     + plugin.economy().format(svc.price(t)) + " <click:run_command:'/district build " + plot.id + " " + t.name()
                     + "'><green>[выбрать]</green></click>"));
         }
+    }
+
+    // ------------------------------------------------------------ аукцион участков
+
+    private static double number(String s, String what) {
+        try {
+            double v = Double.parseDouble(s.replace(',', '.'));
+            if (Double.isNaN(v) || Double.isInfinite(v) || v < 0) {
+                throw new NumberFormatException();
+            }
+            return v;
+        } catch (NumberFormatException e) {
+            throw new CommandError(what + " должна быть числом (например 1500).");
+        }
+    }
+
+    private String lotLine(ru.industryreborn.lot.Lot lot) {
+        Plot plot = plugin.plots().get(lot.plotId());
+        String bid = lot.hasBids() ? "ставка <white>" + plugin.economy().format(lot.bid) + "</white> (" + Text.esc(lot.bidderName) + ")"
+                : "старт <white>" + plugin.economy().format(lot.start) + "</white>";
+        return "<gray> <white>" + Text.esc(lot.plotId()) + "</white> " + (plot == null ? "" : Text.esc(plot.category.title()) + " " + plot.box.sizeX() + "×" + plot.box.sizeZ()
+                + (plot.hasBuilding ? " <green>со зданием</green>" : "")) + " - " + bid + ", шаг " + plugin.economy().format(lot.step)
+                + ", осталось " + Text.duration(Math.max(0, lot.endAt - System.currentTimeMillis()));
+    }
+
+    /** lot list | info | bid | buyout | sell | menu и для администратора start | cancel | end | holo. */
+    private void lot(Player p, String[] args) {
+        var svc = plugin.lots();
+        boolean admin = p.hasPermission("industryreborn.admin");
+        String sub = args.length == 0 ? "list" : args[0].toLowerCase(Locale.ROOT);
+        if (List.of("start", "cancel", "end", "holo").contains(sub) && !admin) {
+            throw new CommandError("Недостаточно прав.");
+        }
+        switch (sub) {
+            case "list" -> {
+                var all = svc.all();
+                if (all.isEmpty()) {
+                    Text.send(p, "<gray>Сейчас торгов нет.");
+                } else {
+                    Text.send(p, "<yellow>Аукционы участков:");
+                    all.forEach(l -> p.sendMessage(Text.mm(lotLine(l))));
+                    Text.send(p, "<gray>Ставка: /district lot bid <участок> [сумма]; подробности: /district lot info <участок>");
+                }
+            }
+            case "menu" -> {
+                if (!plugin.htmlMenus().open(p, ru.industryreborn.html.HtmlMenus.Kind.LOTS)) {
+                    p.performCommand("district lot list");
+                }
+            }
+            case "info" -> {
+                var lot = svc.get(requireArg(args, 1, "lot info <участок>"));
+                if (lot == null) {
+                    throw new CommandError("Этот участок не выставлен на аукцион.");
+                }
+                p.sendMessage(Text.mm(lotLine(lot)));
+                Text.send(p, "<gray>Следующая ставка не меньше <white>" + plugin.economy().format(lot.minNext()) + "</white>, до <white>" + Text.date(lot.endAt) + "</white>"
+                        + (lot.buyout > 0 ? ", выкуп <white>" + plugin.economy().format(lot.buyout) + "</white>" : "") + ", ставок: " + lot.bids
+                        + (lot.sellerName == null ? "" : ", продавец " + Text.esc(lot.sellerName)));
+            }
+            case "bid" -> {
+                Plot plot = requirePlot(requireArg(args, 1, "lot bid <участок> [сумма]"));
+                String error = svc.bid(p, plot, args.length > 2 ? number(args[2], "Сумма ставки") : 0);
+                if (error != null) {
+                    throw new CommandError(error);
+                }
+            }
+            case "buyout" -> {
+                Plot plot = requirePlot(requireArg(args, 1, "lot buyout <участок>"));
+                String error = svc.buyout(p, plot);
+                if (error != null) {
+                    throw new CommandError(error);
+                }
+            }
+            case "sell" -> {
+                if (args.length < 3) {
+                    throw new CommandError("Использование: /district lot sell <участок> <стартовая цена> [часов] [шаг] [выкуп] confirm");
+                }
+                Plot plot = requirePlot(args[1]);
+                boolean confirm = args[args.length - 1].equalsIgnoreCase("confirm");
+                String[] nums = Arrays.copyOfRange(args, 2, confirm ? args.length - 1 : args.length);
+                double start = number(nums[0], "Стартовая цена");
+                int hours = nums.length > 1 ? (int) number(nums[1], "Срок") : (int) plugin.getConfig().getDouble("plot-auction.default-hours", 24);
+                double step = nums.length > 2 ? number(nums[2], "Шаг ставки") : 0;
+                double buyout = nums.length > 3 ? number(nums[3], "Цена выкупа") : 0;
+                if (!confirm) {
+                    Text.send(p, "<yellow>Продажа участка <white>" + Text.esc(plot.id) + "</white> на аукционе: старт " + plugin.economy().format(start) + ", " + hours
+                            + " ч. Участок будет освобождён сразу (ваши вещи - в хранилище, здание останется), победитель заплатит ставку; казна берёт комиссию "
+                            + plugin.getConfig().getDouble("plot-auction.seller-commission-percent", 10) + "%. <red>Если ставок не будет, участок станет свободным.</red> "
+                            + "<click:run_command:'/district lot sell " + plot.id + " " + String.join(" ", nums) + " confirm'><green>[Подтвердить]</green></click>");
+                    return;
+                }
+                String error = svc.sell(p, plot, start, hours, step, buyout);
+                if (error != null) {
+                    throw new CommandError(error);
+                }
+                Text.ok(p, "Участок " + plot.id + " выставлен на аукцион.");
+            }
+            case "start" -> {
+                if (args.length < 3) {
+                    throw new CommandError("Использование: /district lot start <участок> <стартовая цена> [часов] [шаг] [выкуп]");
+                }
+                Plot plot = requirePlot(args[1]);
+                double start = number(args[2], "Стартовая цена");
+                int hours = args.length > 3 ? (int) number(args[3], "Срок") : (int) plugin.getConfig().getDouble("plot-auction.default-hours", 24);
+                double step = args.length > 4 ? number(args[4], "Шаг ставки") : 0;
+                double buyout = args.length > 5 ? number(args[5], "Цена выкупа") : 0;
+                String error = svc.start(plot, null, null, start, hours, step, buyout);
+                if (error != null) {
+                    throw new CommandError(error);
+                }
+                Text.ok(p, "Участок " + plot.id + " выставлен на аукцион. Голограмма лота появится рядом с голограммой участка; перенести: /district lot holo " + plot.id);
+            }
+            case "cancel" -> {
+                Plot plot = requirePlot(requireArg(args, 1, "lot cancel <участок> [причина]"));
+                String reason = args.length > 2 ? String.join(" ", Arrays.copyOfRange(args, 2, args.length)) : "решение администрации";
+                String error = svc.cancel(plot, p.getName(), reason);
+                if (error != null) {
+                    throw new CommandError(error);
+                }
+                Text.ok(p, "Торги по участку " + plot.id + " отменены.");
+            }
+            case "end" -> {
+                var lot = svc.get(requireArg(args, 1, "lot end <участок>"));
+                if (lot == null) {
+                    throw new CommandError("Этот участок не выставлен на аукцион.");
+                }
+                svc.finish(lot, "завершён администратором");
+                Text.ok(p, "Торги по участку " + lot.plotId() + " завершены.");
+            }
+            case "holo" -> {
+                Plot plot = requirePlot(requireArg(args, 1, "lot holo <участок>"));
+                String error = svc.moveHolo(plot, p.getEyeLocation());
+                if (error != null) {
+                    throw new CommandError(error);
+                }
+                Text.ok(p, "Голограмма лота перенесена в вашу позицию.");
+            }
+            default -> throw new CommandError("Использование: /district lot [list|info|bid|buyout|sell|menu]" + (admin ? " или start|cancel|end|holo" : ""));
+        }
+    }
+
+    private static String requireArg(String[] args, int i, String usage) {
+        if (args.length <= i) {
+            throw new CommandError("Использование: /district " + usage);
+        }
+        return args[i];
     }
 
     /** holoshop create <участок> | remove <номер> | list [участок]: торговля через голограммы. */
@@ -1705,6 +1868,28 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
             }
             if (args.length == 3 && !args[1].equalsIgnoreCase("save")) {
                 return filter(plugin.buildings().all().stream().map(ru.industryreborn.building.BuildingTemplate::name).toList(), args[2]);
+            }
+        }
+        if (sub.equals("lot")) {
+            if (args.length == 2) {
+                List<String> list = new ArrayList<>(List.of("list", "info", "bid", "buyout", "sell", "menu"));
+                if (admin) {
+                    list.addAll(List.of("start", "cancel", "end", "holo"));
+                }
+                return filter(list, args[1]);
+            }
+            if (args.length == 3) {
+                String what = args[1].toLowerCase(Locale.ROOT);
+                if (List.of("info", "bid", "buyout", "cancel", "end", "holo").contains(what)) {
+                    return filter(plugin.lots().all().stream().map(ru.industryreborn.lot.Lot::plotId).toList(), args[2]);
+                }
+                if (what.equals("start")) {
+                    return filter(plotIds(Plot.Status.FREE), args[2]);
+                }
+                if (what.equals("sell")) {
+                    return filter(plugin.plots().all().stream().filter(x -> x.status == Plot.Status.OWNED && x.isOwner(((Player) sender).getUniqueId()))
+                            .map(x -> x.id).toList(), args[2]);
+                }
             }
         }
         if (sub.equals("holoshop") && args.length == 2) {

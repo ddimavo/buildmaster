@@ -81,6 +81,7 @@ public class IndustryRebornPlugin extends JavaPlugin {
     private ru.industryreborn.holo.ClickZones clickZones;
     private ru.industryreborn.building.BuildingService buildings;
     private ru.industryreborn.holoshop.HoloShopService holoShops;
+    private ru.industryreborn.lot.LotService lots;
     private ru.industryreborn.service.LinkService links;
     private ru.industryreborn.service.ServicesHolograms servicesHolograms;
     private ru.industryreborn.service.BankHolograms bankHolograms;
@@ -144,6 +145,7 @@ public class IndustryRebornPlugin extends JavaPlugin {
         buildings = new ru.industryreborn.building.BuildingService(this);
         buildings.load();
         holoShops = new ru.industryreborn.holoshop.HoloShopService(this);
+        lots = new ru.industryreborn.lot.LotService(this);
         holoFactory = new ru.industryreborn.holo.HoloFactory(this);
         holograms = new HologramService(this);
         stations = new StationService(this);
@@ -231,6 +233,7 @@ public class IndustryRebornPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(clickZones, this);
         getServer().getScheduler().runTaskLater(this, clickZones::cleanLeftovers, 60L);
         getServer().getScheduler().runTaskTimer(this, holoShops::tick, 80L, 20L);
+        getServer().getScheduler().runTaskTimer(this, lots::tick, 100L, 20L);
         getServer().getScheduler().runTaskTimer(this, planHook::tick, 100L, 100L);
         getServer().getScheduler().runTaskLater(this, () -> {
             stations.rescanAll();
@@ -264,6 +267,10 @@ public class IndustryRebornPlugin extends JavaPlugin {
         }
         if (doorHolograms != null) {
             doorHolograms.removeAll();
+        }
+        if (lots != null) {
+            lots.removeAll();
+            lots.save();
         }
         if (holoShops != null) {
             holoShops.removeAll();
@@ -382,6 +389,10 @@ public class IndustryRebornPlugin extends JavaPlugin {
 
     public ru.industryreborn.holo.ClickZones clickZones() {
         return clickZones;
+    }
+
+    public ru.industryreborn.lot.LotService lots() {
+        return lots;
     }
 
     public ru.industryreborn.holoshop.HoloShopService holoShops() {

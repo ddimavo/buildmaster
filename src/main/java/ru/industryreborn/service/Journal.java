@@ -63,7 +63,8 @@ public final class Journal {
         HOLO("Позиция голограммы"),
         STATION("Установка станка"),
         ENCHANT("Зачарование"),
-        BUILD("Строительство здания");
+        BUILD("Строительство здания"),
+        LOT("Аукцион участка");
 
         private final String title;
 

@@ -47,7 +47,17 @@ public final class PlotService {
 
     /** Параметры освобождения участка. */
     public record Release(String actor, String reason, Journal.Action action, boolean arrest,
-                          Plot.RestoreMode mode) { }
+                          Plot.RestoreMode mode, boolean keep) {
+
+        public Release(String actor, String reason, Journal.Action action, boolean arrest, Plot.RestoreMode mode) {
+            this(actor, reason, action, arrest, mode, false);
+        }
+
+        /** Освобождение, при котором здание остаётся на участке (вещи уходят, блоки - нет). */
+        public static Release keeping(String actor, String reason, Journal.Action action, boolean arrest) {
+            return new Release(actor, reason, action, arrest, Plot.RestoreMode.ITEMS_ONLY, true);
+        }
+    }
 
     private final IndustryRebornPlugin plugin;
     private final Set<String> creating = new java.util.HashSet<>();
@@ -100,7 +110,7 @@ public final class PlotService {
                 Text.send(admin, "<yellow>Строю здание «" + Text.esc(template.title()) + "» (" + template.blockCount() + " блоков)...");
                 plugin.buildings().build(world, template, placement, () -> {
                     creating.remove(key);
-                    createSnapshotAndPlot(admin, id, category, box, price, rent);
+                    createSnapshotAndPlot(admin, id, category, box, price, rent, true);
                 }, error -> {
                     creating.remove(key);
                     Text.err(admin, "Не удалось построить здание: " + error);
@@ -108,10 +118,10 @@ public final class PlotService {
                 return;
             }
         }
-        createSnapshotAndPlot(admin, id, category, box, price, rent);
+        createSnapshotAndPlot(admin, id, category, box, price, rent, false);
     }
 
-    private void createSnapshotAndPlot(Player admin, String id, Category category, Box box, double price, double rent) {
+    private void createSnapshotAndPlot(Player admin, String id, Category category, Box box, double price, double rent, boolean building) {
         String key = id.toLowerCase();
         World world = admin.getWorld();
         File dir = plugin.plots().snapshotDir(id);
@@ -141,6 +151,7 @@ public final class PlotService {
             if (category == Category.POWER_PLANT) {
                 plot.plantCapacity = plugin.getConfig().getDouble("grid.default-capacity", 1000);
             }
+            plot.hasBuilding = building;
             plot.hasHolo = true;
             plot.holoX = holo.getX();
             plot.holoY = holo.getY();
@@ -252,6 +263,34 @@ public final class PlotService {
         });
     }
 
+    /** Снимает текущий вид участка как исходный без сообщений (оставленное здание становится «исходным»). */
+    public void snapshotQuietly(Plot plot) {
+        World world = Bukkit.getWorld(plot.world);
+        if (world == null || plot.busy) {
+            return;
+        }
+        File dir = plugin.plots().snapshotDir(plot.id);
+        plot.busy = true;
+        ChunkJob.run(plugin, world, plot.box, (chunk, clip) -> {
+            try {
+                plugin.snapshots().capture(dir, world, chunk.getX(), chunk.getZ(), clip);
+            } catch (IOException e) {
+                throw new IllegalStateException(e);
+            }
+        }, () -> {
+            try {
+                plugin.snapshots().saveMeta(dir, plot.box, plugin.snapshots().originalEntities(world, plot.box));
+            } catch (IOException e) {
+                plugin.getLogger().log(Level.SEVERE, "Не удалось записать снимок " + plot.id, e);
+            }
+            plot.busy = false;
+            plugin.holograms().update(plot);
+        }, error -> {
+            plot.busy = false;
+            plugin.getLogger().log(Level.SEVERE, "Ошибка снимка " + plot.id, error);
+        });
+    }
+
     // ---------------------------------------------------------------- покупка и аренда
 
     private boolean checkAvailable(Player p, Plot plot) {
@@ -277,21 +316,32 @@ public final class PlotService {
             Text.err(p, "Участок уже занят.");
             return false;
         }
-        if (!p.hasPermission("industryreborn.bypass")) {
-            List<Plot> mine = plugin.plots().ownedBy(p.getUniqueId());
-            Map<Category, Integer> byCategory = new EnumMap<>(Category.class);
-            for (Plot m : mine) {
-                byCategory.merge(m.category, 1, Integer::sum);
-            }
-            OwnershipLimits.Result r = OwnershipLimits.check(mine.size(), byCategory, plot.category,
-                    plugin.getConfig().getInt("limits.total", 6),
-                    plugin.getConfig().getInt("limits.categories." + plot.category.key(), 2));
-            if (!r.allowed()) {
-                Text.err(p, r.reason());
-                return false;
-            }
+        if (plugin.lots().isLot(plot)) {
+            Text.err(p, "Участок выставлен на аукцион: сделайте ставку (/district lot info " + plot.id + ").");
+            return false;
+        }
+        String limit = ownershipError(p.getUniqueId(), p.hasPermission("industryreborn.bypass"), plot);
+        if (limit != null) {
+            Text.err(p, limit);
+            return false;
         }
         return true;
+    }
+
+    /** Не превысит ли игрок лимиты участков, получив этот: текст отказа или null. */
+    public String ownershipError(UUID uuid, boolean bypass, Plot plot) {
+        if (bypass) {
+            return null;
+        }
+        List<Plot> mine = plugin.plots().ownedBy(uuid);
+        Map<Category, Integer> byCategory = new EnumMap<>(Category.class);
+        for (Plot m : mine) {
+            byCategory.merge(m.category, 1, Integer::sum);
+        }
+        OwnershipLimits.Result r = OwnershipLimits.check(mine.size(), byCategory, plot.category,
+                plugin.getConfig().getInt("limits.total", 6),
+                plugin.getConfig().getInt("limits.categories." + plot.category.key(), 2));
+        return r.allowed() ? null : r.reason();
     }
 
     /** Платёж в казну. Деньги списываются у игрока и учитываются на счёте казны. */
@@ -378,9 +428,14 @@ public final class PlotService {
     }
 
     private void occupy(Plot plot, Player p, Plot.Status status, long until) {
+        occupy(plot, p.getUniqueId(), p.getName(), status, until);
+    }
+
+    /** Участок переходит новому управляющему (покупка, аренда, победа на аукционе). */
+    public void occupy(Plot plot, UUID uuid, String name, Plot.Status status, long until) {
         plot.status = status;
-        plot.owner = p.getUniqueId();
-        plot.ownerName = p.getName();
+        plot.owner = uuid;
+        plot.ownerName = name;
         plot.rentedUntil = until;
         plot.autoRenew = false;
         plot.warned = false;
@@ -476,6 +531,13 @@ public final class PlotService {
         return plot.resetOnRelease || plot.category.isRentOnly() ? Plot.RestoreMode.FULL : Plot.RestoreMode.ITEMS_ONLY;
     }
 
+    /** Освобождение по воле или вине управляющего (отказ, конец аренды): здание остаётся, если он так выбрал. */
+    private Release ownerRelease(String actor, String reason, Journal.Action action, Plot plot) {
+        Plot.RestoreMode mode = ownerMode(plot);
+        boolean keep = mode == Plot.RestoreMode.ITEMS_ONLY && !plot.isPlayerPlot() && !plot.category.isRentOnly();
+        return new Release(actor, reason, action, false, mode, keep);
+    }
+
     /** Добровольный отказ управляющего от участка. */
     public void release(Player p, Plot plot) {
         if (isLocked(plot)) {
@@ -493,7 +555,7 @@ public final class PlotService {
                 }
             }
         }
-        evict(plot, new Release(p.getName(), "Отказ управляющего", Journal.Action.RELEASED, false, ownerMode(plot)));
+        evict(plot, ownerRelease(p.getName(), "Отказ управляющего", Journal.Action.RELEASED, plot));
     }
 
     // ---------------------------------------------------------------- освобождение и сброс
@@ -502,10 +564,10 @@ public final class PlotService {
     public void evict(Plot plot, Release release) {
         if (plot.category == Category.HOTEL && release.mode() == Plot.RestoreMode.FULL && plugin.hotels().hasOccupiedRooms(plot)) {
             // в отеле живут гости: здание целиком не сбрасывается, чтобы не стереть их номера
-            release = new Release(release.actor(), release.reason(), release.action(), release.arrest(), Plot.RestoreMode.ITEMS_ONLY);
+            release = new Release(release.actor(), release.reason(), release.action(), release.arrest(), Plot.RestoreMode.ITEMS_ONLY, release.keep());
         }
         if (plot.isPlayerPlot() && release.mode() != Plot.RestoreMode.RETURN) {
-            release = new Release(release.actor(), release.reason(), release.action(), release.arrest(), Plot.RestoreMode.RETURN);
+            release = new Release(release.actor(), release.reason(), release.action(), release.arrest(), Plot.RestoreMode.RETURN, false);
         }
         UUID previous = plot.owner;
         plugin.journal().add(plot.id, previous, release.actor(), release.action(), release.reason());
@@ -562,6 +624,7 @@ public final class PlotService {
         plot.restoreFor = tenant;
         plot.restoreMode = release.mode();
         plot.restoreArrest = release.arrest();
+        plot.restoreKeep = release.keep() && release.mode() == Plot.RestoreMode.ITEMS_ONLY && !plot.isPlayerPlot();
         plot.restoreReason = release.reason();
         plot.restoreBatch = UUID.randomUUID().toString();
         plot.failures = 0;
@@ -628,10 +691,18 @@ public final class PlotService {
             plot.busy = false;
             plot.restorePending = false;
             plot.restoreFor = null;
+            boolean keep = plot.restoreKeep;
+            plot.restoreKeep = false;
+            if (keep) {
+                plot.hasBuilding = true;
+            }
             plugin.plots().save();
             plugin.ledgers().flush();
             plugin.holograms().update(plot);
             plugin.stations().rescan(plot);
+            if (keep && plugin.getConfig().getBoolean("keep-building.rebaseline", true)) {
+                snapshotQuietly(plot);
+            }
             for (Map.Entry<UUID, Integer> e : returned.entrySet()) {
                 Player online = Bukkit.getPlayer(e.getKey());
                 if (online != null) {
@@ -919,7 +990,7 @@ public final class PlotService {
                 return;
             }
         }
-        evict(plot, new Release("система", "Срок аренды истёк", Journal.Action.EXPIRED, false, ownerMode(plot)));
+        evict(plot, ownerRelease("система", "Срок аренды истёк", Journal.Action.EXPIRED, plot));
     }
 
     private void graceTick(Plot plot, long now) {
@@ -928,8 +999,7 @@ public final class PlotService {
             return;
         }
         if (now >= plot.graceUntil) {
-            evict(plot, new Release("система", "Аренда не оплачена в течение отсрочки", Journal.Action.EXPIRED,
-                    false, ownerMode(plot)));
+            evict(plot, ownerRelease("система", "Аренда не оплачена в течение отсрочки", Journal.Action.EXPIRED, plot));
         }
     }
 

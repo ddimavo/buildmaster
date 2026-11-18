@@ -19,7 +19,8 @@ public enum Module {
     WEBHOOKS("webhooks", "Вебхуки", "статистика в Discord, XenForo, Invision"),
     PLAN("plan", "Интеграция с Plan", "показатели на панели Plan"),
     AUTO_BUILD("auto-build", "Автостроительство", "здание из шаблона ставится на пустой участок при создании"),
-    HOLO_SHOP("holo-shop", "Торговля через голограммы", "голограммы-витрины с листанием и покупкой");
+    HOLO_SHOP("holo-shop", "Торговля через голограммы", "голограммы-витрины с листанием и покупкой"),
+    PLOT_AUCTION("plot-auction", "Аукцион участков", "продажа участков с торгами, ставками и голограммой лота");
 
     private final String key;
     private final String title;

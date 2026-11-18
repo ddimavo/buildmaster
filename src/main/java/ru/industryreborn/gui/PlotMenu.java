@@ -285,6 +285,18 @@ public final class PlotMenu extends Menu {
                 e -> askReason("Причина изъятия участка:", reason -> plugin.service().evict(plot,
                         new PlotService.Release(player.getName(), reason, Journal.Action.SEIZED, true,
                                 Plot.RestoreMode.FULL))));
+        if (!plot.isPlayerPlot() && !plot.category.isRentOnly()) {
+            set(39, Text.icon(Material.OAK_DOOR, "<red>Выселить, здание оставить",
+                    "<gray>Участок освобождается, вещи - в хранилище,", "<gray>здание остаётся и становится исходным видом", "<yellow>Потребуется причина"),
+                    e -> askReasonKeep("Причина выселения:", Journal.Action.EVICTED, false));
+            set(41, Text.icon(Material.TRIPWIRE_HOOK, "<dark_red>Изъять, здание оставить",
+                    "<gray>Вещи арестовываются, здание остаётся", "<gray>и становится исходным видом", "<yellow>Потребуется причина"),
+                    e -> askReasonKeep("Причина изъятия участка:", Journal.Action.SEIZED, true));
+        }
+    }
+
+    private void askReasonKeep(String prompt, Journal.Action action, boolean arrest) {
+        askReason(prompt, reason -> plugin.service().evict(plot, PlotService.Release.keeping(player.getName(), reason, action, arrest)));
     }
 
     private void askReason(String prompt, java.util.function.Consumer<String> action) {

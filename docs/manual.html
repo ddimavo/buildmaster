@@ -178,6 +178,9 @@ footer { max-width:980px; margin:50px auto 0; color:var(--muted); font-size:13px
 <a class="l2" href="#134-торговля-через-голограммы">13.4. Торговля через голограммы</a>
 <a class="l2" href="#135-автоматическое-строительство">13.5. Автоматическое строительство</a>
 <a class="l3" href="#платное-строительство-для-игроков">Платное строительство для игроков</a>
+<a class="l2" href="#136-здание-после-отказа-и-аукцион-участков">13.6. Здание после отказа и аукцион участков</a>
+<a class="l3" href="#здание-остаётся-на-участке">Здание остаётся на участке</a>
+<a class="l3" href="#аукцион-участков">Аукцион участков</a>
 <a class="l2" href="#14-справочник-команд">14. Справочник команд</a>
 <a class="l3" href="#141-игроки">14.1. Игроки</a>
 <a class="l3" href="#142-администраторы-industryrebornadmin">14.2. Администраторы (industryreborn.admin)</a>
@@ -1581,6 +1584,10 @@ footer { max-width:980px; margin:50px auto 0; color:var(--muted); font-size:13px
 <td><code>auto-build</code></td>
 <td>автоматическое строительство зданий (при создании участка и <code>/district build</code>)</td>
 </tr>
+<tr>
+<td><code>plot-auction</code></td>
+<td>аукцион участков: торги, ставки, голограмма лота</td>
+</tr>
 </tbody>
 </table></div>
 <h2 id="132-автокорректировка-экономики">13.2. Автокорректировка экономики</h2>
@@ -1631,7 +1638,7 @@ footer { max-width:980px; margin:50px auto 0; color:var(--muted); font-size:13px
 </tr>
 </tbody>
 </table></div>
-<p>Для каждого адреса: <code>interval-minutes</code> (0 - без расписания), <code>events</code> (<code>stats</code>, <code>balance</code>, <code>module</code>, <code>payout</code>), <code>sections</code> (какие разделы включать:
+<p>Для каждого адреса: <code>interval-minutes</code> (0 - без расписания), <code>events</code> (<code>stats</code>, <code>balance</code>, <code>module</code>, <code>payout</code>, <code>lot</code>), <code>sections</code> (какие разделы включать:
 <code>general</code>, <code>economy</code>, <code>electricity</code>, <code>production</code>, <code>hotels</code>, <code>work</code>, <code>goods</code>, <code>top</code>). Первое сообщение для Discord, XenForo и Invision запоминается в <code>webhooks.yml</code>,
 дальше сводка правит его. Команды: <code>/district webhook list</code> (состояние и результат последней отправки), <code>send &lt;имя&gt;</code> (отправить сводку сейчас), <code>test &lt;имя&gt;</code>
 (проверочное сообщение). Адрес и ключи хранятся в config.yml: не публикуйте его.</p>
@@ -1701,6 +1708,43 @@ footer { max-width:980px; margin:50px auto 0; color:var(--muted); font-size:13px
 <p><strong>Превью.</strong> Картинки зданий рисует сам плагин (изометрия по цветам блоков) и кэширует в <code>plugins/IndustryReborn/previews/</code>; рядом со страницами MC GUI они лежат в <code>industryreborn/img/</code>.
 Для своих сохранённых и импортированных зданий превью появляется автоматически.</p>
 <p>Настройки (<code>auto-build</code> в config.yml): <code>enabled</code>, <code>on-create</code>, <code>blocks-per-tick</code>, <code>max-slope</code>, <code>defaults</code>, <code>player-build</code>, <code>price-per-block</code>, <code>min-price</code>, <code>match-category</code>, <code>price-categories</code>. Функция выключается как <code>auto-build</code> (вместе с <code>build save</code> и <code>build import</code>).</p>
+<h2 id="136-здание-после-отказа-и-аукцион-участков">13.6. Здание после отказа и аукцион участков</h2>
+<h3 id="здание-остаётся-на-участке">Здание остаётся на участке</h3>
+<p>Когда управляющий отказывается от участка или его аренда заканчивается, а также когда администратор выселяет или изымает участок, здание можно <strong>оставить</strong>:</p>
+<ul>
+<li><strong>Отказ и конец аренды</strong> - как задаёт управляющий: в меню участка «Сброс здания при отказе: нет» (здание останется, вещи уйдут в хранилище).</li>
+<li><strong>Выселение и изъятие</strong> - <code>/district evict &lt;номер&gt; [keep|reset] &lt;причина&gt;</code> и <code>/district seize &lt;номер&gt; [keep|reset] &lt;причина&gt;</code>: <code>keep</code> оставляет здание, <code>reset</code> возвращает исходный вид.
+  Без слова решает <code>keep-building.on-evict</code> / <code>keep-building.on-seize</code> (по умолчанию - сбросить). В меню участка у администратора есть кнопки «Выселить, здание оставить» и «Изъять, здание оставить».</li>
+<li>Оставленное здание становится <strong>новым исходным видом</strong> участка (<code>keep-building.rebaseline</code>): следующий сброс вернёт его, а не пустое место; участок помечается «с готовым зданием».
+  Содержимое контейнеров и вещи в любом случае уходят в хранилище прежнего управляющего (при изъятии - под арестом). Участки игроков на регионах и номера отелей этого не касаются.</li>
+</ul>
+<h3 id="аукцион-участков">Аукцион участков</h3>
+<p>Свободный участок продаётся не по фиксированной цене, а с торгами. Выставляют администрация (<code>/district lot start</code>) или игрок, продающий свой купленный участок (<code>/district lot sell</code>).</p>
+<pre><code class="language-text">/district lot start &lt;участок&gt; &lt;старт&gt; [часов] [шаг] [выкуп]   (администратор) выставить свободный участок
+/district lot sell &lt;участок&gt; &lt;старт&gt; [часов] [шаг] [выкуп]    игрок: продать свой участок (просит подтвердить)
+/district lot list | info &lt;участок&gt; | menu                     список лотов, подробности, HTML-страница
+/district lot bid &lt;участок&gt; [сумма]                            ставка (без суммы - минимально допустимая)
+/district lot buyout &lt;участок&gt;                                 мгновенный выкуп по цене выкупа
+/district lot cancel &lt;участок&gt; [причина] | end &lt;участок&gt;       (администратор) отменить / завершить досрочно
+/district lot holo &lt;участок&gt;                                   (администратор) перенести голограмму лота в свою позицию
+</code></pre>
+<ul>
+<li><strong>Ставки.</strong> Следующая ставка не меньше «последняя + шаг» (первая - не меньше старта). Деньги списываются сразу; если ставку перебили, они возвращаются, а перебитому приходит
+  уведомление. Ставить на свой лот и повторять свою последнюю ставку нельзя; лимиты участков (<code>limits.*</code>) действуют и на торгах.
+  Ставка в последние <code>snipe-window-minutes</code> минут продлевает торги до «сейчас + <code>snipe-extend-minutes</code>». <strong>Выкуп:</strong> если задана цена выкупа, участок можно забрать сразу; ставка не может её достигнуть.</li>
+<li><strong>Итог.</strong> По окончании участок достаётся победителю (он становится управляющим, как при покупке). Деньги идут в казну; при продаже игроком казна берёт комиссию
+  (<code>seller-commission-percent</code>), остальное получает продавец. Нет ставок - участок остаётся свободным. Если победитель к концу торгов упёрся в лимит участков, ставка ему возвращается.</li>
+<li><strong>Продажа игроком.</strong> <code>/district lot sell</code> освобождает участок сразу (вещи - в хранилище, здание остаётся и показывается в лоте) и выставляет его. Если ставок не будет, участок станет свободным.
+  На время торгов участок нельзя купить или арендовать по фиксированной цене.</li>
+<li><strong>Голограмма лота.</strong> Отдельная от голограммы участка (выше неё; перенести - <code>lot holo</code>). На ней: номер, тип, размер, «с готовым зданием», <strong>последняя ставка и ставивший</strong>, <strong>шаг ставки</strong>, следующая минимальная ставка,
+  выкуп, <strong>оставшееся время</strong> и число ставок. Видна и обновляется только рядом с игроками (<code>view-distance</code>). <strong>ПКМ</strong> - ставка минимальной суммы, <strong>Shift+ПКМ</strong> - выкуп; нужно нажать дважды
+  в течение <code>click-confirm-seconds</code> секунд (защита от случайного клика; выключается <code>click-bid: false</code>).</li>
+<li><strong>HTML-страница «Аукционы участков»</strong> (главная страница → раздел): лоты с последней ставкой, шагом, временем, кнопками «Ставка N», «+2 шага», «+5 шагов», «Выкупить» и таблица недавних торгов.</li>
+<li>В журнале каждая ставка и итог (действие «Аукцион участка»); о новых и завершённых торгах пишется всем в чат (<code>broadcast</code>) и в вебхук (событие <code>lot</code>).</li>
+</ul>
+<p>Настройки: раздел <code>plot-auction</code> в config.yml (<code>player-sales</code>, <code>min-hours</code>, <code>max-hours</code>, <code>default-hours</code>, <code>min-step</code>, <code>step-percent</code>, <code>max-lots</code>, <code>seller-commission-percent</code>, <code>snipe-*</code>,
+<code>click-bid</code>, <code>view-distance</code>, <code>holo-height</code>, <code>broadcast</code>). Функция выключается <code>/district module plot-auction off</code> (тогда не работают ни ставки, ни команды, ни голограммы - даже у администрации).
+Лоты хранятся в <code>lots.yml</code>.</p>
 <h2 id="14-справочник-команд"><span class="num">14</span>Справочник команд</h2>
 <p>Все команды: <code>/district &lt;подкоманда&gt;</code> (<code>/dt</code>, <code>/uchastok</code>). <code>[ ]</code> – необязательное, <code>&lt; &gt;</code> – обязательное, <code>|</code> – выбор. Номер участка можно не указывать, если вы стоите на нём.</p>
 <h3 id="141-игроки">14.1. Игроки</h3>
@@ -1842,6 +1886,10 @@ footer { max-width:980px; margin:50px auto 0; color:var(--muted); font-size:13px
 <tr>
 <td><code>build list|reload|&lt;участок&gt; &lt;здание&gt; [force]</code></td>
 <td>автостроительство</td>
+</tr>
+<tr>
+<td><code>lot [list|info|bid|buyout|sell|menu]</code></td>
+<td>аукцион участков (раздел 13.6)</td>
 </tr>
 <tr>
 <td><code>build menu [участок]</code>, <code>build &lt;участок&gt; &lt;здание&gt; [confirm]</code></td>

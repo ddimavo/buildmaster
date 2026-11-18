@@ -330,6 +330,8 @@ public final class PlotManager {
             p.restoreMode = Plot.RestoreMode.FULL;
         }
         p.restoreArrest = s.getBoolean("restore-arrest");
+        p.restoreKeep = s.getBoolean("restore-keep");
+        p.hasBuilding = s.getBoolean("has-building");
         p.restoreReason = s.getString("restore-reason");
         p.restoreBatch = s.getString("restore-batch");
         String rf = s.getString("restore-for");
@@ -355,6 +357,7 @@ public final class PlotManager {
                 yml.set(k + "holo.z", p.holoZ);
             }
             yml.set(k + "reset-on-release", p.resetOnRelease);
+            yml.set(k + "has-building", p.hasBuilding);
             yml.set(k + "grace-until", p.graceUntil);
             yml.set(k + "price", p.price);
             yml.set(k + "rent-per-day", p.rentPerDay);
@@ -452,6 +455,7 @@ public final class PlotManager {
             yml.set(k + "restore-for", p.restoreFor == null ? null : p.restoreFor.toString());
             yml.set(k + "restore-mode", p.restoreMode.name());
             yml.set(k + "restore-arrest", p.restoreArrest);
+            yml.set(k + "restore-keep", p.restoreKeep);
             yml.set(k + "restore-reason", p.restoreReason);
             yml.set(k + "restore-batch", p.restoreBatch);
         }

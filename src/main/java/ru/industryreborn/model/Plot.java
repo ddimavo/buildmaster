@@ -212,6 +212,10 @@ public final class Plot {
     public RestoreMode restoreMode = RestoreMode.FULL;
     /** Вещи арестовываются (изъятие участка) - до решения администратора. */
     public boolean restoreArrest;
+    /** После освобождения здание остаётся на участке и становится его новым исходным видом. */
+    public boolean restoreKeep;
+    /** На участке стоит готовое здание (поставлено автостроительством, заказано или оставлено прежним управляющим). */
+    public boolean hasBuilding;
     public String restoreReason;
     public String restoreBatch;
 

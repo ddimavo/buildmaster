@@ -102,6 +102,9 @@ public final class HtmlPages {
         if (plugin.modules().enabled(ru.industryreborn.service.Module.SERVICES)) {
             b.append(link("orders-" + suffix + ".html", "Мои заказы", "Заказов: " + plugin.orders().ofClient(id).size()));
         }
+        if (plugin.lots().enabled()) {
+            b.append(link("lots-" + suffix + ".html", "Аукционы участков", "Торгов сейчас: " + plugin.lots().all().size()));
+        }
         var buildings = plugin.buildings();
         if (buildings.playerBuildEnabled() && (!buildings.buildablePlots(player).isEmpty() || player.hasPermission("industryreborn.admin"))) {
             b.append(link("build-" + suffix + ".html", "Строительство", "Здания на ваш участок, цена за блок: "
@@ -900,6 +903,69 @@ public final class HtmlPages {
             b.append("</div>");
         }
         return Html.page("Строительство", b.append(nav(suffix, true)).toString());
+    }
+
+    // ------------------------------------------------------------ аукцион участков
+
+    public String lots(Player player, String suffix) {
+        var svc = plugin.lots();
+        if (!svc.enabled()) {
+            return Html.page("Аукционы участков", "<h1>Аукционы участков</h1><div class=\"minus\">Функция отключена администрацией.</div>" + nav(suffix, true));
+        }
+        StringBuilder b = new StringBuilder("<h1>Аукционы участков</h1><div class=\"sub\">Ставки списываются сразу и возвращаются, если вашу перебили. "
+                + "Ставка в последние минуты продлевает торги. Баланс: ").append(money(plugin.economy().balance(player))).append("</div>\n");
+        var all = svc.all();
+        if (all.isEmpty()) {
+            b.append("<div class=\"muted\">Сейчас торгов нет.</div>");
+        }
+        for (var lot : all) {
+            Plot plot = plugin.plots().get(lot.plotId());
+            if (plot == null) {
+                continue;
+            }
+            boolean mineLot = lot.seller != null && lot.seller.equals(player.getUniqueId());
+            boolean leader = lot.bidder != null && lot.bidder.equals(player.getUniqueId());
+            b.append("<div class=\"row\"><b>Участок № ").append(Html.esc(plot.id)).append("</b> <span class=\"muted\">").append(Html.esc(plot.category.title()))
+                    .append(" · ").append(plot.box.sizeX()).append("×").append(plot.box.sizeZ()).append(plot.hasBuilding ? " · с готовым зданием" : "").append("</span><br>");
+            if (lot.hasBids()) {
+                b.append("Последняя ставка: ").append(money(lot.bid)).append(" <span class=\"muted\">(").append(Html.esc(lot.bidderName)).append(")</span>")
+                        .append(leader ? " <span class=\"plus\">- это вы</span>" : "");
+            } else {
+                b.append("Ставок нет, старт: ").append(money(lot.start));
+            }
+            b.append("<br><span class=\"muted\">Шаг ставки ").append(money(lot.step)).append(" · следующая не меньше ").append(money(lot.minNext()))
+                    .append(lot.buyout > 0 ? " · выкуп " + money(lot.buyout) : "").append(" · осталось ")
+                    .append(Html.esc(Text.duration(Math.max(0, lot.endAt - System.currentTimeMillis())))).append(" · ставок: ").append(lot.bids).append("</span><div class=\"inner\">");
+            if (mineLot) {
+                b.append("<span class=\"muted\">Это ваш лот.</span>");
+            } else if (leader) {
+                b.append("<span class=\"plus\">Ваша ставка последняя.</span>");
+            } else {
+                double next = lot.minNext();
+                for (int k : new int[] {0, 2, 5}) {
+                    double amount = next + k * lot.step;
+                    if (lot.buyout > 0 && amount >= lot.buyout) {
+                        continue;
+                    }
+                    b.append(cmdBtn("district lot bid " + plot.id + " " + String.format(java.util.Locale.ROOT, "%.2f", amount),
+                            "Ставка " + plugin.economy().format(amount), k == 0 ? "" : "gray"));
+                }
+                if (lot.buyout > 0) {
+                    b.append(cmdBtn("district lot buyout " + plot.id, "Выкупить за " + plugin.economy().format(lot.buyout), "red"));
+                }
+            }
+            b.append(cmdBtn("district tp " + plot.id, "Посмотреть", "gray")).append("</div></div>\n");
+        }
+        var history = svc.history();
+        if (!history.isEmpty()) {
+            b.append("<h2>Недавние торги</h2><table><tr><th>Участок</th><th>Итог</th><th>Победитель</th><th>Цена</th></tr>");
+            for (var r : history.subList(0, Math.min(8, history.size()))) {
+                b.append("<tr><td>").append(Html.esc(r.plotId())).append("</td><td>").append(Html.esc(r.outcome())).append("</td><td>")
+                        .append(r.winner() == null ? "-" : Html.esc(r.winner())).append("</td><td>").append(r.price() > 0 ? money(r.price()) : "-").append("</td></tr>");
+            }
+            b.append("</table>");
+        }
+        return Html.page("Аукционы участков", b.append(nav(suffix, true)).toString());
     }
 
     // ------------------------------------------------------------ администрирование
