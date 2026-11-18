@@ -11,7 +11,7 @@ import ru.industryreborn.util.Text;
 public final class BankSettingsMenu extends Menu {
 
     public BankSettingsMenu(IndustryRebornPlugin plugin, Player player) {
-        super(plugin, player, "<dark_gray>Настройки банка", 4);
+        super(plugin, player, "<dark_gray>Район › Банк › Настройки", 6);
         if (!player.hasPermission("industryreborn.bank")) {
             set(13, Text.icon(Material.BARRIER, "<red>Недостаточно прав"));
             fill(Material.GRAY_STAINED_GLASS_PANE);
@@ -19,17 +19,20 @@ public final class BankSettingsMenu extends Menu {
         }
         var bank = plugin.bank();
         String who = player.getName();
-        percent(10, "Комиссия за пополнение", bank.depositCommission(), v -> bank.setDepositCommission(v, who));
-        percent(11, "Комиссия за снятие", bank.withdrawCommission(), v -> bank.setWithdrawCommission(v, who));
-        percent(12, "Штраф при изъятии участка", bank.seizurePenalty(), v -> bank.setSeizurePenalty(v, who));
-        percent(13, "Налог на доход от аренды", bank.rentTax(), v -> bank.setRentTax(v, who));
-        set(14, Text.icon(bank.onlyInBank() ? Material.LIME_DYE : Material.GRAY_DYE,
+        set(4, Text.icon(Material.COMPARATOR, "<red>Настройки банка", "<gray>Комиссии, штраф при изъятии и налоги", "<gray>Изменения попадают в журнал"));
+        set(9, Ui.section("Комиссии и налоги", Material.YELLOW_STAINED_GLASS_PANE));
+        percent(11, "Комиссия за пополнение", bank.depositCommission(), v -> bank.setDepositCommission(v, who));
+        percent(12, "Комиссия за снятие", bank.withdrawCommission(), v -> bank.setWithdrawCommission(v, who));
+        percent(13, "Штраф при изъятии участка", bank.seizurePenalty(), v -> bank.setSeizurePenalty(v, who));
+        percent(14, "Налог на доход от аренды", bank.rentTax(), v -> bank.setRentTax(v, who));
+        set(15, Text.icon(bank.onlyInBank() ? Material.LIME_DYE : Material.GRAY_DYE,
                 "<white>Операции только в банке: " + (bank.onlyInBank() ? "<green>да" : "<red>нет"),
                 "<yellow>Нажмите, чтобы переключить"), e -> {
                     bank.setOnlyInBank(!bank.onlyInBank(), who);
                     new BankSettingsMenu(plugin, player).open();
                 });
-        int slot = 19;
+        set(18, Ui.section("Налог на имущество", Material.ORANGE_STAINED_GLASS_PANE));
+        int slot = 20;
         for (Category c : Category.values()) {
             if (c.isAdminOnly() || c.isRentOnly()) {
                 continue;
@@ -53,7 +56,7 @@ public final class BankSettingsMenu extends Menu {
                         new BankSettingsMenu(plugin, player).open();
                     }));
         }
-        set(27, Ui.back(null), e -> new BankMenu(plugin, player).open());
+        navBar("Банк", () -> new BankMenu(plugin, player).open(), 0, 1, p -> { });
         fill(Material.GRAY_STAINED_GLASS_PANE);
     }
 

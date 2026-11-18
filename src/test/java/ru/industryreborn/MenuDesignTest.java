@@ -66,7 +66,7 @@ class MenuDesignTest extends PluginTestBase {
                 new PlotListMenu(plugin, steve, new PlotFilter(PlotFilter.Mode.FREE), 0).getInventory().getItem(45).getType());
         assertEquals(Material.CYAN_STAINED_GLASS_PANE, new StorageMenu(plugin, steve, 0).getInventory().getItem(45).getType());
         assertEquals(Material.LIME_STAINED_GLASS_PANE, new JobBoardMenu(plugin, steve, 0).getInventory().getItem(45).getType());
-        assertEquals(Material.YELLOW_STAINED_GLASS_PANE, new BankMenu(plugin, steve).getInventory().getItem(28).getType());
+        assertEquals(Material.YELLOW_STAINED_GLASS_PANE, new BankMenu(plugin, steve).getInventory().getItem(45).getType());
         assertEquals(Material.RED_STAINED_GLASS_PANE, new ModerationMenu(plugin, boss, 0).getInventory().getItem(45).getType());
         assertEquals(Material.RED_STAINED_GLASS_PANE, new ArrestedMenu(plugin, boss, 0).getInventory().getItem(46).getType());
         assertEquals(Material.RED_STAINED_GLASS_PANE,

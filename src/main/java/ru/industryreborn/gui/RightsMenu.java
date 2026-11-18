@@ -18,7 +18,7 @@ import ru.industryreborn.util.Text;
 public final class RightsMenu extends Menu {
 
     public RightsMenu(IndustryRebornPlugin plugin, Player player, Plot plot, PlotFilter back) {
-        super(plugin, player, "<dark_gray>Права · участок " + Text.esc(plot.id), 6);
+        super(plugin, player, "<dark_gray>Район › Участки › " + Text.esc(plot.id) + " › Права", 6);
         set(4, Text.icon(Material.WRITABLE_BOOK, "<gold>Права на участке",
                 "<gray>Строительство - ставить и ломать блоки", "<gray>Контейнеры - сундуки, бочки и т.п.",
                 "<gray>Станки - печи, наковальни и др."));

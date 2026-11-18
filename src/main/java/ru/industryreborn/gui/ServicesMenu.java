@@ -14,12 +14,14 @@ import ru.industryreborn.util.Text;
 public final class ServicesMenu extends Menu {
 
     public ServicesMenu(IndustryRebornPlugin plugin, Player player, Plot plot, PlotFilter back) {
-        super(plugin, player, "<dark_gray>Услуги · " + Text.esc(plot.displayName()), 4);
-        int slot = 10;
+        super(plugin, player, "<dark_gray>Район › Участки › " + Text.esc(plot.displayName()) + " › Услуги", 6);
+        set(4, Text.icon(Material.FURNACE, "<gold>Услуги мастерской", "<gray>Возьмите предметы в руку и нажмите на услугу"));
+        set(9, Ui.section("Услуги", Material.ORANGE_STAINED_GLASS_PANE));
+        int slot = 11;
         boolean any = false;
         for (ServiceCatalog.Offer def : plugin.catalog().offers()) {
             Plot.Offer offer = plot.offers.get(def.key());
-            if (offer == null || !offer.enabled || slot > 16) {
+            if (offer == null || !offer.enabled || slot > 17) {
                 continue;
             }
             any = true;
@@ -50,10 +52,10 @@ public final class ServicesMenu extends Menu {
             });
         }
         if (!any) {
-            set(13, Text.icon(Material.BARRIER, "<gray>Мастерская пока не оказывает услуг"));
+            set(22, Text.icon(Material.BARRIER, "<gray>Мастерская пока не оказывает услуг"));
         }
-        set(30, Text.icon(Material.CHEST, "<aqua>Мои заказы"), e -> new MyOrdersMenu(plugin, player, 0).open());
-        set(27, Ui.back(null), e -> new PlotMenu(plugin, player, plot, back).open());
+        set(7, Text.icon(Material.CHEST, "<aqua>Мои заказы"), e -> new MyOrdersMenu(plugin, player, 0).open());
+        navBar("Участок", () -> new PlotMenu(plugin, player, plot, back).open(), 0, 1, p -> { });
         fill(Material.GRAY_STAINED_GLASS_PANE);
     }
 

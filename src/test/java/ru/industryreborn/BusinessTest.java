@@ -771,19 +771,19 @@ class BusinessTest extends PluginTestBase {
         stock(shop, Material.IRON_INGOT, 100, -1);
         steve.getInventory().clear();
         new ru.industryreborn.gui.GoodsMenu(plugin, steve, shop, null, 0).open();
-        steve.simulateInventoryClick(0);                 // ЛКМ - цена через чат
+        steve.simulateInventoryClick(9);                 // ЛКМ - цена через чат
         assertTrue(plugin.chatPrompt().isWaiting(steve));
         plugin.chatPrompt().deliver(steve, "4,5");
         server.getScheduler().performTicks(2);
         assertEquals(4.5, plugin.goods().price(shop, Material.IRON_INGOT), 1e-9);
         new ru.industryreborn.gui.GoodsMenu(plugin, steve, shop, null, 0).open();
         server.getPluginManager().callEvent(new org.bukkit.event.inventory.InventoryClickEvent(steve.getOpenInventory(),
-                org.bukkit.event.inventory.InventoryType.SlotType.CONTAINER, 0, org.bukkit.event.inventory.ClickType.RIGHT,
+                org.bukkit.event.inventory.InventoryType.SlotType.CONTAINER, 9, org.bukkit.event.inventory.ClickType.RIGHT,
                 org.bukkit.event.inventory.InventoryAction.PICKUP_HALF));
         assertEquals(36, plugin.goods().stock(shop, Material.IRON_INGOT));
         assertEquals(64, count(steve, Material.IRON_INGOT));
         server.getPluginManager().callEvent(new org.bukkit.event.inventory.InventoryClickEvent(steve.getOpenInventory(),
-                org.bukkit.event.inventory.InventoryType.SlotType.CONTAINER, 0, org.bukkit.event.inventory.ClickType.SHIFT_LEFT,
+                org.bukkit.event.inventory.InventoryType.SlotType.CONTAINER, 9, org.bukkit.event.inventory.ClickType.SHIFT_LEFT,
                 org.bukkit.event.inventory.InventoryAction.MOVE_TO_OTHER_INVENTORY));
         assertEquals(0, plugin.goods().price(shop, Material.IRON_INGOT), 1e-9, "Shift+ЛКМ снимает с продажи");
     }
@@ -793,7 +793,7 @@ class BusinessTest extends PluginTestBase {
         steve.getInventory().clear();
         give(steve, Material.IRON_INGOT, 20);
         new ru.industryreborn.gui.GoodsMenu(plugin, steve, shop, null, 0).open();
-        steve.simulateInventoryClick(47);
+        steve.simulateInventoryClick(2);
         assertEquals(20, plugin.goods().stock(shop, Material.IRON_INGOT));
     }
 

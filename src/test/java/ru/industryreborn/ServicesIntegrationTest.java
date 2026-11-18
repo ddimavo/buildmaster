@@ -809,7 +809,7 @@ class ServicesIntegrationTest extends PluginTestBase {
     void servicesMenuOrdersFromTheHandWithAClick() {
         hold(alex, new ItemStack(Material.IRON_ORE, 4));
         new ru.industryreborn.gui.ServicesMenu(plugin, alex, workshop, null).open();
-        alex.simulateInventoryClick(10);
+        alex.simulateInventoryClick(11);
         assertEquals(1, plugin.orders().ofClient(alex.getUniqueId()).size());
     }
 
@@ -828,7 +828,7 @@ class ServicesIntegrationTest extends PluginTestBase {
     void offersMenuTogglesAServiceForTheManager() {
         assertTrue(workshop.offers.get("smelt").enabled);
         new ru.industryreborn.gui.OffersMenu(plugin, steve, workshop, null).open();
-        steve.simulateInventoryClick(10);
+        steve.simulateInventoryClick(11);
         assertFalse(workshop.offers.get("smelt").enabled);
     }
 

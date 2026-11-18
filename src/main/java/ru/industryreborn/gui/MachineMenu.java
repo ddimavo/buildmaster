@@ -20,7 +20,7 @@ public final class MachineMenu extends Menu {
     private static final int PAGE_SIZE = 36;
 
     public MachineMenu(IndustryRebornPlugin plugin, Player player, Plot plot, String pos, String category, int page, String search) {
-        super(plugin, player, "<dark_gray>Станок · " + pos, 6);
+        super(plugin, player, "<dark_gray>Район › Участки › " + Text.esc(plot.displayName()) + " › Станок " + pos, 6);
         var f = plugin.factory();
         ProductionService.View view = f.view(plot, pos);
         Material block = view.block();

@@ -20,7 +20,7 @@ public final class StaffMenu extends Menu {
     private final PlotFilter back;
 
     public StaffMenu(IndustryRebornPlugin plugin, Player player, Plot plot, PlotFilter back, Tab tab) {
-        super(plugin, player, "<dark_gray>Работники · " + Text.esc(plot.displayName()), 6);
+        super(plugin, player, "<dark_gray>Район › Участки › " + Text.esc(plot.displayName()) + " › Работники", 6);
         this.plot = plot;
         this.back = back;
         switch (tab) {

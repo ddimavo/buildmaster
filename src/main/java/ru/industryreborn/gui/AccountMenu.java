@@ -14,7 +14,7 @@ import ru.industryreborn.util.Text;
 public final class AccountMenu extends Menu {
 
     public AccountMenu(IndustryRebornPlugin plugin, Player player, Plot plot) {
-        super(plugin, player, "<dark_gray>Счёт · участок " + Text.esc(plot.id), 6);
+        super(plugin, player, "<dark_gray>Район › Банк › Счёт " + Text.esc(plot.id), 6);
         plugin.power().touch(plot);
         boolean banker = player.hasPermission("industryreborn.bank");
         boolean mine = plot.isOwner(player.getUniqueId());
@@ -54,8 +54,7 @@ public final class AccountMenu extends Menu {
                         new AccountMenu(plugin, player, plot).open();
                     }));
         }
-        set(49, Ui.back(null),
-                e -> new AccountsMenu(plugin, player, banker && !mine, 0).open());
+        navBar("Счета", () -> new AccountsMenu(plugin, player, banker && !mine, 0).open(), 0, 1, p -> { });
         fill(Material.GRAY_STAINED_GLASS_PANE);
     }
 }

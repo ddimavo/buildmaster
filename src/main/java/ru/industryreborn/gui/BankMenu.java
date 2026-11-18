@@ -13,11 +13,14 @@ import ru.industryreborn.util.Text;
 public final class BankMenu extends Menu {
 
     public BankMenu(IndustryRebornPlugin plugin, Player player) {
-        super(plugin, player, "<dark_gray>Банк", 4);
+        super(plugin, player, "<dark_gray>Район › Банк", 6);
         var bank = plugin.bank();
         long mine = plugin.plots().all().stream().filter(p -> p.isOwner(player.getUniqueId())).count();
 
-        set(10, Text.icon(Material.GOLD_INGOT, "<gold>Мои счета", "<gray>Счетов: <white>" + mine,
+        set(4, Text.icon(Material.GOLD_INGOT, "<gold>Банк", "<gray>Ваши деньги: <white>" + plugin.economy().format(plugin.economy().balance(player)),
+                "<gray>Счета предприятий, комиссии и налоги"));
+        set(9, Ui.section("Мои деньги", Material.YELLOW_STAINED_GLASS_PANE));
+        set(11, Text.icon(Material.GOLD_NUGGET, "<gold>Мои счета", "<gray>Счетов: <white>" + mine,
                 "<yellow>Пополнение, снятие, выписка"), e -> new AccountsMenu(plugin, player, false, 0).open());
 
         List<String> terms = new ArrayList<>();
@@ -44,14 +47,15 @@ public final class BankMenu extends Menu {
             }
             lore.add("");
             lore.add("<yellow>Нажмите: субсидии, призы, отчёт");
-            set(14, Text.icon(Material.EMERALD_BLOCK, "<green>Казна", lore.toArray(new String[0])),
+            set(18, Ui.section("Казна и банк", Material.RED_STAINED_GLASS_PANE));
+            set(20, Text.icon(Material.EMERALD_BLOCK, "<green>Казна", lore.toArray(new String[0])),
                     e -> new TreasuryMenu(plugin, player).open());
             set(21, Text.icon(Material.WRITABLE_BOOK, "<red>Все счета предприятий",
                     "<gray>Баланс, долги, история операций"), e -> new AccountsMenu(plugin, player, true, 0).open());
-            set(23, Text.icon(Material.COMPARATOR, "<red>Настройки банка",
+            set(22, Text.icon(Material.COMPARATOR, "<red>Настройки банка",
                     "<gray>Комиссии, штраф, налоги"), e -> new BankSettingsMenu(plugin, player).open());
         }
-        set(27, Ui.home(), e -> new MainMenu(plugin, player).open());
+        navBar(null, null, 0, 1, p -> { });
         fill(Material.GRAY_STAINED_GLASS_PANE);
     }
 }

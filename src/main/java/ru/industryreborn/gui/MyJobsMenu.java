@@ -14,7 +14,7 @@ import ru.industryreborn.util.Text;
 public final class MyJobsMenu extends Menu {
 
     public MyJobsMenu(IndustryRebornPlugin plugin, Player player) {
-        super(plugin, player, "<dark_gray>Мои работы", 4);
+        super(plugin, player, "<dark_gray>Район › Доска объявлений › Мои работы", 4);
         int slot = 0;
         for (Employee e : plugin.jobs().jobsOf(player.getUniqueId())) {
             if (slot >= 9) {

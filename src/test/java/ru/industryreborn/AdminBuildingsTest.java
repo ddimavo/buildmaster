@@ -166,12 +166,12 @@ class AdminBuildingsTest extends PluginTestBase {
     void bankMenuOpensForEveryoneAndShowsStaffSectionsToStaffOnly() {
         new BankMenu(plugin, steve).open();
         assertTrue(openMenu(steve, BankMenu.class));
-        assertTrue(blank(steve.getOpenInventory().getTopInventory().getItem(23)), "настроек банка у игрока нет");
+        assertTrue(blank(steve.getOpenInventory().getTopInventory().getItem(22)), "настроек банка у игрока нет");
 
         new BankMenu(plugin, boss).open();
-        assertFalse(blank(boss.getOpenInventory().getTopInventory().getItem(23)));
+        assertFalse(blank(boss.getOpenInventory().getTopInventory().getItem(22)));
         assertFalse(blank(boss.getOpenInventory().getTopInventory().getItem(21)));
-        assertFalse(blank(boss.getOpenInventory().getTopInventory().getItem(14)));
+        assertFalse(blank(boss.getOpenInventory().getTopInventory().getItem(20)));
     }
 
     @Test
@@ -207,19 +207,19 @@ class AdminBuildingsTest extends PluginTestBase {
     void settingsMenuRefusesOrdinaryPlayers() {
         new BankSettingsMenu(plugin, steve).open();
         var top = steve.getOpenInventory().getTopInventory();
-        assertTrue(blank(top.getItem(10)));
+        assertTrue(blank(top.getItem(11)));
         assertFalse(blank(top.getItem(13)));
 
         new BankSettingsMenu(plugin, boss).open();
-        assertFalse(blank(boss.getOpenInventory().getTopInventory().getItem(10)));
-        assertFalse(blank(boss.getOpenInventory().getTopInventory().getItem(14)));
+        assertFalse(blank(boss.getOpenInventory().getTopInventory().getItem(11)));
+        assertFalse(blank(boss.getOpenInventory().getTopInventory().getItem(15)));
     }
 
     @Test
     void settingsMenuTogglesBankOnlyMode() {
         new BankSettingsMenu(plugin, boss).open();
         assertFalse(plugin.bank().onlyInBank());
-        boss.simulateInventoryClick(14);
+        boss.simulateInventoryClick(15);
         assertTrue(plugin.bank().onlyInBank());
     }
 
@@ -271,7 +271,7 @@ class AdminBuildingsTest extends PluginTestBase {
         assertNull(w.plantId);
 
         new GridMenu(plugin, boss, 0).open();
-        boss.simulateInventoryClick(47);
+        boss.simulateInventoryClick(2);
 
         assertEquals("p1", w.plantId);
     }

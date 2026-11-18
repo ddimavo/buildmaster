@@ -15,7 +15,7 @@ public final class PlantMenu extends Menu {
     private static final int PAGE_SIZE = 36;
 
     public PlantMenu(IndustryRebornPlugin plugin, Player player, Plot plant, int page) {
-        super(plugin, player, "<dark_gray>Станция " + Text.esc(plant.id), 6);
+        super(plugin, player, "<dark_gray>Район › Электросеть › Станция " + Text.esc(plant.id), 6);
         if (!player.hasPermission("industryreborn.grid")) {
             set(22, Text.icon(Material.BARRIER, "<red>Недостаточно прав"));
             fill(Material.GRAY_STAINED_GLASS_PANE);
@@ -86,13 +86,7 @@ public final class PlantMenu extends Menu {
         if (plots.isEmpty()) {
             set(22, Text.icon(Material.BARRIER, "<gray>К станции никто не подключён"));
         }
-        if (current > 0) {
-            set(45, Ui.prev(current, pages), e -> new PlantMenu(plugin, player, plant, current - 1).open());
-        }
-        set(49, Text.icon(Material.ARROW, "<yellow>К списку станций"), e -> new GridMenu(plugin, player, 0).open());
-        if (current < pages - 1) {
-            set(53, Ui.next(current, pages), e -> new PlantMenu(plugin, player, plant, current + 1).open());
-        }
+        navBar("Станции", () -> new GridMenu(plugin, player, 0).open(), current, pages, p -> new PlantMenu(plugin, player, plant, p).open());
         fill(Material.GRAY_STAINED_GLASS_PANE);
     }
 }

@@ -17,7 +17,7 @@ import ru.industryreborn.util.Text;
 public final class FactoryMenu extends Menu {
 
     public FactoryMenu(IndustryRebornPlugin plugin, Player player, Plot plot, PlotFilter back) {
-        super(plugin, player, "<dark_gray>Производство · " + Text.esc(plot.displayName()), 5);
+        super(plugin, player, "<dark_gray>Район › Участки › " + Text.esc(plot.displayName()) + " › Производство", 5);
         var f = plugin.factory();
         UpgradeCatalog.Level level = plugin.upgrades().of(plot);
         UpgradeCatalog.Level next = plugin.upgrades().next(plot);

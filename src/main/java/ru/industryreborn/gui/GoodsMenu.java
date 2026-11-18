@@ -18,7 +18,7 @@ public final class GoodsMenu extends Menu {
     private static final int PAGE_SIZE = 36;
 
     public GoodsMenu(IndustryRebornPlugin plugin, Player player, Plot plot, PlotFilter back, int page) {
-        super(plugin, player, "<dark_gray>Товары · " + Text.esc(plot.displayName()), 6);
+        super(plugin, player, "<dark_gray>Район › Участки › " + Text.esc(plot.displayName()) + " › Товары", 6);
         var goods = plugin.goods();
         List<Material> items = new ArrayList<>(plot.goods.keySet());
         items.sort(java.util.Comparator.comparing(Material::name));
@@ -43,7 +43,7 @@ public final class GoodsMenu extends Menu {
                 meta.displayName(Text.item("<gold><bold>" + m.name()));
                 meta.lore(Style.lore(lore.toArray(new String[0])).stream().map(Text::item).toList());
             });
-            set(i, icon, e -> {
+            set(9 + i, icon, e -> {
                 if (e.isShiftClick() && e.isLeftClick()) {
                     String error = goods.setPrice(player, plot, m, null);
                     if (error != null) {
@@ -78,15 +78,12 @@ public final class GoodsMenu extends Menu {
                     "<gray>Положите предметы из инвентаря (кнопка внизу)", "<gray>или привяжите мастерскую: /district link"));
         }
         // ---- нижняя панель ----
-        if (current > 0) {
-            set(45, Ui.prev(current, pages), e -> new GoodsMenu(plugin, player, plot, back, current - 1).open());
-        }
-        set(46, Text.icon(Material.BARREL, "<aqua>Склад товаров",
+        set(1, Text.icon(Material.BARREL, "<aqua>Склад товаров",
                 "<gray>Занято: <white>" + goods.total(plot) + " из " + goods.capacity(plot),
                 Style.bar((double) goods.total(plot) / Math.max(1, goods.capacity(plot)), 12, "aqua"),
                 "<gray>Продаёт: <white>" + (goods.sells(plot) ? "да, через витрину" : "нет, только хранит"),
                 "<gray>Налог с продаж: <white>" + goods.salesTaxPercent() + "%"));
-        set(47, Text.icon(Material.HOPPER, "<green>Положить из инвентаря", "<gray>Все обычные предметы без названий",
+        set(2, Text.icon(Material.HOPPER, "<green>Положить из инвентаря", "<gray>Все обычные предметы без названий",
                 "<yellow>Нажмите, чтобы положить"), e -> {
             String error = goods.deposit(player, plot, null, 0);
             if (error != null) {
@@ -110,15 +107,12 @@ public final class GoodsMenu extends Menu {
                 links.add("<gray>/district link accept|decline <мастерская> " + Text.esc(plot.id));
             }
         }
-        set(48, Text.icon(Material.LEAD, "<gold>Связи между бизнесами", links.toArray(new String[0])));
-        set(49, Ui.back("Участок"), e -> new PlotMenu(plugin, player, plot, back).open());
+        set(6, Text.icon(Material.LEAD, "<gold>Связи между бизнесами", links.toArray(new String[0])));
         if (goods.sells(plot)) {
-            set(51, Text.icon(Material.EMERALD, "<green>Посмотреть витрину", "<gray>Как её видят покупатели",
+            set(7, Text.icon(Material.EMERALD, "<green>Посмотреть витрину", "<gray>Как её видят покупатели",
                     "<yellow>Нажмите, чтобы открыть"), e -> new StorefrontMenu(plugin, player, plot, back, 0).open());
         }
-        if (current < pages - 1) {
-            set(53, Ui.next(current, pages), e -> new GoodsMenu(plugin, player, plot, back, current + 1).open());
-        }
+        navBar("Участок", () -> new PlotMenu(plugin, player, plot, back).open(), current, pages, p -> new GoodsMenu(plugin, player, plot, back, p).open());
         fill(Material.GRAY_STAINED_GLASS_PANE);
     }
 }

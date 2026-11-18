@@ -14,10 +14,12 @@ import ru.industryreborn.util.Text;
 public final class OffersMenu extends Menu {
 
     public OffersMenu(IndustryRebornPlugin plugin, Player player, Plot plot, PlotFilter back) {
-        super(plugin, player, "<dark_gray>Прайс · " + Text.esc(plot.displayName()), 4);
-        int slot = 10;
+        super(plugin, player, "<dark_gray>Район › Участки › " + Text.esc(plot.displayName()) + " › Прайс услуг", 6);
+        set(4, Text.icon(Material.WRITABLE_BOOK, "<gold>Прайс услуг", "<gray>ЛКМ - включить или выключить услугу", "<gray>ПКМ - изменить цену"));
+        set(9, Ui.section("Услуги", Material.ORANGE_STAINED_GLASS_PANE));
+        int slot = 11;
         for (ServiceCatalog.Offer def : plugin.catalog().offers()) {
-            if (slot > 16) {
+            if (slot > 17) {
                 break;
             }
             Plot.Offer offer = plugin.orders().offerOf(plot, def);
@@ -56,7 +58,7 @@ public final class OffersMenu extends Menu {
                 }
             });
         }
-        set(27, Ui.back(null), e -> new PlotMenu(plugin, player, plot, back).open());
+        navBar("Участок", () -> new PlotMenu(plugin, player, plot, back).open(), 0, 1, p -> { });
         fill(Material.GRAY_STAINED_GLASS_PANE);
     }
 }

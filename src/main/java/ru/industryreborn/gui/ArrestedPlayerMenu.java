@@ -21,7 +21,7 @@ public final class ArrestedPlayerMenu extends Menu {
     private final UUID target;
 
     public ArrestedPlayerMenu(IndustryRebornPlugin plugin, Player player, UUID target, int page) {
-        super(plugin, player, "<dark_gray>Арест · " + Text.esc(String.valueOf(Bukkit.getOfflinePlayer(target).getName())), 6);
+        super(plugin, player, "<dark_gray>Район › Арестованные вещи › " + Text.esc(String.valueOf(Bukkit.getOfflinePlayer(target).getName())), 6);
         this.target = target;
         if (!player.hasPermission("industryreborn.admin")) {
             fill(Material.GRAY_STAINED_GLASS_PANE);

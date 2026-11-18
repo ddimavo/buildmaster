@@ -16,7 +16,7 @@ public final class PlayerRightsMenu extends Menu {
     private static final int MAX_PLAYERS = 10;
 
     public PlayerRightsMenu(IndustryRebornPlugin plugin, Player player, Plot plot, UUID target, PlotFilter back) {
-        super(plugin, player, "<dark_gray>Права: " + Text.esc(String.valueOf(Bukkit.getOfflinePlayer(target).getName())), 3);
+        super(plugin, player, "<dark_gray>Район › Участки › Права › " + Text.esc(String.valueOf(Bukkit.getOfflinePlayer(target).getName())), 3);
         int slot = 11;
         for (Plot.Perm perm : Plot.Perm.values()) {
             boolean on = plot.permsOf(target).contains(perm);

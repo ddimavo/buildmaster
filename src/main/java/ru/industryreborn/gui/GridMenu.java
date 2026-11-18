@@ -16,7 +16,7 @@ public final class GridMenu extends Menu {
     private static final int PAGE_SIZE = 36;
 
     public GridMenu(IndustryRebornPlugin plugin, Player player, int page) {
-        super(plugin, player, "<dark_gray>Электросеть", 6);
+        super(plugin, player, "<dark_gray>Район › Электросеть", 6);
         if (!player.hasPermission("industryreborn.grid")) {
             set(22, Text.icon(Material.BARRIER, "<red>Недостаточно прав"));
             fill(Material.GRAY_STAINED_GLASS_PANE);
@@ -74,19 +74,13 @@ public final class GridMenu extends Menu {
             set(22, Text.icon(Material.BARRIER, "<gray>Электростанций нет",
                     "<gray>Создайте: /district create <номер> power_plant - -"));
         }
-        if (current > 0) {
-            set(45, Ui.prev(current, pages), e -> new GridMenu(plugin, player, current - 1).open());
-        }
-        set(47, Text.icon(Material.REPEATER, "<aqua>Подключить все свободные мастерские",
+        set(2, Text.icon(Material.REPEATER, "<aqua>Подключить все свободные мастерские",
                 "<gray>К наименее загруженным станциям"), e -> {
                     Text.ok(player, "Подключено: " + grid.autoConnectAll(player.getName()) + ".");
                     new GridMenu(plugin, player, current).open();
                 });
-        set(48, Text.icon(Material.MAP, "<aqua>Потребление по районам"), e -> new ReportMenu(plugin, player, null).open());
-        set(49, Ui.home(), e -> new MainMenu(plugin, player).open());
-        if (current < pages - 1) {
-            set(53, Ui.next(current, pages), e -> new GridMenu(plugin, player, current + 1).open());
-        }
+        set(6, Text.icon(Material.MAP, "<aqua>Потребление по районам"), e -> new ReportMenu(plugin, player, null).open());
+        navBar(null, null, current, pages, p -> new GridMenu(plugin, player, p).open());
         fill(Material.GRAY_STAINED_GLASS_PANE);
     }
 }

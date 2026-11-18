@@ -14,8 +14,8 @@ import ru.industryreborn.util.Text;
 public final class ReportMenu extends Menu {
 
     public ReportMenu(IndustryRebornPlugin plugin, Player player, District district) {
-        super(plugin, player, district == null ? "<dark_gray>Потребление по районам"
-                : "<dark_gray>Район " + Text.esc(district.name), 6);
+        super(plugin, player, district == null ? "<dark_gray>Район › Электросеть › Потребление по районам"
+                : "<dark_gray>Район › Электросеть › " + Text.esc(district.name), 6);
         if (!player.hasPermission("industryreborn.grid")) {
             set(22, Text.icon(Material.BARRIER, "<red>Недостаточно прав"));
             fill(Material.GRAY_STAINED_GLASS_PANE);
@@ -23,7 +23,7 @@ public final class ReportMenu extends Menu {
         }
         GridService grid = plugin.grid();
         if (district == null) {
-            int slot = 0;
+            int slot = 9;
             List<Plot> assigned = new ArrayList<>();
             for (District d : plugin.districts().all()) {
                 if (slot > 44) {
@@ -39,7 +39,7 @@ public final class ReportMenu extends Menu {
             if (slot <= 44) {
                 set(slot, Text.icon(Material.MAP, "<gray>Без района", lore(plugin, grid.report(loose))));
             }
-            set(49, Ui.back(null), e -> new GridMenu(plugin, player, 0).open());
+            navBar("Электросеть", () -> new GridMenu(plugin, player, 0).open(), 0, 1, p -> { });
         } else {
             List<Plot> plots = grid.plotsOf(district);
             int slot = 0;
@@ -54,7 +54,7 @@ public final class ReportMenu extends Menu {
                                 : "<green>Подключено к " + Text.esc(String.valueOf(p.plantId)))));
             }
             set(4, Text.icon(Material.FILLED_MAP, "<gold>" + Text.esc(district.name), lore(plugin, grid.report(plots))));
-            set(45, Text.icon(Material.RED_CONCRETE, "<red>Отключить весь район", "<yellow>Потребуется причина"),
+            set(2, Text.icon(Material.RED_CONCRETE, "<red>Отключить весь район", "<yellow>Потребуется причина"),
                     e -> plugin.chatPrompt().ask(player, "Причина отключения района (обязательно):", reason -> {
                         if (reason.isBlank() || reason.equalsIgnoreCase("отмена")) {
                             Text.err(player, "Действие отменено: причина обязательна.");
@@ -69,7 +69,7 @@ public final class ReportMenu extends Menu {
                         }
                         new ReportMenu(plugin, player, district).open();
                     }));
-            set(46, Text.icon(Material.LIME_CONCRETE, "<green>Подключить весь район"), e -> {
+            set(6, Text.icon(Material.LIME_CONCRETE, "<green>Подключить весь район"), e -> {
                 int n = 0;
                 for (Plot p : grid.plotsOf(district)) {
                     if (grid.restore(p, player.getName()) == null) {
@@ -79,7 +79,7 @@ public final class ReportMenu extends Menu {
                 Text.ok(player, "Подключено предприятий: " + n + ".");
                 new ReportMenu(plugin, player, district).open();
             });
-            set(49, Ui.back(null), e -> new ReportMenu(plugin, player, null).open());
+            navBar("Районы", () -> new ReportMenu(plugin, player, null).open(), 0, 1, p -> { });
         }
         fill(Material.GRAY_STAINED_GLASS_PANE);
     }

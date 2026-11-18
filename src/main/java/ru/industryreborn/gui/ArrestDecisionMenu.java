@@ -13,7 +13,7 @@ import ru.industryreborn.util.Text;
 public final class ArrestDecisionMenu extends Menu {
 
     public ArrestDecisionMenu(IndustryRebornPlugin plugin, Player player, UUID target, UUID entryId) {
-        super(plugin, player, "<dark_gray>Решение по вещам", 6);
+        super(plugin, player, "<dark_gray>Район › Арестованные вещи › Решение", 6);
         if (!player.hasPermission("industryreborn.admin")) {
             fill(Material.GRAY_STAINED_GLASS_PANE);
             return;
