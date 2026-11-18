@@ -576,8 +576,8 @@ public final class ProductionService {
             }
             // связь с магазином или складом (или своя витрина) важнее сундука продукции
             Plot dest = linked != null ? linked : plot.storefront ? plot : null;
-            if (dest != null && !r.enchanting() && r.outputItem() == null) {
-                int put = plugin.goods().add(dest, r.output(), state.output);
+            if (dest != null && !r.enchanting()) {
+                int put = plugin.goods().addKey(dest, r.outputKey(), state.output);
                 state.output -= put;
                 changed |= put > 0;
                 continue;

@@ -20,8 +20,7 @@ public final class GoodsMenu extends Menu {
     public GoodsMenu(IndustryRebornPlugin plugin, Player player, Plot plot, PlotFilter back, int page) {
         super(plugin, player, "<dark_gray>Район › Участки › " + Text.esc(plot.displayName()) + " › Товары", 6);
         var goods = plugin.goods();
-        List<Material> items = new ArrayList<>(plot.goods.keySet());
-        items.sort(java.util.Comparator.comparing(Material::name));
+        List<String> items = goods.keys(plot);
         int pages = Math.max(1, (items.size() + PAGE_SIZE - 1) / PAGE_SIZE);
         int current = Math.min(Math.max(page, 0), pages - 1);
         for (int i = 0; i < PAGE_SIZE; i++) {
@@ -29,38 +28,39 @@ public final class GoodsMenu extends Menu {
             if (index >= items.size()) {
                 break;
             }
-            Material m = items.get(index);
-            double price = goods.price(plot, m);
+            String m = items.get(index);
+            String shownName = Text.esc(goods.nameOf(m));
+            double price = goods.priceKey(plot, m);
             List<String> lore = new ArrayList<>();
-            lore.add("<gray>На складе: <white>" + goods.stock(plot, m));
+            lore.add("<gray>На складе: <white>" + goods.stockKey(plot, m));
             lore.add("<gray>Цена: " + (price > 0 ? "<white>" + plugin.economy().format(price) : "<red>не задана (не продаётся)"));
             lore.add("<yellow>ЛКМ - назначить цену");
             lore.add("<yellow>ПКМ - забрать 64");
             lore.add("<yellow>Shift+ПКМ - забрать всё");
             lore.add("<red>Shift+ЛКМ - снять с продажи");
-            ItemStack icon = Icons.block(m);
+            ItemStack icon = Icons.goods(plugin, m);
             icon.editMeta(meta -> {
-                meta.displayName(Text.item("<gold><bold>" + m.name()));
+                meta.displayName(Text.item("<gold><bold>" + shownName));
                 meta.lore(Style.lore(lore.toArray(new String[0])).stream().map(Text::item).toList());
             });
             set(9 + i, icon, e -> {
                 if (e.isShiftClick() && e.isLeftClick()) {
-                    String error = goods.setPrice(player, plot, m, null);
+                    String error = goods.setPriceKey(player, plot, m, null);
                     if (error != null) {
                         Text.err(player, error);
                     }
                     new GoodsMenu(plugin, player, plot, back, current).open();
                 } else if (e.isRightClick()) {
-                    String error = goods.withdraw(player, plot, m, e.isShiftClick() ? 0 : 64);
+                    String error = goods.withdrawKey(player, plot, m, e.isShiftClick() ? 0 : 64);
                     if (error != null) {
                         Text.err(player, error);
                     }
                     new GoodsMenu(plugin, player, plot, back, current).open();
                 } else {
-                    plugin.chatPrompt().ask(player, "Введите цену за штуку для " + m.name() + " (число):", text -> {
+                    plugin.chatPrompt().ask(player, "Введите цену за штуку для " + shownName + " (число):", text -> {
                         if (!text.equalsIgnoreCase("отмена")) {
                             try {
-                                String error = goods.setPrice(player, plot, m, Double.parseDouble(text.replace(',', '.')));
+                                String error = goods.setPriceKey(player, plot, m, Double.parseDouble(text.replace(',', '.')));
                                 if (error != null) {
                                     Text.err(player, error);
                                 }
@@ -83,7 +83,7 @@ public final class GoodsMenu extends Menu {
                 Style.bar((double) goods.total(plot) / Math.max(1, goods.capacity(plot)), 12, "aqua"),
                 "<gray>Продаёт: <white>" + (goods.sells(plot) ? "да, через витрину" : "нет, только хранит"),
                 "<gray>Налог с продаж: <white>" + goods.salesTaxPercent() + "%"));
-        set(2, Text.icon(Material.HOPPER, "<green>Положить из инвентаря", "<gray>Все обычные предметы без названий",
+        set(2, Text.icon(Material.HOPPER, "<green>Положить из инвентаря", "<gray>Обычные предметы без названий,", "<gray>предметы плагина и Nexo",
                 "<yellow>Нажмите, чтобы положить"), e -> {
             String error = goods.deposit(player, plot, null, 0);
             if (error != null) {

@@ -179,6 +179,9 @@ public final class Plot {
     /** Товары на продажу (витрина): материал -> количество, цена за штуку. */
     public final Map<org.bukkit.Material, Integer> goods = new LinkedHashMap<>();
     public final Map<org.bukkit.Material, Double> prices = new LinkedHashMap<>();
+    /** Товары - предметы плагина и Nexo: ключ («ir:steel», «nexo:steel») -> количество и цена за штуку. */
+    public final Map<String, Integer> customGoods = new LinkedHashMap<>();
+    public final Map<String, Double> customPrices = new LinkedHashMap<>();
     /** Мастерская привязана к магазину или складу: продукция уходит туда автоматически. */
     public String linkedTo;
     /** У магазина или склада: мастерские, ждущие подтверждения связи. */

@@ -69,6 +69,15 @@ final class GoodsCommands {
         return m;
     }
 
+    /** Ключ товара из аргумента: материал, ir:предмет или nexo:предмет. */
+    private String goodsKey(String s) {
+        var ref = ru.industryreborn.items.ItemRef.parse(s);
+        if (ref == null) {
+            throw new CommandError("Неизвестный предмет «" + s + "».");
+        }
+        return ref.key();
+    }
+
     private static double number(String s) {
         try {
             return Double.parseDouble(s.replace(',', '.'));
@@ -108,23 +117,23 @@ final class GoodsCommands {
                     throw new CommandError("Использование: /district goods take <предмет> <количество|all> [участок]");
                 }
                 int amount = rest[1].equalsIgnoreCase("all") ? 0 : (int) number(rest[1]);
-                check(plugin.goods().withdraw(player(sender), mine(sender, rest.length > 2 ? rest[2] : null), material(rest[0]), amount));
+                check(plugin.goods().withdrawKey(player(sender), mine(sender, rest.length > 2 ? rest[2] : null), goodsKey(rest[0]), amount));
             }
             case "price" -> {
                 if (rest.length < 2) {
                     throw new CommandError("Использование: /district goods price <предмет> <цена за штуку|off> [участок]");
                 }
                 Double price = rest[1].equalsIgnoreCase("off") ? null : number(rest[1]);
-                check(plugin.goods().setPrice(player(sender), mine(sender, rest.length > 2 ? rest[2] : null), material(rest[0]), price));
+                check(plugin.goods().setPriceKey(player(sender), mine(sender, rest.length > 2 ? rest[2] : null), goodsKey(rest[0]), price));
                 Text.ok(sender, price == null ? "Товар снят с продажи." : "Цена назначена.");
             }
             case "list" -> {
                 Plot plot = mine(sender, rest.length > 0 ? rest[0] : null);
                 Text.send(sender, "<yellow>Товары участка <white>" + Text.esc(plot.id) + "</white>: <white>" + plugin.goods().total(plot)
                         + "/" + plugin.goods().capacity(plot));
-                for (var e : plot.goods.entrySet()) {
-                    double price = plugin.goods().price(plot, e.getKey());
-                    sender.sendMessage(Text.mm("<gray> " + e.getKey().name() + " × <white>" + e.getValue() + "<gray> - "
+                for (String key : plugin.goods().keys(plot)) {
+                    double price = plugin.goods().priceKey(plot, key);
+                    sender.sendMessage(Text.mm("<gray> " + Text.esc(plugin.goods().nameOf(key)) + " × <white>" + plugin.goods().stockKey(plot, key) + "<gray> - "
                             + (price > 0 ? "<white>" + plugin.economy().format(price) : "<dark_gray>цена не задана")));
                 }
             }

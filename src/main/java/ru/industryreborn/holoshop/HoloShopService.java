@@ -214,20 +214,22 @@ public final class HoloShopService {
         }
     }
 
-    private List<Material> items(Plot plot) {
-        return plugin.goods().listed(plot);
+    private List<String> items(Plot plot) {
+        return plugin.goods().listedKeys(plot);
     }
 
-    private static String name(Material m) {
-        return "<lang:" + new ItemStack(m).translationKey() + ">";
+    /** Название на доске: материал - переводимое имя игры, предмет плагина или Nexo - его название. */
+    private String name(String key) {
+        Material m = ru.industryreborn.items.ItemRef.isCustomKey(key) ? null : Material.matchMaterial(key);
+        return m == null ? Text.esc(plugin.goods().nameOf(key)) : "<lang:" + new ItemStack(m).translationKey() + ">";
     }
 
-    private String priceText(Plot plot, Material m) {
-        return "<yellow>" + plugin.economy().format(plugin.goods().price(plot, m));
+    private String priceText(Plot plot, String key) {
+        return "<yellow>" + plugin.economy().format(plugin.goods().priceKey(plot, key));
     }
 
-    private String stockText(Plot plot, Material m) {
-        int stock = plugin.goods().stock(plot, m);
+    private String stockText(Plot plot, String key) {
+        int stock = plugin.goods().stockKey(plot, key);
         return stock <= 0 ? "<red>Нет" : stock <= 10 ? "<gold>" + stock : "<green>" + stock;
     }
 
@@ -236,11 +238,11 @@ public final class HoloShopService {
     }
 
     private void render(HoloShop s, Plot plot, World world) {
-        List<Material> all = items(plot);
+        List<String> all = items(plot);
         int per = perPage();
         int pages = Math.max(1, (all.size() + per - 1) / per);
         s.page = Math.max(0, Math.min(s.page, pages - 1));
-        List<Material> page = all.subList(Math.min(all.size(), s.page * per), Math.min(all.size(), s.page * per + per));
+        List<String> page = all.subList(Math.min(all.size(), s.page * per), Math.min(all.size(), s.page * per + per));
         String key = s.page + "|" + page + "|" + pages + "|" + twoSided(s);
         boolean valid = s.shown() && s.parts.stream().allMatch(Holo::valid) && s.zones.stream().allMatch(ClickZones.Zone::valid);
         if (!valid || !key.equals(s.layoutKey)) {
@@ -271,7 +273,7 @@ public final class HoloShopService {
         return Math.max(10, (int) Math.round(blocks / (0.025 * textScale)));
     }
 
-    private void build(HoloShop s, Plot plot, World world, List<Material> page, int pages) {
+    private void build(HoloShop s, Plot plot, World world, List<String> page, int pages) {
         float range = (float) (cfg("view-distance", 20) / 64.0);
         int bg = 0x78000000;
         double ts = Math.max(0.4, Math.min(1.5, cfg("text-scale", 0.7)));
@@ -299,10 +301,14 @@ public final class HoloShopService {
             s.parts.add(plugin.holoFactory().spawn(tag + "_c1", cell(at(s, world, COL_PRICE, hy, DEPTH, back), "<gray>Цена", px(W_PRICE, ts), range, bg, tsf)));
             s.parts.add(plugin.holoFactory().spawn(tag + "_c2", cell(at(s, world, COL_STOCK, hy, DEPTH, back), "<gray>Остаток", px(W_STOCK, ts), range, bg, tsf)));
             for (int i = 0; i < page.size(); i++) {
-                Material m = page.get(i);
+                String m = page.get(i);
                 double center = BOTTOM + (page.size() - 1 - i + 0.5) * rowH;
                 double ty = center - line / 2;
-                s.parts.add(plugin.holoFactory().spawnItem(tag + "_i" + i, at(s, world, COL_ICON, center, DEPTH, back), new ItemStack(m),
+                ItemStack iconStack = plugin.goods().stackOfKey(m);
+                if (iconStack == null) {
+                    iconStack = new ItemStack(Material.BARRIER);          // предмет сейчас недоступен (Nexo ещё грузится)
+                }
+                s.parts.add(plugin.holoFactory().spawnItem(tag + "_i" + i, at(s, world, COL_ICON, center, DEPTH, back), iconStack,
                         (float) (rowH * 0.85), range, true));
                 s.parts.add(plugin.holoFactory().spawn(tag + "_n" + i, cell(at(s, world, COL_NAME, ty, DEPTH, back), "<white>" + name(m), px(W_NAME, ts), range, bg, tsf)));
                 Holo price = plugin.holoFactory().spawn(tag + "_p" + i, cell(at(s, world, COL_PRICE, ty, DEPTH, back), priceText(plot, m), px(W_PRICE, ts), range, bg, tsf));
@@ -326,7 +332,7 @@ public final class HoloShopService {
         // зоны кликов общие для обеих досок: квадрат шириной с доску охватывает обе стороны
         double zoneW = BOARD;
         for (int i = 0; i < page.size(); i++) {
-            Material m = page.get(i);
+            String m = page.get(i);
             double center = BOTTOM + (page.size() - 1 - i + 0.5) * rowH;
             s.pageItems.add(m);
             s.zones.add(plugin.clickZones().create(at(s, world, 0, center - rowH / 2), zoneW, rowH, (p, sneak, left) -> clickItem(s, m, p, sneak, left)));
@@ -382,7 +388,7 @@ public final class HoloShopService {
         }
     }
 
-    void clickItem(HoloShop s, Material m, Player p, boolean sneaking, boolean left) {
+    void clickItem(HoloShop s, String m, Player p, boolean sneaking, boolean left) {
         if (left || !enabled() || tooFast(p)) {
             return;
         }
@@ -395,9 +401,9 @@ public final class HoloShopService {
             return;
         }
         s.lastClick = clock.getAsLong();
-        int stock = plugin.goods().stock(plot, m);
+        int stock = plugin.goods().stockKey(plot, m);
         int amount = sneaking ? Math.min(16, Math.max(1, stock)) : 1;
-        String error = plugin.goods().buy(p, plot, m, amount);
+        String error = plugin.goods().buyKey(p, plot, m, amount);
         if (error != null) {
             Text.err(p, error);
         }

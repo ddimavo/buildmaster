@@ -280,6 +280,26 @@ public final class PlotManager {
                 }
             }
         }
+        for (String entry : s.getStringList("goods-custom")) {
+            int eq = entry.lastIndexOf('=');
+            try {
+                if (eq > 0 && Integer.parseInt(entry.substring(eq + 1)) > 0) {
+                    p.customGoods.put(entry.substring(0, eq), Integer.parseInt(entry.substring(eq + 1)));
+                }
+            } catch (NumberFormatException ignored) {
+                // повреждённая запись пропускается
+            }
+        }
+        for (String entry : s.getStringList("prices-custom")) {
+            int eq = entry.lastIndexOf('=');
+            try {
+                if (eq > 0) {
+                    p.customPrices.put(entry.substring(0, eq), Double.parseDouble(entry.substring(eq + 1)));
+                }
+            } catch (NumberFormatException ignored) {
+                // повреждённая запись пропускается
+            }
+        }
         p.parentId = s.getString("parent");
         p.maxRoomRate = s.getDouble("max-room-rate");
         RoomClass loadedClass = RoomClass.parse(s.getString("room-class"));
@@ -428,6 +448,12 @@ public final class PlotManager {
             }
             for (var pr : p.prices.entrySet()) {
                 yml.set(k + "prices." + pr.getKey().name(), pr.getValue());
+            }
+            if (!p.customGoods.isEmpty()) {
+                yml.set(k + "goods-custom", p.customGoods.entrySet().stream().map(e -> e.getKey() + "=" + e.getValue()).toList());
+            }
+            if (!p.customPrices.isEmpty()) {
+                yml.set(k + "prices-custom", p.customPrices.entrySet().stream().map(e -> e.getKey() + "=" + e.getValue()).toList());
             }
             yml.set(k + "parent", p.parentId);
             yml.set(k + "max-room-rate", p.maxRoomRate);

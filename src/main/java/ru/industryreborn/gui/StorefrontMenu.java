@@ -19,7 +19,7 @@ public final class StorefrontMenu extends Menu {
     public StorefrontMenu(IndustryRebornPlugin plugin, Player player, Plot plot, PlotFilter back, int page) {
         super(plugin, player, "<dark_gray>Район › Участки › " + Text.esc(plot.displayName()) + " › Витрина", 6);
         var goods = plugin.goods();
-        List<Material> listed = goods.listed(plot);
+        List<String> listed = goods.listedKeys(plot);
         int pages = Math.max(1, (listed.size() + PAGE_SIZE - 1) / PAGE_SIZE);
         int current = Math.min(Math.max(page, 0), pages - 1);
         for (int i = 0; i < PAGE_SIZE; i++) {
@@ -27,10 +27,11 @@ public final class StorefrontMenu extends Menu {
             if (index >= listed.size()) {
                 break;
             }
-            Material m = listed.get(index);
-            int have = goods.stock(plot, m);
-            double price = goods.price(plot, m);
-            ItemStack icon = Icons.block(m);
+            String m = listed.get(index);
+            String shownName = Text.esc(goods.nameOf(m));
+            int have = goods.stockKey(plot, m);
+            double price = goods.priceKey(plot, m);
+            ItemStack icon = Icons.goods(plugin, m);
             List<String> lore = new ArrayList<>();
             lore.add("<gray>Цена за штуку: <white>" + plugin.economy().format(price));
             lore.add("<gray>В наличии: " + (have > 0 ? "<white>" + have : "<red>нет"));
@@ -40,7 +41,7 @@ public final class StorefrontMenu extends Menu {
                 lore.add("<yellow>ПКМ - купить 64");
             }
             icon.editMeta(meta -> {
-                meta.displayName(Text.item(have > 0 ? "<gold><bold>" + m.name() : "<gray>" + m.name()));
+                meta.displayName(Text.item(have > 0 ? "<gold><bold>" + shownName : "<gray>" + shownName));
                 meta.lore(ru.industryreborn.util.Style.lore(lore.toArray(new String[0])).stream().map(Text::item).toList());
             });
             set(FIRST + i, icon, e -> {
@@ -48,8 +49,8 @@ public final class StorefrontMenu extends Menu {
                     return;
                 }
                 int want = e.isRightClick() ? 64 : e.isShiftClick() ? 16 : 1;
-                int amount = Math.min(want, goods.stock(plot, m));
-                String error = goods.buy(player, plot, m, amount);
+                int amount = Math.min(want, goods.stockKey(plot, m));
+                String error = goods.buyKey(player, plot, m, amount);
                 if (error != null) {
                     Text.err(player, error);
                 }

@@ -13,6 +13,16 @@ final class Icons {
     private Icons() { }
 
     /** Предмет-иконка для блока (даже если у блока нет предметной формы, например стенной факел). */
+    /** Значок товара по ключу: материал - как раньше, предмет плагина или Nexo - его основа. */
+    static ItemStack goods(ru.industryreborn.IndustryRebornPlugin plugin, String key) {
+        if (!ru.industryreborn.items.ItemRef.isCustomKey(key)) {
+            Material m = Material.matchMaterial(key);
+            return block(m == null ? Material.BARRIER : m);
+        }
+        var ref = ru.industryreborn.items.ItemRef.parse(key);
+        return new ItemStack(ref == null ? Material.BARRIER : plugin.customItems().baseMaterial(ref));
+    }
+
     static ItemStack block(Material material) {
         Material shown = material;
         if (!shown.isItem()) {

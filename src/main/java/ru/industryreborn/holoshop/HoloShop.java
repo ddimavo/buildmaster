@@ -24,7 +24,7 @@ public final class HoloShop {
     final List<Holo> parts = new ArrayList<>();
     final List<ClickZones.Zone> zones = new ArrayList<>();
     final List<Runnable> refresh = new ArrayList<>();   // обновление текстов (название, цена, остаток) без пересоздания голограмм
-    final List<org.bukkit.Material> pageItems = new ArrayList<>();
+    final List<String> pageItems = new ArrayList<>();      // ключи товаров текущей страницы: материал или ir:/nexo:
     /** Вторая доска с обратной стороны: null - как в config.yml (holo-shop.two-sided). */
     Boolean backSide;
 
