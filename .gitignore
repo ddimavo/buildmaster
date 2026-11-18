@@ -3,3 +3,5 @@ build/
 run/
 *.iml
 .idea/
+docs/IndustryReborn-buildings.zip
+__pycache__/

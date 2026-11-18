@@ -11,16 +11,16 @@
  ],
  "foundation": "minecraft:stone_bricks",
  "palette": {
-  "s": "minecraft:stone_bricks",
-  "+": "minecraft:spruce_stairs[facing=south,half=bottom,shape=straight]",
-  "g": "minecraft:glass",
-  "h": "minecraft:hay_block",
-  "k": "minecraft:barrel[facing=up]",
   "E": "minecraft:spruce_log[axis=y]",
   "N": "minecraft:lantern[hanging=true]",
+  "e": "minecraft:spruce_planks",
+  "k": "minecraft:barrel[facing=up]",
+  "g": "minecraft:glass",
+  "+": "minecraft:spruce_stairs[facing=south,half=bottom,shape=straight]",
   "=": "minecraft:spruce_stairs[facing=north,half=bottom,shape=straight]",
   "t": "minecraft:smooth_stone",
-  "e": "minecraft:spruce_planks"
+  "h": "minecraft:hay_block",
+  "s": "minecraft:stone_bricks"
  },
  "layers": [
   [

@@ -11,19 +11,19 @@
  ],
  "foundation": "minecraft:stone_bricks",
  "palette": {
-  "s": "minecraft:stone_bricks",
-  "O": "minecraft:cut_copper",
-  "%": "minecraft:stone_brick_stairs[facing=south,half=bottom,shape=straight]",
-  "b": "minecraft:bricks",
   "i": "minecraft:iron_block",
-  "k": "minecraft:barrel[facing=up]",
-  "F": "minecraft:iron_bars",
   "E": "minecraft:spruce_log[axis=y]",
   "N": "minecraft:lantern[hanging=true]",
-  "a": "minecraft:andesite",
-  "&": "minecraft:stone_brick_stairs[facing=north,half=bottom,shape=straight]",
+  "k": "minecraft:barrel[facing=up]",
+  "F": "minecraft:iron_bars",
+  "b": "minecraft:bricks",
+  "o": "minecraft:copper_block",
+  "O": "minecraft:cut_copper",
+  "%": "minecraft:stone_brick_stairs[facing=south,half=bottom,shape=straight]",
   "A": "minecraft:polished_andesite",
-  "o": "minecraft:copper_block"
+  "a": "minecraft:andesite",
+  "s": "minecraft:stone_bricks",
+  "&": "minecraft:stone_brick_stairs[facing=north,half=bottom,shape=straight]"
  },
  "layers": [
   [

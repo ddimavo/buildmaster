@@ -11,16 +11,16 @@
  ],
  "foundation": "minecraft:stone_bricks",
  "palette": {
-  "s": "minecraft:stone_bricks",
-  "g": "minecraft:glass",
-  "i": "minecraft:iron_block",
-  "Q": "minecraft:quartz_pillar[axis=y]",
-  "F": "minecraft:iron_bars",
-  "B": "minecraft:bookshelf",
   "N": "minecraft:lantern[hanging=true]",
-  "t": "minecraft:smooth_stone",
+  "g": "minecraft:glass",
+  "B": "minecraft:bookshelf",
   "y": "minecraft:gold_block",
-  "H": "minecraft:chiseled_stone_bricks"
+  "F": "minecraft:iron_bars",
+  "H": "minecraft:chiseled_stone_bricks",
+  "t": "minecraft:smooth_stone",
+  "Q": "minecraft:quartz_pillar[axis=y]",
+  "s": "minecraft:stone_bricks",
+  "i": "minecraft:iron_block"
  },
  "layers": [
   [

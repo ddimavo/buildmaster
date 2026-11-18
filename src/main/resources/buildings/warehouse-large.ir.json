@@ -11,16 +11,16 @@
  ],
  "foundation": "minecraft:stone_bricks",
  "palette": {
-  "s": "minecraft:stone_bricks",
-  "g": "minecraft:glass",
-  "k": "minecraft:barrel[facing=up]",
-  "F": "minecraft:iron_bars",
-  "B": "minecraft:bookshelf",
   "N": "minecraft:lantern[hanging=true]",
-  "x": "minecraft:light_gray_concrete",
+  "k": "minecraft:barrel[facing=up]",
+  "g": "minecraft:glass",
+  "B": "minecraft:bookshelf",
+  "z": "minecraft:gray_concrete",
+  "F": "minecraft:iron_bars",
   "t": "minecraft:smooth_stone",
-  "h": "minecraft:hay_block",
-  "z": "minecraft:gray_concrete"
+  "x": "minecraft:light_gray_concrete",
+  "s": "minecraft:stone_bricks",
+  "h": "minecraft:hay_block"
  },
  "layers": [
   [

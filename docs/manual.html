@@ -1654,12 +1654,15 @@ footer { max-width:980px; margin:50px auto 0; color:var(--muted); font-size:13px
 /district build list                                              список зданий
 /district build &lt;участок&gt; &lt;здание&gt; [force]                       построить на созданном свободном участке; force - не проверять, что участок пуст
 /district build reload                                            перечитать папку buildings/
+/district build save &lt;имя&gt; &lt;тип&gt; [название]                       сохранить построенное здание (область - выделение топором)
+/district build import &lt;файл&gt; &lt;имя&gt; &lt;тип&gt; [название]             импорт .schem или .nbt из папки import/ (build import list - список файлов)
 </code></pre>
 <p><strong>Как выбирается место.</strong> Здание по центру участка; земля - верхний блок грунта (трава, листва, брёвна, цветы землёй не считаются и будут убраны); допустимый перепад высоты
 <code>auto-build.max-slope</code>; здание не должно упираться в верх участка. Если здание в длину не влезает, оно поворачивается на 90°. На участке не должно быть чужой постройки или воды
 внутри объёма здания (иначе отказ; <code>force</code> отключает проверку). Если здание подобрано автоматически и не поставилось, участок всё равно создаётся пустым.</p>
-<p><strong>Здания.</strong> Встроенные лежат в <code>plugins/IndustryReborn/buildings/</code> и копируются при первом запуске: <code>house-small</code>, <code>house-large</code>, <code>shop-small</code>, <code>workshop-small</code>, <code>workshop-forge</code>,
-<code>warehouse-small</code>, <code>warehouse-large</code>, <code>restaurant-small</code>, <code>hotel-small</code>, <code>bank</code>, <code>power-plant</code>. Свои здания - файлы <code>&lt;имя&gt;.ir.json</code> в той же папке, затем <code>/district build reload</code>.
+<p><strong>Здания.</strong> Встроенных зданий 160, по 20 каждого типа (дом, магазин, мастерская, ресторан, склад, отель, банк, электростанция): <code>house-small</code>, <code>house-large</code>, <code>house-03</code> ... <code>house-20</code>,
+<code>shop-small</code>, <code>shop-02</code> ... и так далее; названия и размеры - <code>/district build list</code>, превью - <code>docs/buildings/catalog-*.jpg</code>. Лежат в <code>plugins/IndustryReborn/buildings/</code> и копируются при первом запуске
+(существующие файлы не перезаписываются, удалённые встроенные вернутся после перезапуска или <code>build reload</code>). Свои здания - файлы <code>&lt;имя&gt;.ir.json</code> в той же папке, затем <code>/district build reload</code>.
 Автоподбор берёт здание того же типа (поле <code>category</code>), какое по размеру помещается; для типа можно закрепить здание в <code>auto-build.defaults.&lt;тип&gt;</code> (имя, <code>auto</code> или <code>none</code>).</p>
 <p>Формат <code>.ir.json</code> (размер до 64 по каждой оси):</p>
 <pre><code class="language-json">{
@@ -1670,8 +1673,16 @@ footer { max-width:980px; margin:50px auto 0; color:var(--muted); font-size:13px
 }
 </code></pre>
 <p><code>layers</code> - слои снизу вверх, каждый слой - строки по оси Z, символы по оси X; <code>.</code> или пробел - воздух; поворот зданий поворачивает и свойства блоков (направление ступеней, дверей).
-Необязательные слои и строки дополняются воздухом. Превью всех встроенных зданий - в <code>docs/buildings/</code> (рисуются скриптом <code>scripts/gen-buildings.py</code>, он же пересоздаёт шаблоны).</p>
-<p>Настройки (<code>auto-build</code> в config.yml): <code>enabled</code>, <code>on-create</code>, <code>blocks-per-tick</code>, <code>max-slope</code>, <code>defaults</code>. Функция выключается как <code>auto-build</code>.</p>
+Необязательные слои и строки дополняются воздухом. Превью всех встроенных зданий - листы <code>docs/buildings/catalog-*.jpg</code> (рисуются скриптами <code>scripts/gen-buildings.py</code> и <code>scripts/gen_variants.py</code>, они же пересоздают шаблоны).</p>
+<p><strong>Своё здание.</strong> Два способа, не считая ручного редактирования файла:</p>
+<ol>
+<li>Постройте здание в игре, выделите его топором (до 64 блоков по каждой оси) и выполните <code>/district build save mycafe restaurant Моё кафе</code>. Файл появится сразу, здание доступно в <code>build list</code>.
+   Сохраняются блоки с их свойствами; содержимое сундуков, таблички и сущности - нет.</li>
+<li>Импорт схематики: положите файл <code>.schem</code> (WorldEdit: <code>//copy</code>, <code>//schem save</code>; Sponge v1-3) или <code>.nbt</code> (структуры Minecraft) в <code>plugins/IndustryReborn/import/</code> и выполните
+   <code>/district build import файл.schem mycafe restaurant</code>. Лицензию чужих схематик проверяйте сами.</li>
+</ol>
+<p>Имя - латиница в нижнем регистре, цифры, <code>_</code>, <code>-</code>; занятое имя (в том числе встроенное) использовать нельзя.</p>
+<p>Настройки (<code>auto-build</code> в config.yml): <code>enabled</code>, <code>on-create</code>, <code>blocks-per-tick</code>, <code>max-slope</code>, <code>defaults</code>. Функция выключается как <code>auto-build</code> (вместе с <code>build save</code> и <code>build import</code>).</p>
 <h2 id="14-справочник-команд"><span class="num">14</span>Справочник команд</h2>
 <p>Все команды: <code>/district &lt;подкоманда&gt;</code> (<code>/dt</code>, <code>/uchastok</code>). <code>[ ]</code> – необязательное, <code>&lt; &gt;</code> – обязательное, <code>|</code> – выбор. Номер участка можно не указывать, если вы стоите на нём.</p>
 <h3 id="141-игроки">14.1. Игроки</h3>
@@ -1813,6 +1824,10 @@ footer { max-width:980px; margin:50px auto 0; color:var(--muted); font-size:13px
 <tr>
 <td><code>build list|reload|&lt;участок&gt; &lt;здание&gt; [force]</code></td>
 <td>автостроительство</td>
+</tr>
+<tr>
+<td><code>build save &lt;имя&gt; &lt;тип&gt; [название]</code>, <code>build import &lt;файл&gt; &lt;имя&gt; &lt;тип&gt; [название]</code></td>
+<td>свои здания: сохранить построенное, импортировать .schem/.nbt</td>
 </tr>
 <tr>
 <td><code>delete &lt;номер&gt;</code></td>

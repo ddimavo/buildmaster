@@ -157,7 +157,12 @@ class BuildingTest extends PluginTestBase {
     @Test
     void allBundledTemplatesAreValid() {
         BuildingService svc = plugin.buildings();
-        assertEquals(11, svc.all().size());
+        assertEquals(160, svc.all().size(), "по 20 зданий восьми типов");
+        for (Category c : new Category[] {Category.HOUSE, Category.SHOP, Category.WORKSHOP, Category.RESTAURANT, Category.WAREHOUSE, Category.HOTEL,
+                Category.BANK, Category.POWER_PLANT}) {
+            assertEquals(20, svc.forCategory(c).size(), c.name());
+        }
+        assertEquals(160, svc.all().stream().map(BuildingTemplate::title).distinct().count(), "названия не повторяются");
         for (BuildingTemplate t : svc.all()) {
             assertTrue(t.blockCount() > 50, t.name());
             assertNotNull(Category.valueOf(t.category().toUpperCase()), t.name());
@@ -188,13 +193,30 @@ class BuildingTest extends PluginTestBase {
 
     // ------------------------------------------------------------ подбор
 
+    private BuildingTemplate expectedLargest(Category c, Box box) {
+        BuildingTemplate best = null;
+        for (BuildingTemplate t : plugin.buildings().forCategory(c)) {
+            if (plugin.buildings().fitsAnyRotation(t, box) != -1 && (best == null || t.blockCount() > best.blockCount())) {
+                best = t;
+            }
+        }
+        return best;
+    }
+
     @Test
     void defaultPicksLargestThatFits() {
         BuildingService svc = plugin.buildings();
-        Box big = new Box(0, 0, 0, 24, 15, 24);
-        assertEquals("warehouse-large", svc.defaultFor(Category.WAREHOUSE, big).name());
-        Box medium = new Box(0, 0, 0, 15, 15, 11);
-        assertEquals("warehouse-small", svc.defaultFor(Category.WAREHOUSE, medium).name());
+        Box big = new Box(0, 0, 0, 40, 30, 40);
+        Box medium = new Box(0, 0, 0, 15, 15, 12);
+        for (Category c : new Category[] {Category.HOUSE, Category.SHOP, Category.WORKSHOP, Category.RESTAURANT, Category.WAREHOUSE, Category.HOTEL,
+                Category.BANK, Category.POWER_PLANT}) {
+            for (Box box : new Box[] {big, medium}) {
+                BuildingTemplate expected = expectedLargest(c, box);
+                assertTrue(expected != null || box == medium, c + " " + box);
+                assertSame(expected, svc.defaultFor(c, box), c + " " + box);
+            }
+        }
+        assertTrue(svc.defaultFor(Category.WAREHOUSE, big).blockCount() > svc.defaultFor(Category.WAREHOUSE, medium).blockCount());
         assertNull(svc.defaultFor(Category.WAREHOUSE, new Box(0, 0, 0, 5, 15, 5)));
         assertNull(svc.defaultFor(Category.ROOM, big));
         plugin.getConfig().set("auto-build.defaults.warehouse", "none");
@@ -367,15 +389,15 @@ class BuildingTest extends PluginTestBase {
 
     @Test
     void autoPickPrefersLargestRegardlessOfOrder() throws IOException {
-        // файл «aaa» идёт в алфавитном порядке первым, но он меньше встроенного shop-small
+        // файл «aaa» идёт в алфавитном порядке первым, но он меньше любого встроенного магазина
         java.nio.file.Files.writeString(new File(plugin.buildings().folder(), "aaa.ir.json").toPath(), TINY.replace("\"tiny\"", "\"aaa\""));
         plugin.buildings().load();
-        assertEquals(12, plugin.buildings().all().size());
-        assertEquals("shop-small", plugin.buildings().defaultFor(Category.SHOP, new Box(0, 0, 0, 20, 20, 20)).name());
+        assertEquals(161, plugin.buildings().all().size());
+        assertNotEquals("aaa", plugin.buildings().defaultFor(Category.SHOP, new Box(0, 0, 0, 20, 20, 20)).name());
         // сломанный файл пропускается, остальные читаются
         java.nio.file.Files.writeString(new File(plugin.buildings().folder(), "bad.ir.json").toPath(), "{}");
         plugin.buildings().load();
-        assertEquals(12, plugin.buildings().all().size());
+        assertEquals(161, plugin.buildings().all().size());
     }
 
     @Test

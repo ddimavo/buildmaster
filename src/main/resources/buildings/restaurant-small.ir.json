@@ -11,21 +11,21 @@
  ],
  "foundation": "minecraft:stone_bricks",
  "palette": {
-  "s": "minecraft:stone_bricks",
-  "f": "minecraft:oak_fence",
-  "w": "minecraft:white_concrete",
-  "g": "minecraft:glass",
-  "^": "minecraft:oak_stairs[facing=east,half=bottom,shape=straight]",
-  "k": "minecraft:barrel[facing=up]",
   "0": "minecraft:oak_door[facing=south,half=lower,hinge=left,open=false]",
-  "B": "minecraft:bookshelf",
   "N": "minecraft:lantern[hanging=true]",
-  "D": "minecraft:dark_oak_log[axis=y]",
-  "r": "minecraft:red_concrete",
   "p": "minecraft:oak_planks",
+  "k": "minecraft:barrel[facing=up]",
+  "g": "minecraft:glass",
+  "B": "minecraft:bookshelf",
+  "@": "minecraft:oak_pressure_plate",
+  "f": "minecraft:oak_fence",
+  "r": "minecraft:red_concrete",
+  "w": "minecraft:white_concrete",
   "1": "minecraft:oak_door[facing=south,half=upper,hinge=left,open=false]",
   "!": "minecraft:oak_stairs[facing=west,half=bottom,shape=straight]",
-  "@": "minecraft:oak_pressure_plate"
+  "^": "minecraft:oak_stairs[facing=east,half=bottom,shape=straight]",
+  "D": "minecraft:dark_oak_log[axis=y]",
+  "s": "minecraft:stone_bricks"
  },
  "layers": [
   [

@@ -11,17 +11,17 @@
  ],
  "foundation": "minecraft:stone_bricks",
  "palette": {
-  "s": "minecraft:stone_bricks",
-  "f": "minecraft:oak_fence",
-  "g": "minecraft:glass",
-  "b": "minecraft:bricks",
-  "k": "minecraft:barrel[facing=up]",
-  "d": "minecraft:dark_oak_planks",
   "N": "minecraft:lantern[hanging=true]",
-  "D": "minecraft:dark_oak_log[axis=y]",
+  "k": "minecraft:barrel[facing=up]",
+  "g": "minecraft:glass",
+  "d": "minecraft:dark_oak_planks",
+  "z": "minecraft:gray_concrete",
+  "f": "minecraft:oak_fence",
+  "b": "minecraft:bricks",
   "t": "minecraft:smooth_stone",
   "h": "minecraft:hay_block",
-  "z": "minecraft:gray_concrete"
+  "D": "minecraft:dark_oak_log[axis=y]",
+  "s": "minecraft:stone_bricks"
  },
  "layers": [
   [

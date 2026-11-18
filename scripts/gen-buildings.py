@@ -38,7 +38,7 @@ def sym(data):
     for k, v in list(PALETTE.items()) + list(EXTRA.items()):
         if v == data:
             return k
-    for ch in "0123456789!#$%&*+=?@^_~;:<>[]{}()|abcdefghijklmnopqrstuvwxyz":
+    for ch in "0123456789!#$%&*+=?@^_~;:<>[]{}()|abcdefghijklmnopqrstuvwxyz" + "".join(chr(c) for c in range(0xC0, 0x100) if c not in (0xD7, 0xF7)):
         if ch not in PALETTE and ch not in EXTRA:
             EXTRA[ch] = data
             return ch
@@ -123,7 +123,8 @@ class B:
         for k, v in PALETTE.items():
             pal[k] = v
         used = {ch for ch in self.v.values()}
-        pal = {k: (PALETTE.get(k) or EXTRA[k]) for k in used}
+        extra = getattr(self, "pal_extra", EXTRA)
+        pal = {k: (PALETTE.get(k) or extra[k]) for k in used}
         layers = []
         for y in range(self.sy):
             rows = []
@@ -558,6 +559,13 @@ def color_of(data):
             name = name[: -len(suffix)]
             name = {"stone_brick": "stone_bricks", "quartz": "quartz_block", "dark_oak": "dark_oak_planks", "oak": "oak_planks",
                     "spruce": "spruce_planks"}.get(name, name)
+    if name.endswith("_door"):
+        return (140, 100, 60)
+    if name.endswith("_trapdoor"):
+        return (110, 80, 50)
+    for cand in (name, name + "s", name + "_planks", name + "_block"):
+        if cand in COLORS:
+            return COLORS[cand]
     return COLORS.get(name, (180, 90, 200))
 
 
@@ -634,32 +642,126 @@ def render(b, path, scale=3, cut=False):
     # обрезка по содержимому
     bbox = img.getbbox()
     img = img.resize((W, H), Image.LANCZOS)
-    img.save(path)
+    img.save(path, quality=82) if path.endswith(".jpg") else img.save(path)
+
+
+EXTRA_COLORS = {
+    "smooth_sandstone": (222, 205, 150), "cut_sandstone": (216, 199, 146), "sandstone": (218, 203, 145), "smooth_quartz": (236, 232, 226),
+    "polished_andesite": (132, 136, 132), "deepslate_bricks": (70, 70, 74), "polished_deepslate": (72, 72, 76), "deepslate_tiles": (54, 54, 58),
+    "cobbled_deepslate": (77, 77, 81), "white_terracotta": (209, 178, 161), "orange_terracotta": (161, 83, 37), "mud_bricks": (137, 104, 79),
+    "packed_mud": (142, 106, 79), "stripped_mangrove_log": (119, 54, 54), "mangrove_planks": (118, 54, 52), "cherry_planks": (226, 178, 172),
+    "cherry_log": (54, 33, 44), "stripped_cherry_log": (215, 145, 148), "cut_copper": (192, 107, 79), "copper_block": (192, 107, 80),
+    "birch_planks": (192, 175, 121), "birch_log": (216, 215, 210), "gray_concrete": (55, 58, 62), "mossy_cobblestone": (100, 118, 100),
+    "dirt_path": (148, 122, 65), "poppy": (200, 40, 30), "dandelion": (240, 220, 40), "azure_bluet": (230, 230, 220), "cornflower": (70, 90, 200),
+    "allium": (180, 110, 200), "flower_pot": (150, 90, 70), "cauldron": (60, 60, 64), "lava_cauldron": (200, 90, 20), "smoker": (110, 100, 90),
+    "furnace": (120, 120, 120), "blast_furnace": (100, 100, 108), "anvil": (60, 60, 64), "grindstone": (140, 140, 140), "crafting_table": (150, 110, 70),
+    "smithing_table": (60, 50, 60), "fletching_table": (190, 160, 110), "chest": (170, 120, 50), "lectern": (160, 120, 80), "redstone_lamp": (150, 90, 50),
+    "lever": (130, 130, 130), "redstone_block": (170, 20, 10), "iron_block": (216, 216, 216), "gold_block": (246, 208, 61), "campfire": (90, 60, 30),
+    "stripped_oak_log": (176, 143, 85), "orange_wool": (240, 118, 19), "blue_wool": (53, 57, 157), "green_wool": (84, 109, 27), "yellow_wool": (248, 197, 39),
+    "cyan_wool": (21, 137, 145), "purple_wool": (121, 42, 172), "red_wool": (160, 39, 34), "white_wool": (233, 236, 236), "dark_oak_trapdoor": (70, 50, 30),
+    "spruce_planks": (114, 84, 48), "spruce_log": (58, 37, 16), "bookshelf": (150, 115, 70), "barrel": (140, 100, 55), "hay_block": (200, 170, 40),
+    "iron_bars": (140, 140, 145), "red_bed": (160, 39, 34), "blue_bed": (53, 57, 157), "green_bed": (84, 109, 27), "yellow_bed": (248, 197, 39),
+    "white_bed": (233, 236, 236), "grass_block": (95, 150, 60), "smooth_stone": (160, 160, 160), "stone": (125, 125, 125), "quartz_slab": (235, 230, 222),
+}
+EXTRA_COLORS.update({"red_nether_bricks": (70, 28, 32), "deepslate_tile": (54, 54, 58), "mud_brick": (137, 104, 79), "cherry": (226, 178, 172),
+                     "birch": (192, 175, 121), "dark_oak": (70, 50, 30), "stone_brick": (125, 125, 125), "brick": (150, 85, 70), "spruce": (114, 84, 48)})
+COLORS.update({k: v for k, v in EXTRA_COLORS.items() if k not in COLORS})
+
+
+def catalog_sheet(builds, path, title):
+    """Лист-каталог: превью зданий одного типа сеткой."""
+    from PIL import Image, ImageDraw
+    import tempfile
+    cols, tw = 5, 360
+    thumbs = []
+    for b in builds:
+        tmp = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
+        tmp.close()
+        render(b, tmp.name, scale=2)
+        im = Image.open(tmp.name).convert("RGB")
+        os.unlink(tmp.name)
+        r = tw / im.width
+        thumbs.append((b, im.resize((tw, max(1, int(im.height * r))), Image.LANCZOS)))
+    th = max(t[1].height for t in thumbs) + 26
+    rows = (len(thumbs) + cols - 1) // cols
+    sheet = Image.new("RGB", (cols * tw, rows * th + 40), (30, 34, 40))
+    dr = ImageDraw.Draw(sheet)
+    dr.text((10, 10), title, fill=(255, 255, 255))
+    for i, (b, im) in enumerate(thumbs):
+        x, y = (i % cols) * tw, 40 + (i // cols) * th
+        sheet.paste(im, (x, y))
+        dr.text((x + 6, y + im.height + 6), b.name + "  " + str(b.sx) + "x" + str(b.sz), fill=(230, 230, 230))
+    sheet.save(path, quality=85)
 
 
 def main():
+    import tempfile
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import gen_variants
     os.makedirs(OUT, exist_ok=True)
     os.makedirs(PREV, exist_ok=True)
     made = []
+    datas = {}
     for fn in ALL:
         b = fn()
-        d = b.data()
+        b.pal_extra = dict(EXTRA)
+        datas[b.name] = b.data()
+        made.append(b)
+    existing = {}
+    for b in made:
+        existing[b.category] = existing.get(b.category, 0) + 1
+    specs = gen_variants.specs()
+    seen = set()
+    for cat, lst in specs.items():
+        n = existing.get(cat, 0)
+        assert n + len(lst) == 20, (cat, n, len(lst))
+        for i, (title, p) in enumerate(lst):
+            n += 1
+            name = f"{cat.replace('_', '-')}-{n:02d}"
+            desc = f"{title}: {p['x1']}x{p['z1']}, этажей {p['floors']}."
+            b = gen_variants.build_one(sys.modules[__name__], cat, name, title, desc, p)
+            d = b.data()
+            key = json.dumps(d["layers"], ensure_ascii=False)
+            assert key not in seen, "повтор здания " + name
+            seen.add(key)
+            datas[name] = d
+            made.append(b)
+    titles = {}
+    for b in made:
+        assert b.title not in titles, "повтор названия " + b.title
+        titles[b.title] = b.name
+    # очистка старых файлов, чтобы не оставалось лишнего
+    for f in os.listdir(OUT):
+        if f.endswith(".ir.json"):
+            os.unlink(os.path.join(OUT, f))
+    for b in made:
+        d = datas[b.name]
         with open(os.path.join(OUT, b.name + ".ir.json"), "w", encoding="utf-8") as f:
             json.dump(d, f, ensure_ascii=False, indent=1)
-        made.append(b)
         print("OK", b.name, d["size"], len(b.v), "блоков")
+    with open(os.path.join(OUT, "index.txt"), "w", encoding="utf-8") as f:
+        f.write("\n".join(b.name for b in made) + "\n")
     if "--no-preview" not in sys.argv:
+        tmp = tempfile.mkdtemp()
+        by_cat = {}
         for b in made:
-            render(b, os.path.join(PREV, b.name + ".png"))
-            render(b, os.path.join(PREV, b.name + "-cutaway.png"), cut=True)
+            render(b, os.path.join(tmp, b.name + ".jpg"), scale=2)
+            render(b, os.path.join(tmp, b.name + "-cutaway.jpg"), scale=2, cut=True)
+            by_cat.setdefault(b.category, []).append(b)
+        for old in os.listdir(PREV):
+            os.unlink(os.path.join(PREV, old))
+        for cat, lst in by_cat.items():
+            catalog_sheet(lst, os.path.join(PREV, "catalog-" + cat.replace("_", "-") + ".jpg"), "IndustryReborn: " + cat + " (" + str(len(lst)) + ")")
         zpath = os.path.join(ROOT, "docs/IndustryReborn-buildings.zip")
         with zipfile.ZipFile(zpath, "w", zipfile.ZIP_DEFLATED) as z:
             for b in made:
                 z.write(os.path.join(OUT, b.name + ".ir.json"), "buildings/" + b.name + ".ir.json")
-                z.write(os.path.join(PREV, b.name + ".png"), "previews/" + b.name + ".png")
-                z.write(os.path.join(PREV, b.name + "-cutaway.png"), "previews/" + b.name + "-cutaway.png")
-            z.writestr("README.txt", "Здания IndustryReborn (формат .ir.json). Положите файлы в plugins/IndustryReborn/buildings/.\n"
-                       "Здания нарисованы генератором scripts/gen-buildings.py; лицензия та же, что у плагина.\n")
+                z.write(os.path.join(tmp, b.name + ".jpg"), "previews/" + b.name + ".jpg")
+                z.write(os.path.join(tmp, b.name + "-cutaway.jpg"), "previews/" + b.name + "-cutaway.jpg")
+            for f in sorted(os.listdir(PREV)):
+                z.write(os.path.join(PREV, f), "catalog/" + f)
+            z.writestr("README.txt", "Здания IndustryReborn (формат .ir.json), по 20 каждого типа. Положите файлы в plugins/IndustryReborn/buildings/ "
+                       "и выполните /district build reload.\nЗдания нарисованы генератором scripts/gen-buildings.py; лицензия та же, что у плагина.\n")
         print("zip", zpath)
 
 

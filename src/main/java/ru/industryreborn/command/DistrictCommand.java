@@ -1143,11 +1143,51 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
                         + t.sizeX() + "×" + t.sizeY() + "×" + t.sizeZ() + ", " + t.blockCount() + " блоков)"));
             }
             Text.send(p, "<gray>Поставить: /district build <участок> <здание> [force]; при создании: /district create ... build [здание] или nobuild");
+            Text.send(p, "<gray>Своё здание: /district build save <имя> <тип> (по выделению), /district build import <файл> <имя> <тип> (.schem, .nbt)");
             return;
         }
         if (args[0].equalsIgnoreCase("reload")) {
             svc.load();
             Text.ok(p, "Здания перечитаны: " + svc.all().size() + ".");
+            return;
+        }
+        if (args[0].equalsIgnoreCase("save")) {
+            if (args.length < 3) {
+                throw new CommandError("Использование: /district build save <имя> <тип> [название]  (область - выделение топором)");
+            }
+            SelectionListener.Selection sel = plugin.selection().get(p);
+            Box box = sel == null ? null : sel.box();
+            if (box == null || !p.getWorld().getName().equals(sel.world)) {
+                throw new CommandError("Сначала выделите здание в этом мире: /district wand (или pos1 и pos2).");
+            }
+            String error = svc.save(p.getWorld(), box, args[1].toLowerCase(Locale.ROOT), args[2],
+                    args.length > 3 ? String.join(" ", Arrays.copyOfRange(args, 3, args.length)) : null);
+            if (error != null) {
+                throw new CommandError(error);
+            }
+            Text.ok(p, "Здание «" + args[1].toLowerCase(Locale.ROOT) + "» сохранено (" + box.sizeX() + "×" + box.sizeY() + "×" + box.sizeZ()
+                    + "). Файл: plugins/IndustryReborn/buildings/" + args[1].toLowerCase(Locale.ROOT) + ".ir.json. Содержимое сундуков и таблички не сохраняются.");
+            return;
+        }
+        if (args[0].equalsIgnoreCase("import")) {
+            if (args.length < 2 || args[1].equalsIgnoreCase("list")) {
+                var files = svc.importable();
+                Text.send(p, files.isEmpty()
+                        ? "<gray>Папка plugins/IndustryReborn/import/ пуста. Положите туда файлы .schem (WorldEdit) или .nbt (структуры Minecraft)."
+                        : "<yellow>Файлы для импорта: <white>" + Text.esc(String.join(", ", files)));
+                Text.send(p, "<gray>Импорт: /district build import <файл> <имя> <тип> [название]");
+                return;
+            }
+            if (args.length < 4) {
+                throw new CommandError("Использование: /district build import <файл> <имя> <тип> [название]");
+            }
+            String error = svc.importFile(args[1], args[2].toLowerCase(Locale.ROOT), args[3],
+                    args.length > 4 ? String.join(" ", Arrays.copyOfRange(args, 4, args.length)) : null);
+            if (error != null) {
+                throw new CommandError(error);
+            }
+            var t = svc.get(args[2]);
+            Text.ok(p, "Здание «" + t.name() + "» импортировано: " + t.sizeX() + "×" + t.sizeY() + "×" + t.sizeZ() + ", " + t.blockCount() + " блоков.");
             return;
         }
         if (args.length < 2) {
@@ -1543,11 +1583,17 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
         }
         if (sub.equals("build")) {
             if (args.length == 2) {
-                List<String> list = new ArrayList<>(List.of("list", "reload"));
+                List<String> list = new ArrayList<>(List.of("list", "reload", "save", "import"));
                 list.addAll(plotIds(Plot.Status.FREE));
                 return filter(list, args[1]);
             }
-            if (args.length == 3) {
+            if (args.length == 3 && args[1].equalsIgnoreCase("import")) {
+                return filter(plugin.buildings().importable(), args[2]);
+            }
+            if (args.length >= 3 && (args[1].equalsIgnoreCase("save") && args.length == 4 || args[1].equalsIgnoreCase("import") && args.length == 5)) {
+                return filter(java.util.Arrays.stream(Category.values()).map(Category::key).toList(), args[args.length - 1]);
+            }
+            if (args.length == 3 && !args[1].equalsIgnoreCase("save")) {
                 return filter(plugin.buildings().all().stream().map(ru.industryreborn.building.BuildingTemplate::name).toList(), args[2]);
             }
         }

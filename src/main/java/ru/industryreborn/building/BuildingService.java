@@ -36,8 +36,8 @@ public final class BuildingService {
     /** Результат подбора места. */
     public record Placement(int originX, int originY, int originZ, int quarters, int width, int depth) { }
 
-    private static final String[] BUNDLED = {"house-small", "house-large", "shop-small", "workshop-small", "workshop-forge", "warehouse-small",
-        "warehouse-large", "restaurant-small", "hotel-small", "bank", "power-plant"};
+    /** Допустимое имя здания (имя файла). */
+    public static final java.util.regex.Pattern NAME = java.util.regex.Pattern.compile("[a-z0-9][a-z0-9_-]{0,39}");
 
     private final IndustryRebornPlugin plugin;
     private final Map<String, BuildingTemplate> templates = new LinkedHashMap<>();
@@ -55,7 +55,7 @@ public final class BuildingService {
         templates.clear();
         File dir = folder();
         dir.mkdirs();
-        for (String name : BUNDLED) {
+        for (String name : bundledNames()) {
             File f = new File(dir, name + ".ir.json");
             if (!f.exists()) {
                 try (InputStream in = plugin.getResource("buildings/" + name + ".ir.json")) {
@@ -80,6 +80,23 @@ public final class BuildingService {
                 plugin.getLogger().warning("Здание " + f.getName() + " пропущено: " + e.getMessage());
             }
         }
+    }
+
+    /** Имена встроенных зданий: список лежит в ресурсе buildings/index.txt (его пишет scripts/gen-buildings.py). */
+    private List<String> bundledNames() {
+        List<String> names = new ArrayList<>();
+        try (InputStream in = plugin.getResource("buildings/index.txt")) {
+            if (in != null) {
+                for (String line : new String(in.readAllBytes(), StandardCharsets.UTF_8).split("\\R")) {
+                    if (!line.isBlank()) {
+                        names.add(line.trim());
+                    }
+                }
+            }
+        } catch (IOException e) {
+            plugin.getLogger().log(Level.WARNING, "Не удалось прочитать список встроенных зданий", e);
+        }
+        return names;
     }
 
     public List<BuildingTemplate> all() {
@@ -303,5 +320,103 @@ public final class BuildingService {
             return;
         }
         task.handle = Bukkit.getScheduler().runTaskTimer(plugin, step, 1L, 1L);
+    }
+
+    // ------------------------------------------------------------ сохранение и импорт
+
+    /** Папка с чужими схематиками (.schem, .nbt) для импорта. */
+    public File importFolder() {
+        File dir = new File(plugin.getDataFolder(), "import");
+        dir.mkdirs();
+        return dir;
+    }
+
+    /** Имена файлов .schem и .nbt в папке импорта. */
+    public List<String> importable() {
+        File[] files = importFolder().listFiles((d, n) -> {
+            String l = n.toLowerCase(Locale.ROOT);
+            return l.endsWith(".schem") || l.endsWith(".nbt");
+        });
+        List<String> names = new ArrayList<>();
+        if (files != null) {
+            for (File f : files) {
+                names.add(f.getName());
+            }
+        }
+        java.util.Collections.sort(names);
+        return names;
+    }
+
+    private String checkNameAndCategory(String name, String category) {
+        if (!NAME.matcher(name).matches()) {
+            return "Имя здания: латиница в нижнем регистре, цифры, _ и -, до 40 символов.";
+        }
+        if (get(name) != null) {
+            return "Здание «" + name + "» уже есть. Выберите другое имя (или удалите файл " + name + ".ir.json из папки buildings и сделайте build reload).";
+        }
+        if (Category.parse(category) == null) {
+            return "Неизвестный тип «" + category + "».";
+        }
+        return null;
+    }
+
+    private String store(BuildingTemplate t) {
+        try {
+            File f = new File(folder(), t.name() + ".ir.json");
+            folder().mkdirs();
+            Files.writeString(f.toPath(), t.toJson(), StandardCharsets.UTF_8);
+            templates.put(t.name().toLowerCase(Locale.ROOT), t);
+            return null;
+        } catch (IOException e) {
+            return "Не удалось записать файл: " + e.getMessage();
+        }
+    }
+
+    /** Записывает построенное в игре здание (область box) как шаблон. Возвращает текст ошибки или null. */
+    public String save(World world, Box box, String name, String category, String title) {
+        String error = checkNameAndCategory(name, category);
+        if (error != null) {
+            return error;
+        }
+        if (box.sizeX() > 64 || box.sizeY() > 64 || box.sizeZ() > 64) {
+            return "Область " + box.sizeX() + "×" + box.sizeY() + "×" + box.sizeZ() + " слишком велика: до 64 по каждой оси.";
+        }
+        String[][][] blocks = new String[box.sizeY()][box.sizeZ()][box.sizeX()];
+        for (int y = 0; y < box.sizeY(); y++) {
+            for (int z = 0; z < box.sizeZ(); z++) {
+                for (int x = 0; x < box.sizeX(); x++) {
+                    Block b = world.getBlockAt(box.minX() + x, box.minY() + y, box.minZ() + z);
+                    Material m = b.getType();
+                    if (!m.isAir()) {
+                        blocks[y][z][x] = b.getBlockData().getAsString();
+                    }
+                }
+            }
+        }
+        try {
+            return store(BuildingTemplate.fromGrid(name, title, Category.parse(category).key(), "Сохранено в игре.", "minecraft:stone_bricks", blocks));
+        } catch (IOException e) {
+            return e.getMessage();
+        }
+    }
+
+    /** Импортирует файл .schem или .nbt из папки import. Возвращает текст ошибки или null. */
+    public String importFile(String fileName, String name, String category, String title) {
+        String error = checkNameAndCategory(name, category);
+        if (error != null) {
+            return error;
+        }
+        File f = new File(importFolder(), fileName);
+        try {
+            if (!f.getCanonicalPath().startsWith(importFolder().getCanonicalPath() + File.separator) || !f.isFile()) {
+                return "Файл «" + fileName + "» не найден в папке plugins/IndustryReborn/import/.";
+            }
+            try (InputStream in = Files.newInputStream(f.toPath())) {
+                SchematicImporter.Grid grid = SchematicImporter.read(f.getName(), in);
+                return store(BuildingTemplate.fromGrid(name, title, Category.parse(category).key(), "Импорт из " + f.getName() + ".", "minecraft:stone_bricks", grid.blocks()));
+            }
+        } catch (IOException | RuntimeException e) {
+            return "Не удалось прочитать «" + fileName + "»: " + e.getMessage();
+        }
     }
 }

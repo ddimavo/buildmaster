@@ -11,17 +11,17 @@
  ],
  "foundation": "minecraft:stone_bricks",
  "palette": {
-  "s": "minecraft:stone_bricks",
-  "g": "minecraft:glass",
-  "b": "minecraft:bricks",
-  "i": "minecraft:iron_block",
-  "F": "minecraft:iron_bars",
-  "N": "minecraft:lantern[hanging=true]",
-  "x": "minecraft:light_gray_concrete",
-  "o": "minecraft:copper_block",
   ")": "minecraft:lightning_rod[facing=up]",
+  "N": "minecraft:lantern[hanging=true]",
+  "g": "minecraft:glass",
+  "z": "minecraft:gray_concrete",
+  "b": "minecraft:bricks",
+  "F": "minecraft:iron_bars",
+  "o": "minecraft:copper_block",
   "t": "minecraft:smooth_stone",
-  "z": "minecraft:gray_concrete"
+  "x": "minecraft:light_gray_concrete",
+  "s": "minecraft:stone_bricks",
+  "i": "minecraft:iron_block"
  },
  "layers": [
   [

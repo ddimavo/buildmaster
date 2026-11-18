@@ -6,6 +6,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import java.io.IOException;
 import java.io.Reader;
+import java.util.LinkedHashMap;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -173,5 +174,117 @@ public final class BuildingTemplate {
         } catch (RuntimeException e) {
             throw new IOException("Неверный формат шаблона: " + e.getMessage(), e);
         }
+    }
+
+    // ------------------------------------------------------------ запись
+
+    /** Символы палитры: печатные ASCII без «.», пробела, кавычки и обратной косой черты, затем латиница-расширенная и кириллица. */
+    private static List<Character> symbolPool() {
+        List<Character> pool = new ArrayList<>();
+        for (char c = '!'; c <= '~'; c++) {
+            if (c != '.' && c != '"' && c != '\\') {
+                pool.add(c);
+            }
+        }
+        for (char c = 0xC0; c <= 0x24F; c++) {
+            pool.add(c);
+        }
+        for (char c = 0x410; c <= 0x44F; c++) {
+            pool.add(c);
+        }
+        return pool;
+    }
+
+    /**
+     * Собирает шаблон из сетки blocks[y][z][x] (null - воздух). Палитра строится автоматически; если разных блоков больше,
+     * чем доступных символов, выбрасывает IOException.
+     */
+    public static BuildingTemplate fromGrid(String name, String title, String category, String description, String foundation,
+                                            String[][][] blocks) throws IOException {
+        int y = blocks.length;
+        int z = y == 0 ? 0 : blocks[0].length;
+        int x = z == 0 ? 0 : blocks[0][0].length;
+        // верхние пустые слои отбрасываем
+        int top = y;
+        while (top > 0 && layerEmpty(blocks[top - 1])) {
+            top--;
+        }
+        if (top == 0) {
+            throw new IOException("В здании нет ни одного блока");
+        }
+        if (x < 1 || z < 1 || x > 64 || z > 64 || top > 64) {
+            throw new IOException("Размер здания от 1 до 64 по каждой оси, а здесь " + x + "×" + top + "×" + z);
+        }
+        List<Character> pool = symbolPool();
+        Map<String, Character> bySymbol = new LinkedHashMap<>();
+        Map<Character, String> palette = new LinkedHashMap<>();
+        List<List<String>> layers = new ArrayList<>();
+        for (int yy = 0; yy < top; yy++) {
+            List<String> rows = new ArrayList<>();
+            for (int zz = 0; zz < z; zz++) {
+                StringBuilder row = new StringBuilder();
+                for (int xx = 0; xx < x; xx++) {
+                    String data = blocks[yy][zz][xx];
+                    if (data == null) {
+                        row.append('.');
+                        continue;
+                    }
+                    Character c = bySymbol.get(data);
+                    if (c == null) {
+                        if (bySymbol.size() >= pool.size()) {
+                            throw new IOException("Слишком много разных блоков (больше " + pool.size() + ")");
+                        }
+                        c = pool.get(bySymbol.size());
+                        bySymbol.put(data, c);
+                        palette.put(c, data);
+                    }
+                    row.append(c.charValue());
+                }
+                rows.add(row.toString());
+            }
+            layers.add(rows);
+        }
+        return new BuildingTemplate(name, title == null || title.isBlank() ? name : title, category == null ? "" : category,
+                description == null ? "" : description, x, top, z, foundation == null ? "minecraft:stone_bricks" : foundation, palette, layers);
+    }
+
+    private static boolean layerEmpty(String[][] layer) {
+        for (String[] row : layer) {
+            for (String s : row) {
+                if (s != null) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    /** Текст файла .ir.json. */
+    public String toJson() {
+        JsonObject o = new JsonObject();
+        o.addProperty("format", 1);
+        o.addProperty("name", name);
+        o.addProperty("title", title);
+        o.addProperty("category", category);
+        o.addProperty("description", description);
+        JsonArray size = new JsonArray();
+        size.add(sizeX);
+        size.add(sizeY);
+        size.add(sizeZ);
+        o.add("size", size);
+        o.addProperty("foundation", foundation);
+        JsonObject pal = new JsonObject();
+        for (var e : palette.entrySet()) {
+            pal.addProperty(String.valueOf(e.getKey()), e.getValue());
+        }
+        o.add("palette", pal);
+        JsonArray ls = new JsonArray();
+        for (List<String> rows : layers) {
+            JsonArray a = new JsonArray();
+            rows.forEach(a::add);
+            ls.add(a);
+        }
+        o.add("layers", ls);
+        return new com.google.gson.GsonBuilder().disableHtmlEscaping().setPrettyPrinting().create().toJson(o);
     }
 }

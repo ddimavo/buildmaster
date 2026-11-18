@@ -11,19 +11,19 @@
  ],
  "foundation": "minecraft:stone_bricks",
  "palette": {
-  "s": "minecraft:stone_bricks",
-  "2": "minecraft:oak_stairs[facing=south,half=bottom,shape=straight]",
-  "g": "minecraft:glass",
-  "c": "minecraft:cobblestone",
-  "6": "minecraft:red_bed[facing=south,part=head]",
   "0": "minecraft:oak_door[facing=south,half=lower,hinge=left,open=false]",
-  "3": "minecraft:oak_stairs[facing=north,half=bottom,shape=straight]",
-  "B": "minecraft:bookshelf",
   "N": "minecraft:lantern[hanging=true]",
   "p": "minecraft:oak_planks",
-  "1": "minecraft:oak_door[facing=south,half=upper,hinge=left,open=false]",
+  "g": "minecraft:glass",
+  "B": "minecraft:bookshelf",
   "5": "minecraft:red_bed[facing=south,part=foot]",
-  "l": "minecraft:oak_log[axis=y]"
+  "l": "minecraft:oak_log[axis=y]",
+  "1": "minecraft:oak_door[facing=south,half=upper,hinge=left,open=false]",
+  "3": "minecraft:oak_stairs[facing=north,half=bottom,shape=straight]",
+  "2": "minecraft:oak_stairs[facing=south,half=bottom,shape=straight]",
+  "s": "minecraft:stone_bricks",
+  "c": "minecraft:cobblestone",
+  "6": "minecraft:red_bed[facing=south,part=head]"
  },
  "layers": [
   [
