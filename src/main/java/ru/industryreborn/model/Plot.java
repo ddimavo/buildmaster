@@ -193,6 +193,10 @@ public final class Plot {
     public final Map<String, MachineState> machineStates = new LinkedHashMap<>();
     /** Склад сырья мастерской: материал -> количество (общий для всех станков). */
     public final Map<org.bukkit.Material, Integer> stock = new LinkedHashMap<>();
+    /** Склад предметов плагина и Nexo: ключ («ir:steel», «nexo:steel») -> количество. */
+    public final Map<String, Integer> customStock = new LinkedHashMap<>();
+    /** Рецепты администратора, изученные предприятием (чертежи): закреплены за предприятием и остаются при продаже и изъятии. */
+    public final java.util.Set<String> learnedRecipes = new java.util.LinkedHashSet<>();
     /** Сундуки-приёмники сырья и сундуки продукции: позиции "x,y,z". */
     public final java.util.List<String> rawChests = new java.util.ArrayList<>();
     public final java.util.List<String> productChests = new java.util.ArrayList<>();

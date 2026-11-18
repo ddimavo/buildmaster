@@ -37,8 +37,8 @@ public final class MachineMenu extends Menu {
         List<RecipeBook.Recipe> list = new ArrayList<>();
         for (RecipeBook.Recipe r : all) {
             if ((category == null || r.category().equals(category))
-                    && (q.isEmpty() || r.output().name().toLowerCase(Locale.ROOT).contains(q)
-                    || r.inputs().stream().anyMatch(i -> i.options().stream().anyMatch(m -> m.name().toLowerCase(Locale.ROOT).contains(q))))) {
+                    && (q.isEmpty() || plugin.recipes().outputName(r).toLowerCase(Locale.ROOT).contains(q)
+                    || r.inputs().stream().anyMatch(i -> f.ingredientNames(i).stream().anyMatch(n -> n.toLowerCase(Locale.ROOT).contains(q))))) {
                 list.add(r);
             }
         }
@@ -54,28 +54,25 @@ public final class MachineMenu extends Menu {
             boolean active = view.recipe() != null && view.recipe().id().equals(r.id());
             List<String> lore = new ArrayList<>();
             for (RecipeBook.Ingredient ing : r.inputs()) {
-                int have = 0;
-                for (Material m : ing.options()) {
-                    have += f.stock(plot, m);
-                }
-                lore.add("<gray>Сырьё: <white>" + ing.count() + " × " + names(ing) + " <dark_gray>(на складе " + have + ")");
+                int have = f.have(plot, ing);
+                lore.add("<gray>Сырьё: <white>" + ing.count() + " × " + names(f, ing) + " <dark_gray>(на складе " + have + ")");
             }
             lore.add("<gray>Результат: <white>" + r.outputAmount() + " × " + (r.enchanting()
-                    ? r.output().name() + " + " + r.enchantKey() + " " + r.enchantLevel() : r.output().name()));
+                    ? r.output().name() + " + " + r.enchantKey() + " " + r.enchantLevel() : plugin.recipes().outputName(r)));
             lore.add("<gray>Время партии: <white>" + Math.round(f.secondsPerBatch(plot, r) * 10) / 10.0 + " с");
             if (active) {
                 lore.add("<green>● Сейчас назначено");
             }
             lore.add("<yellow>Нажмите, чтобы назначить");
             set(9 + i, Text.icon(ServicesMenu.iconFor(r.output()), (active ? "<green>" : "<gold>") + (r.enchanting() ? r.output().name() + " + " + r.enchantKey() + " " + r.enchantLevel()
-                            : r.output().name()), lore.toArray(new String[0])),
+                            : plugin.recipes().outputName(r)), lore.toArray(new String[0])),
                     e -> {
                         String error = f.assign(player, plot, pos, r.id());
                         if (error != null) {
                             Text.err(player, error);
                             new MachineMenu(plugin, player, plot, pos, category, current, search).open();
                         } else {
-                            Text.ok(player, "Станку назначен рецепт: " + r.output().name() + ".");
+                            Text.ok(player, "Станку назначен рецепт: " + plugin.recipes().outputName(r) + ".");
                             new FactoryMenu(plugin, player, plot, null).open();
                         }
                     });
@@ -101,7 +98,7 @@ public final class MachineMenu extends Menu {
         // ---- навигация ----
         List<String> info = new ArrayList<>();
         info.add("<gray>Тип: <white>" + FactoryMenu.blockTitle(block));
-        info.add("<gray>Задание: <white>" + (view.recipe() == null ? "не назначено" : view.recipe().output().name()));
+        info.add("<gray>Задание: <white>" + (view.recipe() == null ? "не назначено" : plugin.recipes().outputName(view.recipe())));
         info.add("<gray>Статус: <white>" + view.status().title());
         if (view.recipe() != null && view.status() == ProductionService.Status.WORKING) {
             info.add(Style.bar(view.ratio(), 12, "green"));
@@ -156,10 +153,11 @@ public final class MachineMenu extends Menu {
         fill(Material.GRAY_STAINED_GLASS_PANE);
     }
 
-    private static String names(RecipeBook.Ingredient ing) {
-        if (ing.options().size() <= 3) {
-            return String.join(" / ", ing.options().stream().map(Material::name).toList());
+    private static String names(ru.industryreborn.service.ProductionService f, RecipeBook.Ingredient ing) {
+        List<String> names = f.ingredientNames(ing);
+        if (names.size() <= 3) {
+            return String.join(" / ", names);
         }
-        return ing.options().get(0).name() + " и ещё " + (ing.options().size() - 1) + " вариантов";
+        return names.get(0) + " и ещё " + (names.size() - 1) + " вариантов";
     }
 }

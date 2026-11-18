@@ -209,7 +209,7 @@ final class FactoryCommands {
             if (target != null) {
                 List<String> names = new ArrayList<>();
                 for (RecipeBook.Recipe r : plugin.recipes().forBlock(target.getType())) {
-                    names.add(r.output().name());
+                    names.add(plugin.recipes().outputName(r));
                 }
                 return names;
             }

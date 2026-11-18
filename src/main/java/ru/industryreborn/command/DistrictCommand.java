@@ -42,10 +42,10 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
 
     private static final List<String> PLAYER_SUBS = List.of("menu", "list", "info", "buy", "rent", "extend",
             "autorenew", "autoreset", "release", "trust", "untrust", "perm", "account", "power", "warnings", "tp",
-            "storage", "claim", "journal", "name", "desc", "bank", "service", "factory", "room", "region", "job", "hologram", "machine", "chest", "shop", "goods", "storefront", "link", "unlink", "enchant", "ui", "plots", "business", "hotel", "admin", "holoshop", "build", "lot", "help");
+            "storage", "claim", "journal", "name", "desc", "bank", "service", "factory", "room", "region", "job", "hologram", "machine", "chest", "shop", "goods", "storefront", "link", "unlink", "enchant", "ui", "plots", "business", "hotel", "admin", "holoshop", "build", "lot", "recipe", "help");
     private static final List<String> ADMIN_SUBS = List.of("wand", "pos1", "pos2", "create", "delete", "evict",
             "setprice", "setrent", "setspawn", "resnapshot", "reload", "seize", "reset", "holo", "category",
-            "moderation", "arrest", "auction", "show", "module", "balance", "webhook");
+            "moderation", "arrest", "auction", "show", "module", "balance", "webhook", "item");
     /** Команды банка и электросети: отдельные права industryreborn.bank и industryreborn.grid. */
     private static final List<String> GRID_SUBS = List.of("grid", "area");
 
@@ -215,6 +215,8 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
                 case "service" -> new ServiceCommands(plugin).handle(sender, rest);
                 case "factory" -> new FactoryCommands(plugin).handle(sender, rest);
                 case "enchant" -> new EnchantCommands(plugin).handle(sender, rest);
+                case "item" -> new ItemCommands(plugin).item(sender, rest);
+                case "recipe" -> new ItemCommands(plugin).recipe(sender, rest);
                 case "shop" -> new GoodsCommands(plugin).shop(sender, rest);
                 case "goods" -> new GoodsCommands(plugin).goods(sender, rest);
                 case "storefront" -> new GoodsCommands(plugin).storefront(sender, rest);
@@ -1958,6 +1960,9 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
         }
         if (sub.equals("enchant")) {
             return filter(new EnchantCommands(plugin).complete(sender, args), args[args.length - 1]);
+        }
+        if (sub.equals("item") || sub.equals("recipe")) {
+            return filter(new ItemCommands(plugin).complete(sub, sender, args), args[args.length - 1]);
         }
         if (sub.equals("machine")) {
             return filter(new FactoryCommands(plugin).completeMachine(sender, args), args[args.length - 1]);

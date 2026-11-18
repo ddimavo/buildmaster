@@ -29,9 +29,19 @@ public final class RecipeBook {
     public enum Kind { SMELT, ASSEMBLE, ENCHANT }
 
     /** Ингредиент: подойдёт любой из материалов списка (например, любые доски), всего нужно count штук. */
-    public record Ingredient(List<Material> options, int count) {
+    public record Ingredient(List<Material> options, int count, List<String> customs) {
+
+        public Ingredient(List<Material> options, int count) {
+            this(options, count, List.of());
+        }
+
         public boolean accepts(Material m) {
             return options.contains(m);
+        }
+
+        /** Подходит предмет плагина или Nexo (ключ вида «ir:steel», «nexo:steel»). */
+        public boolean acceptsKey(String key) {
+            return customs.contains(key);
         }
     }
 
@@ -39,11 +49,21 @@ public final class RecipeBook {
      * Рецепт станка. family: furnace | blast | smoker | craft | enchant. Идентификатор - "семейство:РЕЗУЛЬТАТ".
      */
     public record Recipe(String id, Kind kind, String family, List<Ingredient> inputs, Material output, int outputAmount,
-                         double seconds, String category, String enchantKey, int enchantLevel) {
+                         double seconds, String category, String enchantKey, int enchantLevel, String outputItem, boolean free) {
 
         public Recipe(String id, Kind kind, String family, List<Ingredient> inputs, Material output, int outputAmount,
                       double seconds, String category) {
-            this(id, kind, family, inputs, output, outputAmount, seconds, category, null, 0);
+            this(id, kind, family, inputs, output, outputAmount, seconds, category, null, 0, null, true);
+        }
+
+        public Recipe(String id, Kind kind, String family, List<Ingredient> inputs, Material output, int outputAmount,
+                      double seconds, String category, String enchantKey, int enchantLevel) {
+            this(id, kind, family, inputs, output, outputAmount, seconds, category, enchantKey, enchantLevel, null, true);
+        }
+
+        /** Рецепт администратора (из recipes/*.yml): результат или ингредиенты могут быть предметами плагина и Nexo. */
+        public boolean custom() {
+            return id.startsWith("custom:");
         }
 
         /** Рецепт зачарования предмета. */
@@ -52,6 +72,11 @@ public final class RecipeBook {
         }
         public boolean uses(Material m) {
             return inputs.stream().anyMatch(i -> i.accepts(m));
+        }
+
+        /** Ключ результата для склада и показа: «IRON_INGOT», «ir:steel», «nexo:steel». */
+        public String outputKey() {
+            return outputItem != null ? outputItem : output.name();
         }
 
         public int totalInput() {
@@ -156,6 +181,9 @@ public final class RecipeBook {
 
     /** Предмет, который получается по рецепту (с зачарованием, если оно есть). */
     public ItemStack stackOf(Recipe r) {
+        if (r.outputItem() != null) {
+            return plugin.customItems().build(ru.industryreborn.items.ItemRef.parse(r.outputItem()), r.outputAmount());   // null, если предмет недоступен
+        }
         ItemStack stack = new ItemStack(r.output(), Math.max(1, r.outputAmount()));
         if (r.enchanting()) {
             org.bukkit.enchantments.Enchantment e = enchants.get(r.enchantKey());
@@ -353,6 +381,9 @@ public final class RecipeBook {
         if (id == null) {
             return null;
         }
+        if (id.startsWith("custom:")) {
+            return custom.get(id);
+        }
         if (id.startsWith("enchant:")) {
             return enchantRecipe(id);
         }
@@ -375,7 +406,134 @@ public final class RecipeBook {
         return list;
     }
 
+    /** Название результата для меню и голограмм: для предметов плагина - из определения, иначе имя материала. */
+    public String outputName(Recipe r) {
+        if (r.outputItem() != null) {
+            return plugin.customItems().displayName(ru.industryreborn.items.ItemRef.parse(r.outputItem()));
+        }
+        return r.output().name();
+    }
+
     public int size() {
-        return all().size();
+        return all().size() + custom.size();
+    }
+
+    // ------------------------------------------------------------ рецепты администратора
+
+    private final Map<String, Recipe> custom = new LinkedHashMap<>();
+
+    public java.io.File customFolder() {
+        return new java.io.File(plugin.getDataFolder(), "recipes");
+    }
+
+    /** Все рецепты администратора. */
+    public List<Recipe> customRecipes() {
+        return List.copyOf(custom.values());
+    }
+
+    /** Рецепт администратора можно выполнить: результат и ингредиенты доступны (предметы Nexo загружены). */
+    public boolean available(Recipe r) {
+        if (!r.custom()) {
+            return true;
+        }
+        var items = plugin.customItems();
+        if (r.outputItem() != null && !items.known(ru.industryreborn.items.ItemRef.parse(r.outputItem()))) {
+            return false;
+        }
+        return r.outputItem() == null || items.build(ru.industryreborn.items.ItemRef.parse(r.outputItem()), 1) != null;
+    }
+
+    /** Читает recipes/*.yml. Возвращает список ошибок (неверные рецепты пропускаются). */
+    public List<String> loadCustom() {
+        custom.clear();
+        List<String> errors = new ArrayList<>();
+        java.io.File[] files = customFolder().listFiles((d, n) -> n.toLowerCase(Locale.ROOT).endsWith(".yml"));
+        if (files == null) {
+            return errors;
+        }
+        java.util.Arrays.sort(files);
+        for (java.io.File f : files) {
+            org.bukkit.configuration.file.YamlConfiguration yml = org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(f);
+            for (String id : yml.getKeys(false)) {
+                var s = yml.getConfigurationSection(id);
+                if (s == null) {
+                    continue;
+                }
+                String error = addCustom(id, s);
+                if (error != null) {
+                    errors.add(f.getName() + ": " + error);
+                }
+            }
+        }
+        for (String e : errors) {
+            plugin.getLogger().warning("Рецепты: " + e);
+        }
+        return errors;
+    }
+
+    private static final List<String> STATIONS = List.of("furnace", "blast", "smoker", "craft");
+
+    /** Добавляет рецепт администратора из секции. Возвращает ошибку или null. */
+    public String addCustom(String rawId, org.bukkit.configuration.ConfigurationSection s) {
+        String key = rawId.toLowerCase(Locale.ROOT);
+        if (!key.matches("[a-z0-9_]{1,40}")) {
+            return "«" + rawId + "»: id - латиница, цифры и _ (до 40 знаков)";
+        }
+        String id = "custom:" + key;
+        if (custom.containsKey(id)) {
+            return "«" + key + "»: уже определён";
+        }
+        String station = s.getString("station", "");
+        if (!STATIONS.contains(station)) {
+            return "«" + key + "»: station - одно из " + STATIONS;
+        }
+        double seconds = s.getDouble("seconds", 0);
+        if (seconds <= 0 || seconds > 36000) {
+            return "«" + key + "»: seconds - от 0 до 36000";
+        }
+        var items = plugin.customItems();
+        List<Ingredient> inputs = new ArrayList<>();
+        for (Object raw : s.getList("inputs", List.of())) {
+            if (!(raw instanceof Map<?, ?> m)) {
+                return "«" + key + "»: каждый вход - запись {item: ..., amount: ...}";
+            }
+            Object item = m.get("item");
+            List<String> refs = new ArrayList<>();
+            if (item instanceof List<?> list) {
+                list.forEach(o -> refs.add(String.valueOf(o)));
+            } else if (item != null) {
+                refs.add(String.valueOf(item));
+            }
+            int amount = m.get("amount") instanceof Number n ? n.intValue() : 1;
+            if (refs.isEmpty() || amount < 1 || amount > 64) {
+                return "«" + key + "»: у входа нужен item и amount от 1 до 64";
+            }
+            List<Material> vanilla = new ArrayList<>();
+            List<String> customs = new ArrayList<>();
+            for (String r : refs) {
+                var ref = ru.industryreborn.items.ItemRef.parse(r);
+                if (ref == null || !items.known(ref)) {
+                    return "«" + key + "»: неизвестный предмет «" + r + "»";
+                }
+                if (ref.custom()) {
+                    customs.add(ref.key());
+                } else {
+                    vanilla.add(ref.material());
+                }
+            }
+            inputs.add(new Ingredient(List.copyOf(vanilla), amount, List.copyOf(customs)));
+        }
+        if (inputs.isEmpty() || inputs.size() > 4) {
+            return "«" + key + "»: от 1 до 4 входов";
+        }
+        var out = s.getConfigurationSection("output");
+        var outRef = out == null ? null : ru.industryreborn.items.ItemRef.parse(out.getString("item"));
+        int outAmount = out == null ? 1 : out.getInt("amount", 1);
+        if (outRef == null || !items.known(outRef) || outAmount < 1 || outAmount > 64) {
+            return "«" + key + "»: у результата нужен известный item и amount от 1 до 64";
+        }
+        custom.put(id, new Recipe(id, Kind.ASSEMBLE, station, List.copyOf(inputs), items.baseMaterial(outRef), outAmount, seconds,
+                s.getString("category", "Особые"), null, 0, outRef.custom() ? outRef.key() : null, s.getBoolean("free", false)));
+        return null;
     }
 }

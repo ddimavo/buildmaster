@@ -150,6 +150,19 @@ public final class MachineHolograms {
     // ------------------------------------------------------------ содержимое
 
     /** Название предмета для клиента на его языке. */
+    /** Название по ключу склада: ванильный материал - переводимое имя, предмет плагина или Nexo - его название. */
+    private String keyName(String key) {
+        if (ru.industryreborn.items.ItemRef.isCustomKey(key)) {
+            return Text.esc(plugin.customItems().displayName(ru.industryreborn.items.ItemRef.parse(key)));
+        }
+        Material m = Material.matchMaterial(key);
+        return itemName(new ItemStack(m == null ? Material.STONE : m));
+    }
+
+    private String outputText(RecipeBook.Recipe recipe) {
+        return recipe.outputItem() != null ? Text.esc(plugin.recipes().outputName(recipe)) : itemName(new ItemStack(recipe.output()));
+    }
+
     static String itemName(ItemStack item) {
         if (item == null || item.getType().isAir()) {
             return null;
@@ -189,19 +202,10 @@ public final class MachineHolograms {
         RecipeBook.Recipe recipe = view.recipe();
         List<String> inputs = new ArrayList<>();
         for (RecipeBook.Ingredient ing : recipe.inputs()) {
-            Material shown = ing.options().get(0);
-            int have = 0;
-            for (Material m : ing.options()) {
-                int n = plugin.factory().stock(plot, m);
-                have += n;
-                if (n > 0 && plugin.factory().stock(plot, shown) == 0) {
-                    shown = m;
-                }
-            }
-            inputs.add(itemName(new ItemStack(shown)) + " × " + have + " <dark_gray>(по " + ing.count() + ")");
+            inputs.add(keyName(plugin.factory().shownKey(plot, ing)) + " × " + plugin.factory().have(plot, ing) + " <dark_gray>(по " + ing.count() + ")");
         }
-        return MachineText.production(title, itemName(new ItemStack(recipe.output())), view.status().title(),
-                view.status() == ProductionService.Status.WORKING, view.ratio(), inputs, itemName(new ItemStack(recipe.output())),
+        return MachineText.production(title, outputText(recipe), view.status().title(),
+                view.status() == ProductionService.Status.WORKING, view.ratio(), inputs, outputText(recipe),
                 view.output(), view.bufferCapacity(), cost);
     }
 }

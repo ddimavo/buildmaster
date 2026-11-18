@@ -111,7 +111,7 @@ public final class FactoryMenu extends Menu {
                 lore.add("<gray>Задание: <dark_gray>не назначено");
                 lore.add("<gray>Обслуживает заказы игроков");
             } else {
-                lore.add("<gray>Делает: <white>" + v.recipe().output().name() + " × " + v.recipe().outputAmount());
+                lore.add("<gray>Делает: <white>" + plugin.recipes().outputName(v.recipe()) + " × " + v.recipe().outputAmount());
                 lore.add("<gray>Статус: " + (v.status() == ProductionService.Status.WORKING ? "<green>" : "<red>") + v.status().title());
                 if (v.status() == ProductionService.Status.WORKING) {
                     lore.add(Style.bar(v.ratio(), 12, "green"));

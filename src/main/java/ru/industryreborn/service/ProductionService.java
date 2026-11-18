@@ -32,7 +32,7 @@ public final class ProductionService {
 
     public enum Status {
         NO_RECIPE("не назначено"), NO_POWER("обесточен"), NO_RAW("нет сырья"), OUTPUT_FULL("нет места для продукции"),
-        WORKING("работает");
+        UNAVAILABLE("предмет недоступен"), WORKING("работает");
 
         private final String title;
 
@@ -67,11 +67,88 @@ public final class ProductionService {
     }
 
     public int stockTotal(Plot plot) {
-        return plot.stock.values().stream().mapToInt(Integer::intValue).sum();
+        return plot.stock.values().stream().mapToInt(Integer::intValue).sum()
+                + plot.customStock.values().stream().mapToInt(Integer::intValue).sum();
     }
 
     public int stock(Plot plot, Material m) {
         return plot.stock.getOrDefault(m, 0);
+    }
+
+    /** Остаток на складе по ключу: материал («IRON_INGOT») либо предмет плагина или Nexo («ir:steel»). */
+    public int stockOf(Plot plot, String key) {
+        if (ru.industryreborn.items.ItemRef.isCustomKey(key)) {
+            return plot.customStock.getOrDefault(key, 0);
+        }
+        Material m = Material.matchMaterial(key);
+        return m == null ? 0 : plot.stock.getOrDefault(m, 0);
+    }
+
+    /** Сколько ингредиента лежит на складе (по всем подходящим вариантам). */
+    public int have(Plot plot, RecipeBook.Ingredient ing) {
+        int have = 0;
+        for (Material m : ing.options()) {
+            have += stock(plot, m);
+        }
+        for (String key : ing.customs()) {
+            have += stockOf(plot, key);
+        }
+        return have;
+    }
+
+    /** Названия вариантов ингредиента для показа. */
+    public List<String> ingredientNames(RecipeBook.Ingredient ing) {
+        List<String> names = new ArrayList<>();
+        ing.options().forEach(m -> names.add(m.name()));
+        for (String key : ing.customs()) {
+            names.add(plugin.customItems().displayName(ru.industryreborn.items.ItemRef.parse(key)));
+        }
+        return names;
+    }
+
+    /** Ключ ингредиента, который сейчас лежит на складе (или первого варианта). */
+    public String shownKey(Plot plot, RecipeBook.Ingredient ing) {
+        List<String> keys = new ArrayList<>();
+        ing.options().forEach(m -> keys.add(m.name()));
+        keys.addAll(ing.customs());
+        for (String key : keys) {
+            if (stockOf(plot, key) > 0) {
+                return key;
+            }
+        }
+        return keys.isEmpty() ? "STONE" : keys.get(0);
+    }
+
+    private static void stockAdd(Plot plot, String key, int n) {
+        if (ru.industryreborn.items.ItemRef.isCustomKey(key)) {
+            plot.customStock.merge(key, n, Integer::sum);
+        } else {
+            Material m = Material.matchMaterial(key);
+            if (m != null) {
+                plot.stock.merge(m, n, Integer::sum);
+            }
+        }
+    }
+
+    private static void stockTake(Plot plot, String key, int n) {
+        if (ru.industryreborn.items.ItemRef.isCustomKey(key)) {
+            int left = plot.customStock.getOrDefault(key, 0) - n;
+            if (left <= 0) {
+                plot.customStock.remove(key);
+            } else {
+                plot.customStock.put(key, left);
+            }
+            return;
+        }
+        Material m = Material.matchMaterial(key);
+        if (m != null) {
+            int left = plot.stock.getOrDefault(m, 0) - n;
+            if (left <= 0) {
+                plot.stock.remove(m);
+            } else {
+                plot.stock.put(m, left);
+            }
+        }
     }
 
     /** Вместимость буфера продукции станка в предметах. */
@@ -136,16 +213,33 @@ public final class ProductionService {
         return set;
     }
 
-    /** Что будет израсходовано на одну партию (материал -> штук) или null, если сырья не хватает. */
-    public Map<Material, Integer> plan(Plot plot, RecipeBook.Recipe recipe) {
-        Map<Material, Integer> use = new LinkedHashMap<>();
+    /** Предметы плагина и Nexo, нужные заданиям станков (их забирают сундуки сырья и загрузка). */
+    public Set<String> acceptedCustom(Plot plot) {
+        Set<String> set = new HashSet<>();
+        for (Plot.MachineState s : plot.machineStates.values()) {
+            RecipeBook.Recipe r = plugin.recipes().get(s.recipe);
+            if (r != null) {
+                for (RecipeBook.Ingredient i : r.inputs()) {
+                    set.addAll(i.customs());
+                }
+            }
+        }
+        return set;
+    }
+
+    /** Что будет израсходовано на одну партию (ключ склада -> штук) или null, если сырья не хватает. */
+    public Map<String, Integer> plan(Plot plot, RecipeBook.Recipe recipe) {
+        Map<String, Integer> use = new LinkedHashMap<>();
         for (RecipeBook.Ingredient ing : recipe.inputs()) {
             int need = ing.count();
-            for (Material m : ing.options()) {
-                int have = stock(plot, m) - use.getOrDefault(m, 0);
+            List<String> keys = new ArrayList<>();
+            ing.options().forEach(m -> keys.add(m.name()));
+            keys.addAll(ing.customs());
+            for (String key : keys) {
+                int have = stockOf(plot, key) - use.getOrDefault(key, 0);
                 int take = Math.min(have, need);
                 if (take > 0) {
-                    use.merge(m, take, Integer::sum);
+                    use.merge(key, take, Integer::sum);
                     need -= take;
                 }
                 if (need == 0) {
@@ -170,7 +264,9 @@ public final class ProductionService {
         }
         int cap = bufferCapacity(plot, recipe);
         Status status;
-        if (!plugin.power().isPowered(plot)) {
+        if (!plugin.recipes().available(recipe)) {
+            status = Status.UNAVAILABLE;
+        } else if (!plugin.power().isPowered(plot)) {
             status = Status.NO_POWER;
         } else if (state.output + recipe.outputAmount() > cap) {
             status = Status.OUTPUT_FULL;
@@ -198,7 +294,14 @@ public final class ProductionService {
             list.sort(java.util.Comparator.comparing(RecipeBook.Recipe::id));
             return list;
         }
-        return plugin.recipes().forBlock(block);
+        List<RecipeBook.Recipe> list = new ArrayList<>(plugin.recipes().forBlock(block));
+        String family = RecipeBook.familyOf(block);
+        for (RecipeBook.Recipe r : plugin.recipes().customRecipes()) {
+            if (r.family().equals(family) && (r.free() || plot.learnedRecipes.contains(r.id()))) {
+                list.add(r);
+            }
+        }
+        return list;
     }
 
     /** Все станки мастерской (с заданием и без) по позиции. */
@@ -274,6 +377,9 @@ public final class ProductionService {
         }
         if (recipe.enchanting() && plugin.modules().refusal(Module.ENCHANTING) != null) {
             return plugin.modules().refusal(Module.ENCHANTING);
+        }
+        if (recipe.custom() && !recipe.free() && !plot.learnedRecipes.contains(recipe.id())) {
+            return "Рецепт «" + recipe.id().substring(7) + "» не изучен: нужен чертёж.";
         }
         if (recipe.enchanting() && !plot.approvedEnchants.contains(recipe.id())) {
             return "Это зачарование ещё не одобрено администратором для вашей мастерской: /district enchant propose.";
@@ -401,6 +507,18 @@ public final class ProductionService {
         return state instanceof Container container ? container.getInventory() : null;
     }
 
+    /** Ключ склада для предмета, если станки его принимают: предмет плагина или Nexo (по метке) либо обычный ванильный; иначе null. */
+    private String acceptKey(ItemStack s, Set<Material> accepted, Set<String> acceptedCustom) {
+        if (s == null || s.getType().isAir()) {
+            return null;
+        }
+        var ref = plugin.customItems().identify(s);
+        if (ref != null) {
+            return acceptedCustom.contains(ref.key()) ? ref.key() : null;
+        }
+        return plainStack(s) && accepted.contains(s.getType()) ? s.getType().name() : null;
+    }
+
     private static boolean plainStack(ItemStack s) {
         return s != null && !s.getType().isAir() && s.isSimilar(new ItemStack(s.getType()));
     }
@@ -411,7 +529,8 @@ public final class ProductionService {
             return 0;
         }
         Set<Material> accepted = acceptedMaterials(plot);
-        if (accepted.isEmpty()) {
+        Set<String> acceptedCustom = acceptedCustom(plot);
+        if (accepted.isEmpty() && acceptedCustom.isEmpty()) {
             return 0;
         }
         int room = stockCapacity(plot) - stockTotal(plot);
@@ -423,11 +542,12 @@ public final class ProductionService {
             }
             for (int i = 0; i < inv.getSize() && room > 0; i++) {
                 ItemStack s = inv.getItem(i);
-                if (!plainStack(s) || !accepted.contains(s.getType())) {
+                String key = acceptKey(s, accepted, acceptedCustom);
+                if (key == null) {
                     continue;
                 }
                 int take = Math.min(room, s.getAmount());
-                plot.stock.merge(s.getType(), take, Integer::sum);
+                stockAdd(plot, key, take);
                 room -= take;
                 moved += take;
                 if (take >= s.getAmount()) {
@@ -456,7 +576,7 @@ public final class ProductionService {
             }
             // связь с магазином или складом (или своя витрина) важнее сундука продукции
             Plot dest = linked != null ? linked : plot.storefront ? plot : null;
-            if (dest != null && !r.enchanting()) {
+            if (dest != null && !r.enchanting() && r.outputItem() == null) {
                 int put = plugin.goods().add(dest, r.output(), state.output);
                 state.output -= put;
                 changed |= put > 0;
@@ -467,7 +587,11 @@ public final class ProductionService {
                 if (inv == null || state.output <= 0) {
                     continue;
                 }
-                int stack = Math.max(1, plugin.recipes().stackOf(r).getMaxStackSize());
+                ItemStack sample = plugin.recipes().stackOf(r);
+                if (sample == null) {
+                    break;          // предмет сейчас недоступен (Nexo ещё грузится): продукция ждёт в буфере
+                }
+                int stack = Math.max(1, sample.getMaxStackSize());
                 while (state.output > 0) {
                     int n = Math.min(stack, state.output);
                     ItemStack out = plugin.recipes().stackOf(r);
@@ -499,7 +623,8 @@ public final class ProductionService {
             return error;
         }
         Set<Material> accepted = acceptedMaterials(plot);
-        if (accepted.isEmpty()) {
+        Set<String> acceptedCustom = acceptedCustom(plot);
+        if (accepted.isEmpty() && acceptedCustom.isEmpty()) {
             return "Ни у одного станка нет задания: загружать пока нечего.";
         }
         int room = stockCapacity(plot) - stockTotal(plot);
@@ -512,11 +637,12 @@ public final class ProductionService {
         ItemStack[] contents = inv.getStorageContents();
         for (int i = 0; i < contents.length && moved < limit; i++) {
             ItemStack s = contents[i];
-            if (!plainStack(s) || !accepted.contains(s.getType())) {
+            String key = acceptKey(s, accepted, acceptedCustom);
+            if (key == null) {
                 continue;
             }
             int take = Math.min(limit - moved, s.getAmount());
-            plot.stock.merge(s.getType(), take, Integer::sum);
+            stockAdd(plot, key, take);
             moved += take;
             s.setAmount(s.getAmount() - take);
             inv.setItem(i, s.getAmount() <= 0 ? null : s);
@@ -546,7 +672,11 @@ public final class ProductionService {
             if (r == null || state.output <= 0) {
                 continue;
             }
-            items.addAll(ServiceCatalog.split(plugin.recipes().stackOf(r), state.output));
+            ItemStack product = plugin.recipes().stackOf(r);
+            if (product == null) {
+                continue;       // предмет сейчас недоступен: продукция остаётся в буфере
+            }
+            items.addAll(ServiceCatalog.split(product, state.output));
             total += state.output;
             state.output = 0;
         }
@@ -599,10 +729,19 @@ public final class ProductionService {
         for (var e : plot.stock.entrySet()) {
             items.addAll(ServiceCatalog.split(new ItemStack(e.getKey()), e.getValue()));
         }
+        for (var e : plot.customStock.entrySet()) {
+            ItemStack stack = plugin.customItems().build(ru.industryreborn.items.ItemRef.parse(e.getKey()), 1);
+            if (stack == null) {
+                plugin.getLogger().warning("Склад мастерской " + plot.id + ": предмет " + e.getKey() + " недоступен и не возвращён (" + e.getValue() + " шт.)");
+                continue;
+            }
+            items.addAll(ServiceCatalog.split(stack, e.getValue()));
+        }
         for (Plot.MachineState state : plot.machineStates.values()) {
             RecipeBook.Recipe r = plugin.recipes().get(state.recipe);
-            if (r != null && state.output > 0) {
-                items.addAll(ServiceCatalog.split(plugin.recipes().stackOf(r), state.output));
+            ItemStack product = r == null || state.output <= 0 ? null : plugin.recipes().stackOf(r);
+            if (product != null) {
+                items.addAll(ServiceCatalog.split(product, state.output));
             }
         }
         if (manager != null && !items.isEmpty()) {
@@ -614,6 +753,7 @@ public final class ProductionService {
             }
         }
         plot.stock.clear();
+        plot.customStock.clear();
         plot.machineStates.clear();
         plot.rawChests.clear();
         plot.productChests.clear();
@@ -704,8 +844,9 @@ public final class ProductionService {
             }
             Plot.MachineState state = plot.machineStates.remove(pos);
             RecipeBook.Recipe r = plugin.recipes().get(state.recipe);
-            if (r != null && state.output > 0 && plot.owner != null) {
-                plugin.orders().deliver(plot.owner, plot.id, ServiceCatalog.split(plugin.recipes().stackOf(r), state.output),
+            ItemStack product = r == null || state.output <= 0 ? null : plugin.recipes().stackOf(r);
+            if (product != null && plot.owner != null) {
+                plugin.orders().deliver(plot.owner, plot.id, ServiceCatalog.split(product, state.output),
                         "Станок разрушен, продукция возвращена, участок " + plot.id);
             }
             changed = true;
@@ -754,17 +895,12 @@ public final class ProductionService {
         state.progress += dt;
         boolean produced = false;
         while (state.progress + 1e-9 >= seconds && state.output + recipe.outputAmount() <= cap) {
-            Map<Material, Integer> use = plan(plot, recipe);
+            Map<String, Integer> use = plan(plot, recipe);
             if (use == null || !plugin.power().useStation(plot, station.tariffKey())) {
                 break;
             }
             for (var u : use.entrySet()) {
-                int left = plot.stock.getOrDefault(u.getKey(), 0) - u.getValue();
-                if (left <= 0) {
-                    plot.stock.remove(u.getKey());
-                } else {
-                    plot.stock.put(u.getKey(), left);
-                }
+                stockTake(plot, u.getKey(), u.getValue());
             }
             state.output += recipe.outputAmount();
             state.progress -= seconds;

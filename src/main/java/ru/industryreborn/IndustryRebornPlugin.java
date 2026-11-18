@@ -163,7 +163,10 @@ public class IndustryRebornPlugin extends JavaPlugin {
         orders = new OrderService(this);
         orders.load();
         upgrades = new UpgradeCatalog(this::getConfig);
+        customItems = new ru.industryreborn.items.CustomItems(this);
         recipes = new RecipeBook(this);
+        reloadCustomContent();
+        registerNexoReload();
         factory = new ProductionService(this);
         hotels = new HotelService(this);
         regions = new WorldGuardRegions(getLogger());
@@ -369,6 +372,45 @@ public class IndustryRebornPlugin extends JavaPlugin {
 
     public RecipeBook recipes() {
         return recipes;
+    }
+
+    private ru.industryreborn.items.CustomItems customItems;
+
+    /** Предметы плагина и метки (items/*.yml), распознавание и мост к Nexo. */
+    public ru.industryreborn.items.CustomItems customItems() {
+        return customItems;
+    }
+
+    /** Перечитывает items/*.yml и recipes/*.yml. Возвращает ошибки файлов. */
+    public java.util.List<String> reloadCustomContent() {
+        java.util.List<String> errors = new java.util.ArrayList<>();
+        if (!customItems.enabled()) {
+            customItems.load();
+            recipes.loadCustom();
+            return errors;
+        }
+        errors.addAll(customItems.load());
+        errors.addAll(recipes.loadCustom());
+        return errors;
+    }
+
+    /** Когда Nexo закончил загрузку предметов, показ и рецепты перечитываются (событие NexoItemsLoadedEvent; если класса нет - ничего не делаем). */
+    @SuppressWarnings("unchecked")
+    private void registerNexoReload() {
+        for (String name : new String[] {"com.nexomc.nexo.api.events.NexoItemsLoadedEvent", "com.nexomc.nexo.api.NexoItemsLoadedEvent"}) {
+            try {
+                Class<? extends org.bukkit.event.Event> type = (Class<? extends org.bukkit.event.Event>) Class.forName(name);
+                getServer().getPluginManager().registerEvent(type, new org.bukkit.event.Listener() { },
+                        org.bukkit.event.EventPriority.MONITOR, (l, e) -> {
+                            java.util.List<String> errors = reloadCustomContent();
+                            getLogger().info("Nexo загрузил предметы: предметов плагина " + customItems.all().size()
+                                    + ", рецептов администратора " + recipes.customRecipes().size() + (errors.isEmpty() ? "" : ", ошибок " + errors.size()));
+                        }, this);
+                return;
+            } catch (ReflectiveOperationException | LinkageError ignored) {
+                // Nexo не установлен или событие называется иначе
+            }
+        }
     }
 
     /** Доступ к регионам WorldGuard (по умолчанию через рефлексию). */

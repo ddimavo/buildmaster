@@ -234,6 +234,20 @@ public final class PlotManager {
         p.revenue = s.getDouble("revenue");
         p.linkedTo = s.getString("link");
         p.approvedEnchants.addAll(s.getStringList("approved-enchants"));
+        p.learnedRecipes.addAll(s.getStringList("learned-recipes"));
+        for (String entry : s.getStringList("stock-custom")) {
+            int eq = entry.lastIndexOf('=');
+            if (eq > 0) {
+                try {
+                    int n = Integer.parseInt(entry.substring(eq + 1));
+                    if (n > 0) {
+                        p.customStock.put(entry.substring(0, eq), n);
+                    }
+                } catch (NumberFormatException ignored) {
+                    // повреждённая запись пропускается
+                }
+            }
+        }
         p.storefront = s.getBoolean("storefront");
         p.linkRequests.addAll(s.getStringList("link-requests"));
         if (s.isList("services-pos") && s.getDoubleList("services-pos").size() == 3) {
@@ -387,6 +401,12 @@ public final class PlotManager {
             yml.set(k + "link", p.linkedTo);
             if (!p.approvedEnchants.isEmpty()) {
                 yml.set(k + "approved-enchants", new java.util.ArrayList<>(p.approvedEnchants));
+            }
+            if (!p.learnedRecipes.isEmpty()) {
+                yml.set(k + "learned-recipes", new java.util.ArrayList<>(p.learnedRecipes));
+            }
+            if (!p.customStock.isEmpty()) {
+                yml.set(k + "stock-custom", p.customStock.entrySet().stream().map(e -> e.getKey() + "=" + e.getValue()).toList());
             }
             if (p.storefront) {
                 yml.set(k + "storefront", true);

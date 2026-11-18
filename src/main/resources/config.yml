@@ -109,6 +109,13 @@ hotel-electricity:
   base-units: 0.2
   per-area: 0.01
 
+# ---- Предметы плагина и рецепты администратора ----
+# Предметы плагина описываются в plugins/IndustryReborn/items/*.yml, рецепты станков - в recipes/*.yml (формат в docs/MANUAL.md, раздел 6.8).
+# Предмет несёт метку в данных предмета (industryreborn:item), поэтому переименованием его не подделать. Предметы Nexo подключаются автоматически, если Nexo установлен.
+# /district item reload - перечитать файлы, /district item export-nexo - заготовка предметов для Nexo и NexoHelper.
+custom-items:
+  enabled: true
+
 # ---- Классы номеров отелей ----
 # Класс задаёт для номера: границы цены за сутки (min-rate/max-rate, 0 - без границы), максимальный срок аренды (max-days, не больше общего max-rent-days)
 # и множитель электричества (power). Администратор назначает любой класс сразу; управляющий подаёт заявку (/district room class). enabled: false отключает
