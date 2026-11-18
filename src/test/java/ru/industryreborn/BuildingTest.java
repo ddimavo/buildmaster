@@ -482,7 +482,7 @@ class BuildingTest extends PluginTestBase {
         assertTrue(drain(boss).contains("не найден"));
         plot.status = Plot.Status.OWNED;
         run("build free2 shop-small");
-        assertTrue(drain(boss).contains("свободном"));
+        assertTrue(drain(boss).contains("администратор строит на свободных участках и на своих"));
         assertEquals(0, countSolid(0, 12, 0, 10));
     }
 
