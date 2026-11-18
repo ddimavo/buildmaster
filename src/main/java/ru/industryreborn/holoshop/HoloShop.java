@@ -23,10 +23,10 @@ public final class HoloShop {
     String layoutKey = "";
     final List<Holo> parts = new ArrayList<>();
     final List<ClickZones.Zone> zones = new ArrayList<>();
-    final List<Holo> texts = new ArrayList<>();       // тексты товаров текущей страницы, по порядку
+    final List<Runnable> refresh = new ArrayList<>();   // обновление текстов (название, цена, остаток) без пересоздания голограмм
     final List<org.bukkit.Material> pageItems = new ArrayList<>();
-    Holo header;
-    Holo footer;
+    /** Вторая доска с обратной стороны: null - как в config.yml (holo-shop.two-sided). */
+    Boolean backSide;
 
     public HoloShop(String id, String plotId, String world, double x, double y, double z, float yaw) {
         this.id = id;
@@ -36,6 +36,10 @@ public final class HoloShop {
         this.y = y;
         this.z = z;
         this.yaw = yaw;
+    }
+
+    public Boolean backSide() {
+        return backSide;
     }
 
     public int page() {

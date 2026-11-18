@@ -27,12 +27,12 @@ final class FancyItemHolo implements Holo {
         return FancyHologramsPlugin.get().getHologramManager();
     }
 
-    static FancyItemHolo create(String name, Location at, ItemStack item, float scale, float viewRange) {
+    static FancyItemHolo create(String name, Location at, ItemStack item, float scale, float viewRange, boolean flat) {
         HologramManager manager = manager();
         manager.getHologram(name).ifPresent(manager::removeHologram);
         ItemHologramData d = new ItemHologramData(name, at);
         d.setItemStack(item);
-        d.setBillboard(Display.Billboard.CENTER);
+        d.setBillboard(flat ? Display.Billboard.FIXED : Display.Billboard.CENTER);
         d.setScale(new Vector3f(scale, scale, scale));
         d.setVisibilityDistance(Math.max(1, Math.round(viewRange * 64)));
         d.setPersistent(false);

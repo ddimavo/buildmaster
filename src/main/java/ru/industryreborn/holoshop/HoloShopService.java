@@ -25,8 +25,9 @@ import ru.industryreborn.service.Module;
 import ru.industryreborn.util.Text;
 
 /**
- * Торговля через голограммы. Витрина стоит в мире: над ней висят иконки товаров предприятия, под ними текст (название, цена, остаток),
- * по бокам кнопки листания. Клик по товару покупает его (ПКМ - один, ПКМ с Shift - до 16), клик по стрелкам перелистывает страницу.
+ * Торговля через голограммы. Витрина - доска-таблица: иконка, название, цена и остаток каждого товара в своих колонках (каждая ячейка - отдельная
+ * сущность, поэтому ничто не перекрывается), сверху заголовок и подписи колонок, по бокам кнопки листания. Доска стоит по направлению витрины;
+ * с обратной стороны по умолчанию висит вторая (отключается для отдельной витрины). Клик по товару покупает его (ПКМ - один, ПКМ с Shift - до 16), клик по стрелкам перелистывает страницу.
  * Работает поверх обычных голограмм или FancyHolograms, клики ловят невидимые сущности Interaction.
  */
 public final class HoloShopService {
@@ -69,7 +70,7 @@ public final class HoloShopService {
     }
 
     private int perPage() {
-        return Math.max(1, Math.min(5, plugin.getConfig().getInt("holo-shop.items-per-page", 3)));
+        return Math.max(1, Math.min(8, plugin.getConfig().getInt("holo-shop.items-per-page", 5)));
     }
 
     // ------------------------------------------------------------ создание и удаление
@@ -127,13 +128,40 @@ public final class HoloShopService {
 
     // ------------------------------------------------------------ показ
 
-    private Location at(HoloShop s, World w, double right, double dy) {
+    /** Точка на доске: right - вправо от покупателя, dy - вверх от места витрины, depth - к покупателю; back - вид с обратной стороны. */
+    private Location at(HoloShop s, World w, double right, double dy, double depth, boolean back) {
         double yaw = Math.toRadians(s.yaw);
         double fx = -Math.sin(yaw);
         double fz = Math.cos(yaw);
         double rx = fz;                  // правая рука покупателя, смотрящего на витрину
         double rz = -fx;
-        return new Location(w, s.x + rx * right, s.y + dy, s.z + rz * right);
+        double r = back ? -right : right;
+        double d = back ? -depth : depth;
+        return new Location(w, s.x + rx * r + fx * d, s.y + dy, s.z + rz * r + fz * d, s.yaw + (back ? 180f : 0f), 0f);
+    }
+
+    private Location at(HoloShop s, World w, double right, double dy) {
+        return at(s, w, right, dy, 0, false);
+    }
+
+    private boolean twoSided(HoloShop s) {
+        return s.backSide != null ? s.backSide : plugin.getConfig().getBoolean("holo-shop.two-sided", true);
+    }
+
+    /** Включает или выключает доску с обратной стороны у одной витрины (null - как в config.yml). Возвращает ошибку или null. */
+    public String setBack(Player player, String id, Boolean value) {
+        HoloShop shop = get(id);
+        if (shop == null) {
+            return "Витрина «" + id + "» не найдена: /district holoshop list";
+        }
+        Plot plot = plugin.plots().get(shop.plotId);
+        if ((plot == null || !plot.isOwner(player.getUniqueId())) && !player.hasPermission("industryreborn.admin")) {
+            return "Настраивать витрину может управляющий предприятия.";
+        }
+        shop.backSide = value;
+        clear(shop);
+        save();
+        return null;
     }
 
     private void clear(HoloShop s) {
@@ -141,10 +169,8 @@ public final class HoloShopService {
         s.zones.forEach(ClickZones.Zone::remove);
         s.parts.clear();
         s.zones.clear();
-        s.texts.clear();
+        s.refresh.clear();
         s.pageItems.clear();
-        s.header = null;
-        s.footer = null;
         s.layoutKey = "";
     }
 
@@ -196,15 +222,17 @@ public final class HoloShopService {
         return "<lang:" + new ItemStack(m).translationKey() + ">";
     }
 
-    private String itemText(Plot plot, Material m) {
-        int stock = plugin.goods().stock(plot, m);
-        return "<white>" + name(m) + "\n<yellow>" + plugin.economy().format(plugin.goods().price(plot, m)) + "\n"
-                + (stock > 0 ? "<gray>В наличии: <white>" + stock : "<red>Нет в наличии");
+    private String priceText(Plot plot, Material m) {
+        return "<yellow>" + plugin.economy().format(plugin.goods().price(plot, m));
     }
 
-    private String headerText(HoloShop s, Plot plot, int pages) {
-        return "<gold><bold>" + Text.esc(plot.displayName()) + "</bold>\n<gray>Страница " + (s.page + 1) + " из " + pages
-                + "\n<dark_gray>ПКМ - купить 1, Shift+ПКМ - до 16";
+    private String stockText(Plot plot, Material m) {
+        int stock = plugin.goods().stock(plot, m);
+        return stock <= 0 ? "<red>Нет" : stock <= 10 ? "<gold>" + stock : "<green>" + stock;
+    }
+
+    private String titleText(HoloShop s, Plot plot, int pages) {
+        return "<gold><bold>" + Text.esc(plot.displayName()) + "</bold>\n<gray>Страница " + (s.page + 1) + " из " + pages;
     }
 
     private void render(HoloShop s, Plot plot, World world) {
@@ -213,7 +241,7 @@ public final class HoloShopService {
         int pages = Math.max(1, (all.size() + per - 1) / per);
         s.page = Math.max(0, Math.min(s.page, pages - 1));
         List<Material> page = all.subList(Math.min(all.size(), s.page * per), Math.min(all.size(), s.page * per + per));
-        String key = s.page + "|" + page + "|" + pages;
+        String key = s.page + "|" + page + "|" + pages + "|" + twoSided(s);
         boolean valid = s.shown() && s.parts.stream().allMatch(Holo::valid) && s.zones.stream().allMatch(ClickZones.Zone::valid);
         if (!valid || !key.equals(s.layoutKey)) {
             clear(s);
@@ -222,37 +250,106 @@ public final class HoloShopService {
             return;
         }
         // раскладка прежняя: обновляем только тексты (остатки, цены, заголовок)
-        s.header.text(headerText(s, plot, pages));
-        for (int i = 0; i < page.size(); i++) {
-            s.texts.get(i).text(itemText(plot, page.get(i)));
-        }
+        s.refresh.forEach(Runnable::run);
+    }
+
+    // Раскладка доски (блоки вправо от центра). Каждая ячейка - отдельная сущность с собственным фоном и фиксированной шириной,
+    // поэтому длинное название или цена переносится внутри своей колонки и не наезжает на соседние.
+    private static final double COL_ICON = -1.3;
+    private static final double COL_NAME = -0.6;
+    private static final double COL_PRICE = 0.45;
+    private static final double COL_STOCK = 1.2;
+    private static final double W_NAME = 1.2;
+    private static final double W_PRICE = 0.9;
+    private static final double W_STOCK = 0.55;
+    private static final double BOARD = 3.0;
+    private static final double BOTTOM = 1.1;
+    private static final double DEPTH = 0.02;
+
+    /** Ширина колонки в пикселях текста при данном масштабе (один пиксель - 0.025 блока). */
+    private static int px(double blocks, double textScale) {
+        return Math.max(10, (int) Math.round(blocks / (0.025 * textScale)));
     }
 
     private void build(HoloShop s, Plot plot, World world, List<Material> page, int pages) {
         float range = (float) (cfg("view-distance", 20) / 64.0);
         int bg = 0x78000000;
-        s.header = plugin.holoFactory().spawn("hs_" + s.id + "_h", new HoloSpec(at(s, world, 0, 2.7), headerText(s, plot, pages)).style(240, range, bg));
-        s.parts.add(s.header);
-        double spacing = cfg("spacing", 1.3);
-        if (page.isEmpty()) {
-            s.parts.add(plugin.holoFactory().spawn("hs_" + s.id + "_e", new HoloSpec(at(s, world, 0, 1.6), "<gray>Товаров пока нет").style(200, range, bg)));
+        double ts = Math.max(0.4, Math.min(1.5, cfg("text-scale", 0.7)));
+        double rowH = Math.max(0.3, cfg("row-height", 0.42));
+        float tsf = (float) ts;
+        double line = 0.275 * ts;                         // высота одной строки текста
+        int n = Math.max(1, page.size());
+        double top = BOTTOM + n * rowH;
+        boolean[] sides = twoSided(s) ? new boolean[] {false, true} : new boolean[] {false};
+        for (boolean back : sides) {
+            String tag = "hs_" + s.id + (back ? "b" : "f");
+            // заголовок
+            Location titleAt = at(s, world, 0, top + 0.5, DEPTH, back);
+            Holo title = plugin.holoFactory().spawn(tag + "_h", new HoloSpec(titleAt, titleText(s, plot, pages))
+                    .billboard(org.bukkit.entity.Display.Billboard.FIXED).style(260, range, bg));
+            s.parts.add(title);
+            s.refresh.add(() -> title.text(titleText(s, plot, pages)));
+            if (page.isEmpty()) {
+                s.parts.add(plugin.holoFactory().spawn(tag + "_e", cell(at(s, world, 0, BOTTOM + 0.15, DEPTH, back), "<gray>Товаров пока нет", 220, range, bg, tsf)));
+                continue;
+            }
+            // заголовки колонок
+            double hy = top + 0.1;
+            s.parts.add(plugin.holoFactory().spawn(tag + "_c0", cell(at(s, world, COL_NAME, hy, DEPTH, back), "<gray>Товар", px(W_NAME, ts), range, bg, tsf)));
+            s.parts.add(plugin.holoFactory().spawn(tag + "_c1", cell(at(s, world, COL_PRICE, hy, DEPTH, back), "<gray>Цена", px(W_PRICE, ts), range, bg, tsf)));
+            s.parts.add(plugin.holoFactory().spawn(tag + "_c2", cell(at(s, world, COL_STOCK, hy, DEPTH, back), "<gray>Остаток", px(W_STOCK, ts), range, bg, tsf)));
+            for (int i = 0; i < page.size(); i++) {
+                Material m = page.get(i);
+                double center = BOTTOM + (page.size() - 1 - i + 0.5) * rowH;
+                double ty = center - line / 2;
+                s.parts.add(plugin.holoFactory().spawnItem(tag + "_i" + i, at(s, world, COL_ICON, center, DEPTH, back), new ItemStack(m),
+                        (float) (rowH * 0.85), range, true));
+                s.parts.add(plugin.holoFactory().spawn(tag + "_n" + i, cell(at(s, world, COL_NAME, ty, DEPTH, back), "<white>" + name(m), px(W_NAME, ts), range, bg, tsf)));
+                Holo price = plugin.holoFactory().spawn(tag + "_p" + i, cell(at(s, world, COL_PRICE, ty, DEPTH, back), priceText(plot, m), px(W_PRICE, ts), range, bg, tsf));
+                Holo stock = plugin.holoFactory().spawn(tag + "_s" + i, cell(at(s, world, COL_STOCK, ty, DEPTH, back), stockText(plot, m), px(W_STOCK, ts), range, bg, tsf));
+                s.parts.add(price);
+                s.parts.add(stock);
+                s.refresh.add(() -> {
+                    price.text(priceText(plot, m));
+                    stock.text(stockText(plot, m));
+                });
+            }
+            s.parts.add(plugin.holoFactory().spawn(tag + "_f", cell(at(s, world, 0, BOTTOM - 0.3, DEPTH, back),
+                    "<dark_gray>ПКМ - купить 1 · Shift+ПКМ - до 16", 300, range, bg, tsf)));
+            if (pages > 1) {
+                s.parts.add(plugin.holoFactory().spawn(tag + "_pv", new HoloSpec(at(s, world, -BOARD / 2 - 0.3, BOTTOM + n * rowH / 2 - 0.15, DEPTH, back), "<green><bold>◀")
+                        .billboard(org.bukkit.entity.Display.Billboard.FIXED).style(100, range, bg).scale(1.4f)));
+                s.parts.add(plugin.holoFactory().spawn(tag + "_nx", new HoloSpec(at(s, world, BOARD / 2 + 0.3, BOTTOM + n * rowH / 2 - 0.15, DEPTH, back), "<green><bold>▶")
+                        .billboard(org.bukkit.entity.Display.Billboard.FIXED).style(100, range, bg).scale(1.4f)));
+            }
         }
+        // зоны кликов общие для обеих досок: квадрат шириной с доску охватывает обе стороны
+        double zoneW = BOARD;
         for (int i = 0; i < page.size(); i++) {
             Material m = page.get(i);
-            double off = (i - (page.size() - 1) / 2.0) * spacing;
-            s.parts.add(plugin.holoFactory().spawnItem("hs_" + s.id + "_i" + i, at(s, world, off, 1.9), new ItemStack(m), 0.8f, range));
-            Holo text = plugin.holoFactory().spawn("hs_" + s.id + "_t" + i, new HoloSpec(at(s, world, off, 1.15), itemText(plot, m)).style(200, range, bg));
-            s.parts.add(text);
-            s.texts.add(text);
+            double center = BOTTOM + (page.size() - 1 - i + 0.5) * rowH;
             s.pageItems.add(m);
-            s.zones.add(plugin.clickZones().create(at(s, world, off, 0.7), 1.1, 1.6, (p, sneak, left) -> clickItem(s, m, p, sneak, left)));
+            s.zones.add(plugin.clickZones().create(at(s, world, 0, center - rowH / 2), zoneW, rowH, (p, sneak, left) -> clickItem(s, m, p, sneak, left)));
         }
         if (pages > 1) {
-            s.parts.add(plugin.holoFactory().spawn("hs_" + s.id + "_p", new HoloSpec(at(s, world, -1.2, 0.5), "<green><bold>◀").style(100, range, bg).scale(1.4f)));
-            s.parts.add(plugin.holoFactory().spawn("hs_" + s.id + "_n", new HoloSpec(at(s, world, 1.2, 0.5), "<green><bold>▶").style(100, range, bg).scale(1.4f)));
-            s.zones.add(plugin.clickZones().create(at(s, world, -1.2, 0.1), 0.8, 0.9, (p, sneak, left) -> flip(s, -1, p)));
-            s.zones.add(plugin.clickZones().create(at(s, world, 1.2, 0.1), 0.8, 0.9, (p, sneak, left) -> flip(s, 1, p)));
+            double ay = BOTTOM + n * rowH / 2 - 0.45;
+            for (int dir : new int[] {-1, 1}) {
+                double x = dir * (BOARD / 2 + 0.3);
+                // одна зона на место стрелки: с обратной стороны доска зеркальная, поэтому направление считается по тому, с какой стороны стоит игрок
+                s.zones.add(plugin.clickZones().create(at(s, world, x, ay), 0.8, 0.9, (p, sneak, left) -> flip(s, behind(s, p) ? -dir : dir, p)));
+            }
         }
+    }
+
+    /** Игрок стоит позади витрины (смотрит на доску с обратной стороны). */
+    private boolean behind(HoloShop s, Player p) {
+        double yaw = Math.toRadians(s.yaw);
+        Location l = p.getLocation();
+        return twoSided(s) && (l.getX() - s.x) * -Math.sin(yaw) + (l.getZ() - s.z) * Math.cos(yaw) < 0;
+    }
+
+    private HoloSpec cell(Location at, String text, int lineWidth, float range, int bg, float scale) {
+        return new HoloSpec(at, text).billboard(org.bukkit.entity.Display.Billboard.FIXED).style(lineWidth, range, bg).scale(scale);
     }
 
     // ------------------------------------------------------------ клики
@@ -341,8 +438,12 @@ public final class HoloShopService {
         for (String id : root.getKeys(false)) {
             ConfigurationSection s = root.getConfigurationSection(id);
             if (s != null) {
-                shops.put(id, new HoloShop(id, s.getString("plot", ""), s.getString("world", "world"), s.getDouble("x"), s.getDouble("y"), s.getDouble("z"),
-                        (float) s.getDouble("yaw")));
+                HoloShop shop = new HoloShop(id, s.getString("plot", ""), s.getString("world", "world"), s.getDouble("x"), s.getDouble("y"), s.getDouble("z"),
+                        (float) s.getDouble("yaw"));
+                if (s.isBoolean("back")) {
+                    shop.backSide = s.getBoolean("back");
+                }
+                shops.put(id, shop);
             }
         }
     }
@@ -357,6 +458,9 @@ public final class HoloShopService {
             yml.set(k + "y", s.y);
             yml.set(k + "z", s.z);
             yml.set(k + "yaw", s.yaw);
+            if (s.backSide != null) {
+                yml.set(k + "back", s.backSide);
+            }
         }
         try {
             plugin.getDataFolder().mkdirs();

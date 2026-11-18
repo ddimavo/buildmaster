@@ -3,7 +3,7 @@ plugins {
 }
 
 group = 'ru.industryreborn'
-version = project.hasProperty('pluginVersion') ? project.property('pluginVersion') : '2.10.2-SNAPSHOT'
+version = project.hasProperty('pluginVersion') ? project.property('pluginVersion') : '2.11.0-SNAPSHOT'
 
 repositories {
     mavenCentral()

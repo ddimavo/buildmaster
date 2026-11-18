@@ -36,6 +36,7 @@ class HoloShopTest extends PluginTestBase {
         ItemStack item;
         Location at;
         double[] size;
+        int lineWidth;
 
         @Override
         public Object invoke(Object proxy, java.lang.reflect.Method m, Object[] a) {
@@ -52,6 +53,9 @@ class HoloShopTest extends PluginTestBase {
                         text = PlainTextComponentSerializer.plainText().serialize((net.kyori.adventure.text.Component) a[0]);
                         return null;
                     }
+                    return null;
+                case "setLineWidth":
+                    lineWidth = (Integer) a[0];
                     return null;
                 case "setItemStack":
                     item = (ItemStack) a[0];
@@ -93,6 +97,8 @@ class HoloShopTest extends PluginTestBase {
         plugin.getConfig().set("limits.total", 0);
         plugin.getConfig().set("limits.categories.shop", 0);
         plugin.getConfig().set("goods.sales-tax-percent", 0);
+        plugin.getConfig().set("holo-shop.two-sided", false);        // двусторонняя доска проверяется отдельными тестами
+        plugin.getConfig().set("holo-shop.items-per-page", 3);
         server.getWorld("world").loadChunk(0, 0);
         plugin.holoFactory().setSpawner((at, init) -> {
             Fake f = new Fake();
@@ -207,19 +213,90 @@ class HoloShopTest extends PluginTestBase {
         assertEquals(Material.DIAMOND, alive(icons).get(0).item.getType(), "по алфавиту");
         String text = all(texts);
         assertTrue(text.contains("Лавка") && text.contains("Страница 1 из 1"), text);
-        assertTrue(text.contains("В наличии: 50") && text.contains("Нет в наличии"), text);
+        assertTrue(text.contains("Товар") && text.contains("Цена") && text.contains("Остаток"), text);
+        assertTrue(text.contains("50") && text.contains("Нет"), text);
         assertEquals(3, alive(zones).size());
         assertTrue(alive(zones).get(0).size[0] > 0);
     }
 
     @Test
-    void itemsAreSpacedSymmetricallyAlongTheShopFront() {
+    void rowsAreStackedAndEveryCellIsItsOwnEntity() {
         make();
         plugin.holoShops().tick();
-        var xs = alive(icons).stream().map(f -> f.at.getX()).sorted().toList();
-        assertEquals(3.0, xs.get(1), 1e-9, "средний товар над витриной");
-        assertEquals(1.3, xs.get(2) - xs.get(1), 1e-9);
-        assertEquals(1.3, xs.get(1) - xs.get(0), 1e-9);
+        var ys = alive(icons).stream().map(f -> f.at.getY()).toList();
+        assertEquals(0.42, ys.get(0) - ys.get(1), 1e-9, "строки идут сверху вниз с шагом row-height");
+        assertEquals(0.42, ys.get(1) - ys.get(2), 1e-9);
+        assertEquals(1, alive(icons).stream().map(f -> f.at.getX()).distinct().count(), "иконки в одной колонке");
+        // 3 товара: заголовок, 3 подписи колонок, 3 x (название, цена, остаток), подсказка
+        assertEquals(1 + 3 + 9 + 1, alive(texts).size());
+    }
+
+    @Test
+    void columnsNeverOverlapEachOther() {
+        make();
+        plugin.holoShops().tick();
+        double ts = plugin.getConfig().getDouble("holo-shop.text-scale", 0.7);
+        var cells = alive(texts).subList(4, 7);            // первая строка: название, цена, остаток
+        double[] left = new double[3];
+        double[] right = new double[3];
+        for (int i = 0; i < 3; i++) {
+            double half = cells.get(i).lineWidth * 0.025 * ts / 2;
+            left[i] = cells.get(i).at.getX() - half;
+            right[i] = cells.get(i).at.getX() + half;
+        }
+        assertTrue(right[0] <= left[1] + 1e-9, "название не заходит на цену");
+        assertTrue(right[1] <= left[2] + 1e-9, "цена не заходит на остаток");
+        assertTrue(left[0] > icons.get(0).at.getX(), "название правее иконки");
+    }
+
+    @Test
+    void theBackBoardMirrorsTheFrontAndCanBeSwitchedOffPerShop() {
+        plugin.getConfig().set("holo-shop.two-sided", true);
+        HoloShop s = make();
+        plugin.holoShops().tick();
+        assertEquals(6, alive(icons).size(), "доска с двух сторон");
+        assertEquals(3, alive(zones).size(), "зоны кликов общие");
+        assertEquals(0f, icons.get(0).at.getYaw(), 0);
+        assertEquals(180f, icons.get(3).at.getYaw(), 0, "обратная сторона смотрит назад");
+        assertTrue(icons.get(3).at.getX() > 3.0 && icons.get(0).at.getX() < 3.0, "иконки зеркально по разные стороны от центра");
+        assertNotNull(plugin.holoShops().setBack(mia, s.id, false), "чужой управляющий не настраивает");
+        assertNull(plugin.holoShops().setBack(steve, s.id, false));
+        plugin.holoShops().tick();
+        assertEquals(3, alive(icons).size(), "обратная доска отключена только у этой витрины");
+        assertEquals(Boolean.FALSE, plugin.holoShops().get(s.id).backSide());
+        assertEquals(Boolean.FALSE, new ru.industryreborn.holoshop.HoloShopService(plugin).get(s.id).backSide(), "настройка сохраняется");
+        assertNull(plugin.holoShops().setBack(steve, s.id, null));
+        plugin.holoShops().tick();
+        assertEquals(6, alive(icons).size(), "default - как в config.yml");
+        assertNotNull(plugin.holoShops().setBack(steve, "нет-такой", true));
+    }
+
+    @Test
+    void theBackCommandAndArrowsSeenFromBehind() {
+        plugin.getConfig().set("holo-shop.two-sided", true);
+        stock(Material.COAL, 10, 1);
+        stock(Material.COPPER_INGOT, 10, 1);
+        stock(Material.EMERALD, 10, 1);
+        stock(Material.LAPIS_LAZULI, 10, 1);
+        stock(Material.QUARTZ, 10, 1);        // 3 страницы: направление листания однозначно
+        HoloShop s = make();
+        plugin.holoShops().tick();
+        assertEquals(3 + 2, alive(zones).size(), "три строки и две стрелки");
+        Fake next = alive(zones).get(4);                   // правая зона: место ▶ спереди и ◀ сзади
+        assertTrue(next.at.getX() > 3.0);
+        assertTrue(plugin.clickZones().dispatch(next.id, mia, false, false));       // mia стоит спереди (z=5, витрина смотрит на +z)
+        assertEquals(1, s.page(), "спереди правая стрелка листает вперёд");
+        clock.addAndGet(500);
+        mia.teleport(new Location(server.getWorld("world"), 3, 1, 1));              // позади доски
+        var zone = alive(zones).get(alive(zones).size() - 1);   // правая стрелка последняя
+        assertTrue(plugin.clickZones().dispatch(zone.id, mia, false, false));
+        assertEquals(0, s.page(), "сзади та же зона листает назад: доска зеркальная");
+        steve.performCommand("district holoshop back s-1 off");
+        assertEquals(Boolean.FALSE, plugin.holoShops().get("s-1").backSide());
+        steve.performCommand("district holoshop back s-1 default");
+        assertNull(plugin.holoShops().get("s-1").backSide());
+        steve.performCommand("district holoshop back s-1 maybe");
+        assertNull(plugin.holoShops().get("s-1").backSide(), "неверное значение ничего не меняет");
     }
 
     @Test
@@ -254,7 +331,7 @@ class HoloShopTest extends PluginTestBase {
         shop.prices.put(Material.IRON_INGOT, 12.0);
         plugin.holoShops().tick();
         assertEquals(icons1, icons.size(), "иконки не пересоздавались");
-        assertTrue(all(texts).contains("В наличии: 49"));
+        assertTrue(alive(texts).stream().anyMatch(f -> f.text.equals("49")), all(texts));
         assertTrue(all(texts).contains("12"));
     }
 
@@ -304,7 +381,7 @@ class HoloShopTest extends PluginTestBase {
         assertTrue(plugin.holoShops().press(s.id, 1, mia, false));       // GOLD_INGOT (по алфавиту: DIAMOND, GOLD_INGOT, IRON_INGOT)
         assertEquals(before - 25, economy.getBalance(mia), 1e-9);
         assertEquals(4, shop.goods.get(Material.GOLD_INGOT));
-        assertTrue(all(texts).contains("В наличии: 4"));
+        assertTrue(alive(texts).stream().anyMatch(f -> f.text.equals("4")), all(texts));
         assertEquals(25, shop.account.rawBalance() - 0 >= 25 ? 25 : 0, 1e-9);
     }
 
@@ -413,7 +490,7 @@ class HoloShopTest extends PluginTestBase {
         long items = holograms.values().stream().filter(h -> h.getData() instanceof de.oliver.fancyholograms.api.data.ItemHologramData).count();
         long texts2 = holograms.values().stream().filter(h -> h.getData() instanceof de.oliver.fancyholograms.api.data.TextHologramData).count();
         assertEquals(3, items);
-        assertEquals(1 + 3, texts2, "заголовок и три подписи");
+        assertEquals(1 + 3 + 9 + 1, texts2, "заголовок, подписи колонок, ячейки трёх строк и подсказка");
         var firstItem = (de.oliver.fancyholograms.api.data.ItemHologramData) holograms.values().stream()
                 .filter(h -> h.getData() instanceof de.oliver.fancyholograms.api.data.ItemHologramData).findFirst().get().getData();
         assertEquals(Material.DIAMOND, firstItem.getItemStack().getType());

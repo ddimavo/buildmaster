@@ -1539,7 +1539,24 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
                     }
                 }
             }
-            default -> throw new CommandError("Использование: /district holoshop [create <участок>|remove <номер>|list]");
+            case "back" -> {
+                if (args.length < 3) {
+                    throw new CommandError("Использование: /district holoshop back <номер> on|off|default");
+                }
+                Boolean value = switch (args[2].toLowerCase(Locale.ROOT)) {
+                    case "on", "true", "yes" -> Boolean.TRUE;
+                    case "off", "false", "no" -> Boolean.FALSE;
+                    case "default" -> null;
+                    default -> throw new CommandError("Укажите on, off или default.");
+                };
+                String error = svc.setBack(p, args[1], value);
+                if (error != null) {
+                    throw new CommandError(error);
+                }
+                Text.ok(p, value == null ? "Доска с обратной стороны: как в настройках сервера."
+                        : value ? "Доска с обратной стороны включена." : "Доска с обратной стороны отключена.");
+            }
+            default -> throw new CommandError("Использование: /district holoshop [create <участок>|remove <номер>|back <номер> on|off|default|list]");
         }
     }
 
@@ -1912,7 +1929,10 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
             }
         }
         if (sub.equals("holoshop") && args.length == 2) {
-            return filter(List.of("create", "remove", "list"), args[1]);
+            return filter(List.of("create", "remove", "back", "list"), args[1]);
+        }
+        if (sub.equals("holoshop") && args.length == 3 && args[1].equalsIgnoreCase("back")) {
+            return filter(List.of("on", "off", "default"), args[2]);
         }
         if (sub.equals("webhook")) {
             if (args.length == 2) {

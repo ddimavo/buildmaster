@@ -20,9 +20,12 @@ final class EntityItemHolo implements Holo {
         this.display = display;
     }
 
-    static void apply(ItemDisplay d, org.bukkit.inventory.ItemStack item, float scale, float viewRange) {
+    static void apply(ItemDisplay d, org.bukkit.inventory.ItemStack item, float scale, float viewRange, boolean flat) {
         d.setPersistent(false);
-        d.setBillboard(Display.Billboard.CENTER);
+        d.setBillboard(flat ? Display.Billboard.FIXED : Display.Billboard.CENTER);
+        if (flat) {
+            d.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.GUI);      // плоский значок, как в инвентаре
+        }
         d.setViewRange(viewRange);
         d.setItemStack(item);
         d.setTransformation(new Transformation(new Vector3f(), new AxisAngle4f(), new Vector3f(scale, scale, scale), new AxisAngle4f()));
