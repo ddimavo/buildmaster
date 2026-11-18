@@ -25,7 +25,11 @@ import org.bukkit.block.structure.StructureRotation;
 import ru.industryreborn.IndustryRebornPlugin;
 import ru.industryreborn.model.Box;
 import ru.industryreborn.model.Category;
+import ru.industryreborn.model.Plot;
+import org.bukkit.entity.Player;
+import ru.industryreborn.service.Journal;
 import ru.industryreborn.service.Module;
+import ru.industryreborn.util.Text;
 
 /**
  * Автостроительство: ставит готовое здание из шаблона на пустой участок при его создании (или по команде). Здание центрируется
@@ -44,6 +48,13 @@ public final class BuildingService {
 
     public BuildingService(IndustryRebornPlugin plugin) {
         this.plugin = plugin;
+    }
+
+    private RuntimeException injectedFailure;
+
+    /** Только для тестов: следующая постройка завершится этой ошибкой. */
+    public void injectFailure(RuntimeException failure) {
+        this.injectedFailure = failure;
     }
 
     public File folder() {
@@ -188,6 +199,9 @@ public final class BuildingService {
             return "Участок слишком неровный: перепад высоты " + (high - low) + " (допустимо " + slope + ").";
         }
         int oy = Math.max(box.minY(), high + 1);
+        if (oy + t.sizeY() > world.getMaxHeight()) {
+            return "Здание выходит за верхнюю границу мира.";
+        }
         if (oy + t.sizeY() - 1 > box.maxY()) {
             return "Здание не помещается по высоте: участок заканчивается на уровне " + box.maxY() + ".";
         }
@@ -274,6 +288,11 @@ public final class BuildingService {
         };
         Runnable step = () -> {
             try {
+                if (injectedFailure != null) {
+                    RuntimeException f = injectedFailure;
+                    injectedFailure = null;
+                    throw f;
+                }
                 int end = Math.min(cells.size(), index[0] + perTick);
                 for (; index[0] < end; index[0]++) {
                     int[] c = cells.get(index[0]);
@@ -418,5 +437,183 @@ public final class BuildingService {
         } catch (IOException | RuntimeException e) {
             return "Не удалось прочитать «" + fileName + "»: " + e.getMessage();
         }
+    }
+
+    // ------------------------------------------------------------ превью
+
+    public File previewFolder() {
+        File dir = new File(plugin.getDataFolder(), "previews");
+        dir.mkdirs();
+        return dir;
+    }
+
+    /**
+     * Файл превью здания (jpg): рисуется при первом обращении и хранится в plugins/IndustryReborn/previews/; при изменении
+     * файла здания перерисовывается. cut - разрез. null - нарисовать не удалось.
+     */
+    public File preview(BuildingTemplate t, boolean cut) {
+        File source = new File(folder(), t.name() + ".ir.json");
+        File out = new File(previewFolder(), t.name() + (cut ? "-cut" : "") + ".jpg");
+        try {
+            if (out.isFile() && (!source.isFile() || out.lastModified() >= source.lastModified())) {
+                return out;
+            }
+            java.awt.image.BufferedImage image = PreviewRenderer.render(t, cut, 340);
+            if (!javax.imageio.ImageIO.write(image, "jpg", out)) {
+                return null;
+            }
+            return out;
+        } catch (IOException | RuntimeException | LinkageError e) {
+            plugin.getLogger().log(Level.FINE, "Превью здания " + t.name() + " не нарисовано", e);
+            return null;
+        }
+    }
+
+    // ------------------------------------------------------------ платное строительство игроками
+
+    private double cfgPrice(String key, double def) {
+        return plugin.getConfig().getDouble("auto-build." + key, def);
+    }
+
+    /** Цена одного блока здания типа c: база из config.yml × множитель типа × множитель автокорректировки экономики. */
+    public double pricePerBlock(Category c) {
+        double base = cfgPrice("price-per-block", 2.0);
+        double byCategory = c == null ? 1.0 : plugin.getConfig().getDouble("auto-build.price-categories." + c.key(), 1.0);
+        Double scale = plugin.balance().applied("build-price");
+        return Math.max(0, base * byCategory * (scale == null ? 1.0 : scale));
+    }
+
+    /** Базовая цена блока без автокорректировки (то, что стоит в config.yml). */
+    public double basePricePerBlock(Category c) {
+        double byCategory = c == null ? 1.0 : plugin.getConfig().getDouble("auto-build.price-categories." + c.key(), 1.0);
+        return Math.max(0, cfgPrice("price-per-block", 2.0) * byCategory);
+    }
+
+    /** Полная цена здания: число блоков × цена блока, но не меньше auto-build.min-price. Фундамент не считается. */
+    public double price(BuildingTemplate t) {
+        Category c = Category.parse(t.category());
+        double total = Math.round(t.blockCount() * pricePerBlock(c) * 100.0) / 100.0;
+        return Math.max(cfgPrice("min-price", 0), total);
+    }
+
+    public boolean playerBuildEnabled() {
+        return enabled() && plugin.getConfig().getBoolean("auto-build.player-build", true);
+    }
+
+    /** Подходит ли здание участку по типу (если включено auto-build.match-category). */
+    public boolean matchesPlot(BuildingTemplate t, Plot plot) {
+        return !plugin.getConfig().getBoolean("auto-build.match-category", true) || t.category().equalsIgnoreCase(plot.category.key());
+    }
+
+    /** Участки, на которых игрок может заказать здание (свои, не занятые обработкой). */
+    public List<Plot> buildablePlots(Player p) {
+        List<Plot> list = new ArrayList<>();
+        for (Plot plot : plugin.plots().all()) {
+            if (plotError(p, plot) == null) {
+                list.add(plot);
+            }
+        }
+        return list;
+    }
+
+    /** Почему игрок не может строить на этом участке вообще (null - может). */
+    public String plotError(Player p, Plot plot) {
+        if (plot.isPlayerPlot()) {
+            return "На участках игроков (регионах WorldGuard) здания не строятся: стройте сами.";
+        }
+        if (plot.isFree()) {
+            return "Участок не ваш: сначала купите или арендуйте его.";
+        }
+        if (!plot.isOwner(p.getUniqueId())) {
+            return "Заказать здание может только владелец или арендатор участка.";
+        }
+        if (plot.isFrozen()) {
+            return "Аренда просрочена: сначала оплатите участок.";
+        }
+        if (plot.category.isAdminOnly() || plot.category == Category.ROOM) {
+            return "На участках типа «" + plot.category.title() + "» здания не заказываются.";
+        }
+        return null;
+    }
+
+    /** Полная проверка заказа (кроме денег и места): null - можно. */
+    public String orderError(Player p, Plot plot, BuildingTemplate t) {
+        if (!plugin.modules().enabled(Module.AUTO_BUILD)) {
+            return plugin.modules().refusal(Module.AUTO_BUILD);
+        }
+        if (!playerBuildEnabled()) {
+            return "Строительство зданий игроками отключено администрацией.";
+        }
+        String error = plotError(p, plot);
+        if (error != null) {
+            return error;
+        }
+        if (plugin.service().isLocked(plot) || plugin.service().isCreating(plot.id)) {
+            return "Участок сейчас обрабатывается, попробуйте через несколько секунд.";
+        }
+        if (!matchesPlot(t, plot)) {
+            return "Здание «" + t.title() + "» не подходит участку типа «" + plot.category.title() + "».";
+        }
+        if (!plugin.economy().available()) {
+            return "Экономика недоступна: не найден плагин с поддержкой Vault.";
+        }
+        return null;
+    }
+
+    /** Здания, которые можно поставить на участок (по типу и размеру), для меню. */
+    public List<BuildingTemplate> offered(Plot plot) {
+        List<BuildingTemplate> list = new ArrayList<>();
+        for (BuildingTemplate t : templates.values()) {
+            if (matchesPlot(t, plot) && fitsAnyRotation(t, plot.box) != -1) {
+                list.add(t);
+            }
+        }
+        list.sort(java.util.Comparator.comparingInt(BuildingTemplate::blockCount));
+        return list;
+    }
+
+    /**
+     * Заказ здания игроком: проверки, списание цены (деньги идут в казну), постройка по плану. Участок на время стройки заблокирован.
+     * При ошибке во время постройки деньги возвращаются из казны.
+     */
+    public boolean playerBuild(Player p, Plot plot, BuildingTemplate t) {
+        String error = orderError(p, plot, t);
+        if (error != null) {
+            Text.err(p, error);
+            return false;
+        }
+        World world = Bukkit.getWorld(plot.world);
+        if (world == null) {
+            Text.err(p, "Мир участка не загружен.");
+            return false;
+        }
+        Object planned = plan(world, plot.box, t, -1, false);
+        if (planned instanceof String reason) {
+            Text.err(p, reason);
+            return false;
+        }
+        Placement placement = (Placement) planned;
+        double price = price(t);
+        if (!plugin.economy().withdraw(p, price)) {
+            Text.err(p, "Недостаточно средств. Нужно: " + plugin.economy().format(price) + ".");
+            return false;
+        }
+        plugin.treasury().deposit(price, "Строительство «" + t.title() + "» на участке " + plot.id + " (" + p.getName() + ")");
+        plugin.journal().add(plot.id, p.getUniqueId(), p.getName(), Journal.Action.BUILD,
+                t.title() + " (" + t.name() + "), " + t.blockCount() + " блоков, " + plugin.economy().format(price));
+        plot.busy = true;
+        Text.send(p, "<yellow>Строю здание «" + Text.esc(t.title()) + "» за " + plugin.economy().format(price) + "...");
+        build(world, t, placement, () -> {
+            plot.busy = false;
+            plugin.stations().rescan(plot);
+            Text.ok(p, "Здание «" + t.title() + "» построено на участке " + plot.id + ".");
+        }, failure -> {
+            plot.busy = false;
+            if (plugin.treasury().withdraw(price, "система", "Возврат за несостоявшееся строительство на участке " + plot.id)) {
+                plugin.economy().deposit(p, price);
+            }
+            Text.err(p, "Не удалось построить здание: " + failure + ". Деньги возвращены.");
+        });
+        return true;
     }
 }

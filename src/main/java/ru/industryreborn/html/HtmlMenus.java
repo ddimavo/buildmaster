@@ -25,7 +25,7 @@ public final class HtmlMenus implements Listener {
 
     public enum Kind {
         MAIN("main"), BANK("bank"), TREASURY("treasury"), FREE("free"), MINE("mine"), STORAGE("storage"), JOURNAL("journal"),
-        WARNINGS("warnings"), BUSINESS("business"), HOTEL("hotel"), JOBS("jobs"), ORDERS("orders"), ADMIN("admin"), MODERATION("moderation"), ARRESTS("arrests"), GRID("grid"), BANKSET("bankset"), MODULES("modules"), BALANCE("balance");
+        WARNINGS("warnings"), BUSINESS("business"), HOTEL("hotel"), JOBS("jobs"), ORDERS("orders"), ADMIN("admin"), MODERATION("moderation"), ARRESTS("arrests"), GRID("grid"), BANKSET("bankset"), MODULES("modules"), BALANCE("balance"), BUILD("build");
 
         private final String key;
 
@@ -53,7 +53,16 @@ public final class HtmlMenus implements Listener {
         }
     }
 
+    /** Что игрок смотрит в меню строительства: участок, вкладка-тип, страница списка, открытое здание. */
+    public static final class BuildView {
+        public String plot;
+        public String category = "";      // "" - тип участка, "all" - все типы
+        public int page;
+        public String detail;
+    }
+
     private static final String DIR = "industryreborn";
+    private final Map<UUID, BuildView> buildViews = new HashMap<>();
 
     private final IndustryRebornPlugin plugin;
     private final HtmlPages pages;
@@ -82,6 +91,34 @@ public final class HtmlMenus implements Listener {
     /** Только для тестов: сколько ждать загрузки страницы, прежде чем считать её закрытой. */
     public void setLoadGraceMs(long ms) {
         this.loadGraceMs = ms;
+    }
+
+    public BuildView buildView(Player player) {
+        return buildViews.computeIfAbsent(player.getUniqueId(), k -> new BuildView());
+    }
+
+    /** Кладёт превью зданий в папку страниц игрока (рядом со страницами: img/<имя>.jpg), чтобы MC GUI показал их как обычные картинки. */
+    void publishPreviews(java.util.Collection<ru.industryreborn.building.BuildingTemplate> list, boolean cut) {
+        File root = backend.pagesDir();
+        if (root == null) {
+            return;
+        }
+        File dir = new File(new File(root, DIR), "img");
+        dir.mkdirs();
+        for (var t : list) {
+            File src = plugin.buildings().preview(t, cut);
+            if (src == null) {
+                continue;
+            }
+            File dst = new File(dir, src.getName());
+            try {
+                if (!dst.isFile() || dst.lastModified() < src.lastModified() || dst.length() != src.length()) {
+                    Files.copy(src.toPath(), dst.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                }
+            } catch (IOException e) {
+                plugin.getLogger().warning("Не удалось скопировать превью " + src.getName() + ": " + e.getMessage());
+            }
+        }
     }
 
     public GuiBackend backend() {
@@ -173,6 +210,7 @@ public final class HtmlMenus implements Listener {
             case BANKSET -> pages.bankSettings(player, suffix);
             case MODULES -> pages.modules(player, suffix);
             case BALANCE -> pages.balance(player, suffix);
+            case BUILD -> pages.build(player, suffix, buildView(player));
         };
     }
 
@@ -270,6 +308,7 @@ public final class HtmlMenus implements Listener {
 
     private void forget(UUID id) {
         open.remove(id);
+        buildViews.remove(id);
         seenWarnings.remove(id);
         openedAt.remove(id);
         written.remove(id);
@@ -311,6 +350,16 @@ public final class HtmlMenus implements Listener {
                     f.delete();
                 }
             }
+        }
+        File img = new File(new File(root, DIR), "img");
+        File[] pictures = img.listFiles();
+        if (pictures != null) {
+            for (File f : pictures) {
+                if (f.getName().endsWith(".jpg")) {
+                    f.delete();
+                }
+            }
+            img.delete();
         }
     }
 }

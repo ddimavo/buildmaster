@@ -55,6 +55,11 @@ public final class Html {
             .row summary { cursor: pointer; }
             .row .inner { margin-top: 8px; }
             .foot { margin-top: 12px; display: flex; gap: 10px; }
+            .pv { width: 100%; border-radius: 8px; margin-bottom: 6px; background: #11142a; }
+            .nopv { height: 120px; border-radius: 8px; margin-bottom: 6px; background: #11142a; color: #8a90b3; text-align: center; padding-top: 48px; font-size: 13px; }
+            .duo { display: flex; gap: 12px; margin: 8px 0; }
+            .duo > div { flex: 1; }
+            .tabs { margin: 6px 0; }
             """;
 
     /** Целая страница: оформление, заголовок и тело. */

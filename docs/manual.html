@@ -177,6 +177,7 @@ footer { max-width:980px; margin:50px auto 0; color:var(--muted); font-size:13px
 <a class="l2" href="#133-вебхуки-со-статистикой">13.3. Вебхуки со статистикой</a>
 <a class="l2" href="#134-торговля-через-голограммы">13.4. Торговля через голограммы</a>
 <a class="l2" href="#135-автоматическое-строительство">13.5. Автоматическое строительство</a>
+<a class="l3" href="#платное-строительство-для-игроков">Платное строительство для игроков</a>
 <a class="l2" href="#14-справочник-команд">14. Справочник команд</a>
 <a class="l3" href="#141-игроки">14.1. Игроки</a>
 <a class="l3" href="#142-администраторы-industryrebornadmin">14.2. Администраторы (industryreborn.admin)</a>
@@ -1592,7 +1593,7 @@ footer { max-width:980px; margin:50px auto 0; color:var(--muted); font-size:13px
    Деньги копятся - индекс больше единицы (цены и налоги растут), изымаются слишком сильно - меньше единицы.</li>
 <li>Каждый параметр двигается к значению «база × индекс» (база - значение из config.yml) шагом не больше <code>max-step-percent</code> процентов базы за запуск.</li>
 </ol>
-<p>Корректируются: цена электричества, налог на аренду, налог с продаж, налоги на имущество, цены услуг мастерских, цены лотов аукциона.
+<p>Корректируются: цена электричества, налог на аренду, налог с продаж, налоги на имущество, цены услуг мастерских, цены лотов аукциона, цена блока при строительстве зданий (<code>build-price</code>).
 Что именно, задаёт <code>auto-balance.adjust.*</code>, пределы - <code>auto-balance.limits.*</code>. Значения, которые администратор задал вручную
 (<code>/district power admin base</code>, <code>/district bank admin ...</code>), автокорректировка не трогает. После каждого изменения: запись в журнал
 (было, стало, отношение, индекс) и сообщение в чат (<code>auto-balance.notify</code>).</p>
@@ -1682,7 +1683,24 @@ footer { max-width:980px; margin:50px auto 0; color:var(--muted); font-size:13px
    <code>/district build import файл.schem mycafe restaurant</code>. Лицензию чужих схематик проверяйте сами.</li>
 </ol>
 <p>Имя - латиница в нижнем регистре, цифры, <code>_</code>, <code>-</code>; занятое имя (в том числе встроенное) использовать нельзя.</p>
-<p>Настройки (<code>auto-build</code> в config.yml): <code>enabled</code>, <code>on-create</code>, <code>blocks-per-tick</code>, <code>max-slope</code>, <code>defaults</code>. Функция выключается как <code>auto-build</code> (вместе с <code>build save</code> и <code>build import</code>).</p>
+<h3 id="платное-строительство-для-игроков">Платное строительство для игроков</h3>
+<p>Любой игрок может заказать здание на <strong>своём</strong> участке (купленном или арендованном, пока он пуст). Цена - за каждый блок здания, деньги идут в казну.</p>
+<ol>
+<li>Главная страница → «Строительство» (или «Мои участки» → «Заказать здание»; в чате - <code>/district build menu [участок]</code>). Выберите здание в списке с картинками.</li>
+<li>На странице здания - два превью (снаружи и в разрезе), размер, число блоков и цена. Кнопка «Построить за N» списывает деньги и строит здание за несколько секунд.
+   В чате: <code>/district build &lt;участок&gt; &lt;здание&gt;</code> показывает цену, <code>... confirm</code> подтверждает.</li>
+<li>Если здание не получилось построить, деньги возвращаются. При отказе от участка здание исчезает вместе с участком (возвращается исходный вид).</li>
+</ol>
+<p><strong>Цена</strong> = число блоков здания × <code>auto-build.price-per-block</code> × множитель типа (<code>auto-build.price-categories</code>) × множитель автокорректировки экономики (<code>build-price</code>);
+не меньше <code>auto-build.min-price</code>. Фундамент не считается. Автокорректировка двигает цену блока вместе с остальными ценами (шаг не больше <code>max-step-percent</code>, пределы <code>index-min</code> ... <code>index-max</code>),
+каждое изменение попадает в журнал и в чат; выключается <code>auto-balance.adjust.build-price: false</code>. В таблице расчёта - параметры «Блоков зданий за сутки» и «Цена одного блока»,
+строка «Строительство зданий игроками» в поступлениях казны и рекомендация для <code>auto-build.price-per-block</code>.</p>
+<p><strong>Ограничения:</strong> здание того же типа, что участок (<code>match-category</code>); участки игроков на регионах WorldGuard, банк, электростанция и номера отелей не заказываются; просроченная аренда -
+сначала оплатить. Администратор строит бесплатно на свободных участках (<code>/district build &lt;участок&gt; &lt;здание&gt; [force]</code>). Заказ игроками выключается <code>auto-build.player-build: false</code>,
+вся функция - <code>/district module auto-build off</code>.</p>
+<p><strong>Превью.</strong> Картинки зданий рисует сам плагин (изометрия по цветам блоков) и кэширует в <code>plugins/IndustryReborn/previews/</code>; рядом со страницами MC GUI они лежат в <code>industryreborn/img/</code>.
+Для своих сохранённых и импортированных зданий превью появляется автоматически.</p>
+<p>Настройки (<code>auto-build</code> в config.yml): <code>enabled</code>, <code>on-create</code>, <code>blocks-per-tick</code>, <code>max-slope</code>, <code>defaults</code>, <code>player-build</code>, <code>price-per-block</code>, <code>min-price</code>, <code>match-category</code>, <code>price-categories</code>. Функция выключается как <code>auto-build</code> (вместе с <code>build save</code> и <code>build import</code>).</p>
 <h2 id="14-справочник-команд"><span class="num">14</span>Справочник команд</h2>
 <p>Все команды: <code>/district &lt;подкоманда&gt;</code> (<code>/dt</code>, <code>/uchastok</code>). <code>[ ]</code> – необязательное, <code>&lt; &gt;</code> – обязательное, <code>|</code> – выбор. Номер участка можно не указывать, если вы стоите на нём.</p>
 <h3 id="141-игроки">14.1. Игроки</h3>
@@ -1824,6 +1842,10 @@ footer { max-width:980px; margin:50px auto 0; color:var(--muted); font-size:13px
 <tr>
 <td><code>build list|reload|&lt;участок&gt; &lt;здание&gt; [force]</code></td>
 <td>автостроительство</td>
+</tr>
+<tr>
+<td><code>build menu [участок]</code>, <code>build &lt;участок&gt; &lt;здание&gt; [confirm]</code></td>
+<td>(игрокам) заказ здания на своём участке за деньги</td>
 </tr>
 <tr>
 <td><code>build save &lt;имя&gt; &lt;тип&gt; [название]</code>, <code>build import &lt;файл&gt; &lt;имя&gt; &lt;тип&gt; [название]</code></td>

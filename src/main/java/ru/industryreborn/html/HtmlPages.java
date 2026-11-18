@@ -5,6 +5,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Comparator;
 import java.util.List;
+import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import ru.industryreborn.IndustryRebornPlugin;
 import ru.industryreborn.model.Category;
@@ -100,6 +101,11 @@ public final class HtmlPages {
         }
         if (plugin.modules().enabled(ru.industryreborn.service.Module.SERVICES)) {
             b.append(link("orders-" + suffix + ".html", "Мои заказы", "Заказов: " + plugin.orders().ofClient(id).size()));
+        }
+        var buildings = plugin.buildings();
+        if (buildings.playerBuildEnabled() && (!buildings.buildablePlots(player).isEmpty() || player.hasPermission("industryreborn.admin"))) {
+            b.append(link("build-" + suffix + ".html", "Строительство", "Здания на ваш участок, цена за блок: "
+                    + money(buildings.pricePerBlock(null))));
         }
         b.append(link("storage-" + suffix + ".html", "Хранилище", "Вещей: " + stored));
         b.append(link("journal-" + suffix + ".html", "Журнал", "История ваших участков"));
@@ -317,6 +323,9 @@ public final class HtmlPages {
                 b.append("<div class=\"sub\">Счёт: ").append(money(plugin.power().balance(p))).append("</div>");
             }
             b.append(cmdBtn("district tp " + p.id, "Телепорт", "gray"));
+            if (owner && plugin.buildings().playerBuildEnabled() && plugin.buildings().plotError(player, p) == null) {
+                b.append(cmdBtn("district build menu " + p.id, "Заказать здание", ""));
+            }
             if (owner) {
                 b.append(cmdBtn("district release " + p.id, "Отказаться от участка", "red"));
             }
@@ -767,6 +776,130 @@ public final class HtmlPages {
             b.append("</table>");
         }
         return Html.page("Мои заказы", b.append(nav(suffix, true)).toString());
+    }
+
+    // ------------------------------------------------------------ строительство
+
+    private static final int BUILD_PAGE_SIZE = 6;
+
+    private String preview(ru.industryreborn.building.BuildingTemplate t, boolean cut) {
+        return plugin.buildings().preview(t, cut) == null
+                ? "<div class=\"nopv\">нет превью</div>"
+                : "<img class=\"pv\" src=\"img/" + Html.attr(t.name()) + (cut ? "-cut" : "") + ".jpg\">";
+    }
+
+    public String build(Player player, String suffix, HtmlMenus.BuildView view) {
+        var svc = plugin.buildings();
+        boolean admin = player.hasPermission("industryreborn.admin");
+        if (!svc.enabled()) {
+            return Html.page("Строительство", "<h1>Строительство</h1><div class=\"minus\">Функция отключена администрацией.</div>" + nav(suffix, true));
+        }
+        List<Plot> mine = admin ? plugin.plots().all().stream().filter(p -> p.isFree() || p.isOwner(player.getUniqueId())).toList() : svc.buildablePlots(player);
+        Plot plot = view.plot == null ? null : plugin.plots().get(view.plot);
+        if (plot == null || !mine.contains(plot)) {
+            plot = admin ? null : mine.isEmpty() ? null : mine.get(0);
+        }
+        if (plot == null) {
+            return Html.page("Строительство", "<h1>Строительство</h1><div class=\"muted\">"
+                    + (admin ? "Выберите свободный участок: /district build menu &lt;участок&gt;."
+                    : "Здание можно заказать на своём участке (купленном или арендованном). Свободные участки - в разделе «Свободные участки».")
+                    + "</div>" + nav(suffix, true));
+        }
+        StringBuilder b = new StringBuilder("<h1>Строительство</h1>");
+        double perBlock = svc.pricePerBlock(plot.category);
+        double base = svc.basePricePerBlock(plot.category);
+        b.append("<div class=\"sub\">Участок ").append(Html.esc(plot.displayName())).append(" № ").append(Html.esc(plot.id)).append(" · ")
+                .append(Html.esc(plot.category.title())).append(" · ").append(plot.box.sizeX()).append("×").append(plot.box.sizeZ())
+                .append(" · цена блока ").append(money(perBlock));
+        if (Math.abs(perBlock - base) > 0.005) {
+            b.append(" <span class=\"muted\">(база ").append(money(base)).append(", корректировка ×").append(String.format(java.util.Locale.ROOT, "%.2f", perBlock / base)).append(")</span>");
+        }
+        b.append(" · ").append(admin ? "администратор: бесплатно" : "баланс " + money(plugin.economy().balance(player))).append("</div>\n");
+        if (mine.size() > 1) {
+            b.append("<div class=\"tabs\">");
+            for (Plot o : mine.subList(0, Math.min(8, mine.size()))) {
+                b.append(cmdBtn("district build menu " + o.id, o.id, o.equals(plot) ? "" : "gray"));
+            }
+            b.append("</div>");
+        }
+        var t = view.detail == null ? null : svc.get(view.detail);
+        if (t != null && svc.fitsAnyRotation(t, plot.box) != -1 && (admin || svc.matchesPlot(t, plot))) {
+            plugin.htmlMenus().publishPreviews(List.of(t), false);
+            plugin.htmlMenus().publishPreviews(List.of(t), true);
+            double price = svc.price(t);
+            b.append("<h2>").append(Html.esc(t.title())).append("</h2><div class=\"sub\">").append(Html.esc(t.description())).append("</div>");
+            b.append("<div class=\"duo\"><div>").append(preview(t, false)).append("<div class=\"muted\">Снаружи</div></div><div>")
+                    .append(preview(t, true)).append("<div class=\"muted\">В разрезе</div></div></div>\n");
+            b.append("<div class=\"stats\">").append(stat(t.sizeX() + "×" + t.sizeZ() + "×" + t.sizeY(), "Размер (X×Z×высота)"))
+                    .append(stat(String.valueOf(t.blockCount()), "Блоков"))
+                    .append(stat(admin ? "бесплатно" : money(price), "Цена"))
+                    .append("</div>\n");
+            Object planned = svc.plan(Bukkit.getWorld(plot.world), plot.box, t, -1, false);
+            if (planned instanceof String reason) {
+                b.append("<div class=\"minus\">").append(Html.esc(reason)).append("</div>");
+            } else if (!admin && plugin.economy().balance(player) < price) {
+                b.append("<div class=\"warn\">Не хватает ").append(money(price - plugin.economy().balance(player))).append("</div>");
+            } else {
+                b.append(cmdBtn("district build " + plot.id + " " + t.name() + " confirm", admin ? "Построить" : "Построить за " + plugin.economy().format(price), ""));
+            }
+            b.append(cmdBtn("district build detail -", "К списку", "gray"));
+            b.append("<div class=\"sub\">Участок должен быть пустым. При отказе от участка здание исчезает вместе с участком (возвращается исходный вид).</div>");
+            return Html.page("Строительство", b.append(nav(suffix, true)).toString());
+        }
+        var all = svc.offered(plot);
+        if (admin) {
+            all = new ArrayList<>();
+            for (var x : svc.all()) {
+                if (svc.fitsAnyRotation(x, plot.box) != -1) {
+                    all.add(x);
+                }
+            }
+        }
+        String cat = view.category == null ? "" : view.category;
+        List<ru.industryreborn.building.BuildingTemplate> list = new ArrayList<>();
+        for (var x : all) {
+            if (cat.isEmpty() || cat.equals("all") || x.category().equalsIgnoreCase(cat)) {
+                list.add(x);
+            }
+        }
+        if (!plugin.getConfig().getBoolean("auto-build.match-category", true) || admin) {
+            b.append("<div class=\"tabs\">").append(cmdBtn("district build view all", "Все", cat.equals("all") || cat.isEmpty() ? "" : "gray"));
+            java.util.Set<String> cats = new java.util.TreeSet<>();
+            all.forEach(x -> cats.add(x.category().toLowerCase(java.util.Locale.ROOT)));
+            for (String c : cats) {
+                var cc = Category.parse(c);
+                b.append(cmdBtn("district build view " + c, cc == null ? c : cc.title(), cat.equals(c) ? "" : "gray"));
+            }
+            b.append("</div>");
+        }
+        int pages = Math.max(1, (list.size() + BUILD_PAGE_SIZE - 1) / BUILD_PAGE_SIZE);
+        int pg = Math.max(0, Math.min(view.page, pages - 1));
+        view.page = pg;
+        var slice = list.subList(pg * BUILD_PAGE_SIZE, Math.min(list.size(), (pg + 1) * BUILD_PAGE_SIZE));
+        if (list.isEmpty()) {
+            b.append("<div class=\"muted\">Подходящих по типу и размеру зданий нет. Размер участка: ").append(plot.box.sizeX()).append("×").append(plot.box.sizeZ())
+                    .append(", высота ").append(plot.box.sizeY()).append(".</div>");
+        }
+        plugin.htmlMenus().publishPreviews(slice, false);
+        b.append("<div class=\"grid\">");
+        for (var x : slice) {
+            b.append("<a class=\"card\" data-command=\"district build detail ").append(Html.attr(x.name())).append("\">").append(preview(x, false))
+                    .append("<h3>").append(Html.esc(x.title())).append("</h3><p>").append(x.sizeX()).append("×").append(x.sizeZ()).append("×").append(x.sizeY())
+                    .append(" · ").append(x.blockCount()).append(" блоков</p><p>").append(admin ? "бесплатно" : money(svc.price(x))).append("</p></a>");
+        }
+        b.append("</div>\n");
+        if (pages > 1) {
+            b.append("<div class=\"foot\">");
+            if (pg > 0) {
+                b.append(cmdBtn("district build view " + (cat.isEmpty() ? "-" : cat) + " " + (pg - 1), "◀ Назад", "gray"));
+            }
+            b.append("<span class=\"muted\">Страница ").append(pg + 1).append(" из ").append(pages).append("</span>");
+            if (pg < pages - 1) {
+                b.append(cmdBtn("district build view " + (cat.isEmpty() ? "-" : cat) + " " + (pg + 1), "Дальше ▶", "gray"));
+            }
+            b.append("</div>");
+        }
+        return Html.page("Строительство", b.append(nav(suffix, true)).toString());
     }
 
     // ------------------------------------------------------------ администрирование

@@ -128,6 +128,9 @@ PARAMS = [
     (None, "index_k", "Сила регулировки (k)", 0.8, "", "", "Индекс цен = 1 + k × (цель − факт) / цель. Больше k - резче реакция.", NUM),
     (None, "index_min", "Индекс цен: нижний предел", 0.7, "", "", "Тарифы и налоги не опустятся ниже базы × это значение.", NUM),
     (None, "index_max", "Индекс цен: верхний предел", 1.5, "", "", "Тарифы и налоги не поднимутся выше базы × это значение.", NUM),
+    ("Строительство зданий", None, None, None, None, None, None),
+    (None, "build_blocks_day", "Блоков зданий, заказанных игроками за сутки", 1500, "блоков", "", "Игроки заказывают здания на своих участках; платят за каждый блок, деньги идут в казну.", INT),
+    (None, "build_price_block", "Цена одного блока здания", 2.0, "за блок", "auto-build.price-per-block", "Базовая цена; множители типов зданий - auto-build.price-categories. Автокорректировка двигает цену индексом цен.", NUM),
     ("Электричество", None, None, None, None, None, None),
     (None, "coef_smelter", "Коэффициент: плавильные станки", 1.0, "V/сут", "electricity.stations.smelter", "Печь, плавильная печь, коптильня.", NUM),
     (None, "coef_anvil", "Коэффициент: наковальня", 1.5, "V/сут", "electricity.stations.anvil", "", NUM),
@@ -545,6 +548,14 @@ put(ws, "D%d" % R, "=deposits_day*deposit_comm+withdrawals_day*withdraw_comm", "
 put(ws, "E%d" % R, "=D%d" % R, "calc", NUM)
 r_comm = R
 R += 1
+# 6.5 строительство
+put(ws, "A%d" % R, "Строительство зданий игроками")
+put(ws, "B%d" % R, "=build_blocks_day", "calc", NUM)
+put(ws, "C%d" % R, "=build_price_block", "calc", NUM)
+put(ws, "D%d" % R, "=B%d*C%d" % (R, R), "calc", NUM)
+put(ws, "E%d" % R, "=B%d*C%d*econ_index" % (R, R), "calc", NUM)
+r_build = R
+R += 1
 # 7 прочее
 put(ws, "A%d" % R, "Прочее (штрафы, аукцион казны)")
 put(ws, "B%d" % R, "=other_income_day", "calc", NUM)
@@ -716,6 +727,7 @@ RECS = [
     ("bank.property-tax.warehouse", "='Налоги и казна'!D9", "='Налоги и казна'!G9", "за период", "", NUM),
     ("bank.property-tax.hotel", "='Налоги и казна'!D10", "='Налоги и казна'!G10", "за период", "", NUM),
     ("bank.property-tax.house", "='Налоги и казна'!D11", "='Налоги и казна'!G11", "за период", "", NUM),
+    ("auto-build.price-per-block", "=build_price_block", "=ROUND(build_price_block*econ_index,2)", "за блок", "Цена блока при строительстве игроками; индекс цен двигает её вместе с остальными.", NUM),
     ("hotel-electricity.base-units", "=hotel_base", "=hotel_base", "V в сутки", "Начальное потребление занятого номера.", NUM),
     ("hotel-electricity.per-area", "=hotel_per_area", "=hotel_per_area", "V за блок", "Рост потребления за блок площади пола.", NUM),
     ("treasury.daily-limit", 0, "=daily_limit", "в сутки", "Суточный лимит расходов казны.", INT),
@@ -736,6 +748,7 @@ def fx(cell, d=2):
     return 'SUBSTITUTE(TEXT(%s,"0.%s"),",",".")' % (cell, "0" * d)
 yaml = ('="electricity:"&CHAR(10)&"  base-rate-per-day: "&' + fx("price_v_final") + '&CHAR(10)'
         '&"hotel-electricity:"&CHAR(10)&"  base-units: "&' + fx("hotel_base") + '&CHAR(10)&"  per-area: "&' + fx("hotel_per_area") + '&CHAR(10)'
+        '&"auto-build:"&CHAR(10)&"  price-per-block: "&' + fx("build_price_block*econ_index") + '&CHAR(10)'
         '&"goods:"&CHAR(10)&"  sales-tax-percent: "&' + fx("sales_tax_final*100") + '&CHAR(10)'
         '&"bank:"&CHAR(10)&"  rent-tax-percent: "&' + fx("rent_tax_final*100") + '&CHAR(10)'
         '&"  property-tax:"&CHAR(10)&"    shop: "&' + fx("'Налоги и казна'!G6", 0) + '&CHAR(10)'

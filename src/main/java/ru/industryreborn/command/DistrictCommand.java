@@ -42,10 +42,10 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
 
     private static final List<String> PLAYER_SUBS = List.of("menu", "list", "info", "buy", "rent", "extend",
             "autorenew", "autoreset", "release", "trust", "untrust", "perm", "account", "power", "warnings", "tp",
-            "storage", "claim", "journal", "name", "desc", "bank", "service", "factory", "room", "region", "job", "hologram", "machine", "chest", "shop", "goods", "storefront", "link", "unlink", "enchant", "ui", "plots", "business", "hotel", "admin", "holoshop", "help");
+            "storage", "claim", "journal", "name", "desc", "bank", "service", "factory", "room", "region", "job", "hologram", "machine", "chest", "shop", "goods", "storefront", "link", "unlink", "enchant", "ui", "plots", "business", "hotel", "admin", "holoshop", "build", "help");
     private static final List<String> ADMIN_SUBS = List.of("wand", "pos1", "pos2", "create", "delete", "evict",
             "setprice", "setrent", "setspawn", "resnapshot", "reload", "seize", "reset", "holo", "category",
-            "moderation", "arrest", "auction", "show", "module", "balance", "webhook", "build");
+            "moderation", "arrest", "auction", "show", "module", "balance", "webhook");
     /** Команды банка и электросети: отдельные права industryreborn.bank и industryreborn.grid. */
     private static final List<String> GRID_SUBS = List.of("grid", "area");
 
@@ -1134,17 +1134,53 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
 
     /** treasury | menu | report [дни] | subsidy <участок> <сумма> <причина> | prize <игрок> <сумма> <мероприятие> | pay ... */
     /** build list | build <участок> <здание> [поворот 0-3|force]: здание из шаблона на свободный пустой участок. */
+    private static final java.util.Set<String> BUILD_ADMIN_SUBS = java.util.Set.of("reload", "save", "import");
+
     private void build(Player p, String[] args) {
         var svc = plugin.buildings();
+        boolean admin = p.hasPermission("industryreborn.admin");
+        if (args.length > 0 && BUILD_ADMIN_SUBS.contains(args[0].toLowerCase(Locale.ROOT)) && !admin) {
+            throw new CommandError("Недостаточно прав.");
+        }
         if (args.length == 0 || args[0].equalsIgnoreCase("list")) {
             Text.send(p, "<yellow>Здания для автостроительства:");
             for (var t : svc.all()) {
                 p.sendMessage(Text.mm("<gray> <white>" + Text.esc(t.name()) + "</white> - " + Text.esc(t.title()) + " (" + t.category() + ", "
-                        + t.sizeX() + "×" + t.sizeY() + "×" + t.sizeZ() + ", " + t.blockCount() + " блоков)"));
+                        + t.sizeX() + "×" + t.sizeY() + "×" + t.sizeZ() + ", " + t.blockCount() + " блоков, " + plugin.economy().format(svc.price(t)) + ")"));
             }
-            Text.send(p, "<gray>Поставить: /district build <участок> <здание> [force]; при создании: /district create ... build [здание] или nobuild");
-            Text.send(p, "<gray>Своё здание: /district build save <имя> <тип> (по выделению), /district build import <файл> <имя> <тип> (.schem, .nbt)");
+            if (admin) {
+                Text.send(p, "<gray>Поставить: /district build <участок> <здание> [force]; при создании: /district create ... build [здание] или nobuild");
+                Text.send(p, "<gray>Своё здание: /district build save <имя> <тип> (по выделению), /district build import <файл> <имя> <тип> (.schem, .nbt)");
+            }
+            Text.send(p, "<gray>Заказ на своём участке: /district build menu [участок] (цена - за блок)");
             return;
+        }
+        String first = args[0].toLowerCase(Locale.ROOT);
+        switch (first) {
+            case "menu" -> {
+                buildMenu(p, args);
+                return;
+            }
+            case "view" -> {
+                var view = plugin.htmlMenus().buildView(p);
+                view.category = args.length > 1 && !args[1].equals("-") ? args[1].toLowerCase(Locale.ROOT) : "";
+                view.page = 0;
+                if (args.length > 2) {
+                    try {
+                        view.page = Math.max(0, Integer.parseInt(args[2]));
+                    } catch (NumberFormatException e) {
+                        throw new CommandError("Номер страницы должен быть целым.");
+                    }
+                }
+                view.detail = null;
+                return;
+            }
+            case "detail" -> {
+                var view = plugin.htmlMenus().buildView(p);
+                view.detail = args.length > 1 && svc.get(args[1]) != null ? svc.get(args[1]).name() : null;
+                return;
+            }
+            default -> { }
         }
         if (args[0].equalsIgnoreCase("reload")) {
             svc.load();
@@ -1191,12 +1227,16 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
             return;
         }
         if (args.length < 2) {
-            throw new CommandError("Использование: /district build <участок> <здание> [force]");
+            throw new CommandError("Использование: /district build <участок> <здание> [confirm]");
         }
         Plot plot = requirePlot(args[0]);
         var template = svc.get(args[1]);
         if (template == null) {
             throw new CommandError("Здание «" + args[1] + "» не найдено: /district build list");
+        }
+        if (!admin) {
+            buildAsPlayer(p, plot, template, args.length > 2 && args[2].equalsIgnoreCase("confirm"));
+            return;
         }
         if (!plot.isFree() || plugin.service().isLocked(plot)) {
             throw new CommandError("Строить можно только на свободном участке, который сейчас не обрабатывается.");
@@ -1212,6 +1252,73 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
             Text.ok(p, "Здание построено. Сохраняю его как исходный вид участка.");
             plugin.service().resnapshot(p, plot);
         }, error -> Text.err(p, "Не удалось построить здание: " + error));
+    }
+
+    /** Заказ здания игроком на своём участке: без confirm - показывает цену и просит подтвердить. */
+    private void buildAsPlayer(Player p, Plot plot, ru.industryreborn.building.BuildingTemplate template, boolean confirm) {
+        var svc = plugin.buildings();
+        String error = svc.orderError(p, plot, template);
+        if (error != null) {
+            throw new CommandError(error);
+        }
+        if (!confirm) {
+            Object planned = svc.plan(Bukkit.getWorld(plot.world), plot.box, template, -1, false);
+            if (planned instanceof String reason) {
+                throw new CommandError(reason);
+            }
+            double price = svc.price(template);
+            Text.send(p, "<yellow>Здание «" + Text.esc(template.title()) + "»: " + template.blockCount() + " блоков × "
+                    + plugin.economy().format(svc.pricePerBlock(ru.industryreborn.model.Category.parse(template.category()))) + " = <white>"
+                    + plugin.economy().format(price) + "</white>. Участок " + plot.id + " должен быть пустым. "
+                    + "<click:run_command:'/district build " + plot.id + " " + template.name() + " confirm'><green>[Построить]</green></click>");
+            return;
+        }
+        svc.playerBuild(p, plot, template);
+    }
+
+    /** build menu [участок]: выбор участка и открытие HTML-меню строительства (без MC GUI - список в чате). */
+    private void buildMenu(Player p, String[] args) {
+        var svc = plugin.buildings();
+        boolean admin = p.hasPermission("industryreborn.admin");
+        Plot plot;
+        if (args.length > 1) {
+            plot = requirePlot(args[1]);
+        } else {
+            plot = plugin.plots().at(p.getLocation());
+            if (plot == null || !admin && svc.plotError(p, plot) != null) {
+                var mine = svc.buildablePlots(p);
+                plot = mine.isEmpty() ? null : mine.get(0);
+            }
+        }
+        if (plot == null) {
+            throw new CommandError("Нет участка, на котором можно строить. Станьте на свой участок или укажите его номер: /district build menu <участок>");
+        }
+        if (!admin) {
+            String error = svc.plotError(p, plot);
+            if (error != null) {
+                throw new CommandError(error);
+            }
+        } else if (!plot.isFree() && !plot.isOwner(p.getUniqueId())) {
+            throw new CommandError("Администратор строит на свободных участках.");
+        }
+        var view = plugin.htmlMenus().buildView(p);
+        view.plot = plot.id;
+        view.category = "";
+        view.page = 0;
+        view.detail = null;
+        if (plugin.htmlMenus().open(p, ru.industryreborn.html.HtmlMenus.Kind.BUILD)) {
+            return;
+        }
+        var offered = svc.offered(plot);
+        Text.send(p, "<yellow>Здания для участка " + Text.esc(plot.id) + " (" + plot.category.title() + ", " + plot.box.sizeX() + "×" + plot.box.sizeZ() + "):");
+        if (offered.isEmpty()) {
+            Text.send(p, "<gray>Подходящих по типу и размеру зданий нет.");
+        }
+        for (var t : offered.subList(0, Math.min(15, offered.size()))) {
+            p.sendMessage(Text.mm("<gray> <white>" + Text.esc(t.name()) + "</white> - " + Text.esc(t.title()) + ", " + t.blockCount() + " блоков, "
+                    + plugin.economy().format(svc.price(t)) + " <click:run_command:'/district build " + plot.id + " " + t.name()
+                    + "'><green>[выбрать]</green></click>"));
+        }
     }
 
     /** holoshop create <участок> | remove <номер> | list [участок]: торговля через голограммы. */
@@ -1583,7 +1690,10 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
         }
         if (sub.equals("build")) {
             if (args.length == 2) {
-                List<String> list = new ArrayList<>(List.of("list", "reload", "save", "import"));
+                List<String> list = new ArrayList<>(List.of("list", "menu"));
+                if (admin) {
+                    list.addAll(List.of("reload", "save", "import"));
+                }
                 list.addAll(plotIds(Plot.Status.FREE));
                 return filter(list, args[1]);
             }

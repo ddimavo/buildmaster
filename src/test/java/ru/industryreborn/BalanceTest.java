@@ -159,7 +159,7 @@ class BalanceTest extends PluginTestBase {
         drain(steve);
         plugin.balance().run(false, "система");
         var entries = plugin.journal().forPlot("-").stream().filter(e -> e.action() == Journal.Action.BALANCE).toList();
-        assertEquals(6, entries.size(), "по записи на каждое изменение");
+        assertEquals(7, entries.size(), "по записи на каждое изменение");
         assertTrue(entries.stream().anyMatch(e -> e.reason().contains("Цена электричества") && e.reason().contains("100 → 110")));
         String chat = drain(boss);
         assertTrue(chat.contains("Экономика скорректирована") && chat.contains("100 → 110"), chat);
@@ -193,7 +193,7 @@ class BalanceTest extends PluginTestBase {
     void resetRestoresConfigValuesAndIsJournaled() {
         income(5000);
         plugin.balance().run(false, "Boss");
-        assertEquals(6, plugin.balance().reset("Boss"));
+        assertEquals(7, plugin.balance().reset("Boss"));
         assertEquals(100, plugin.power().base(), 1e-9);
         assertEquals(3, plugin.goods().salesTaxPercent(), 1e-9);
         assertTrue(plugin.journal().forPlot("-").stream().anyMatch(e -> e.reason().startsWith("Сброс автокорректировки")));

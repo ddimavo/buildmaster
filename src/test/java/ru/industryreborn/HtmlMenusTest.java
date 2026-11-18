@@ -233,7 +233,7 @@ class HtmlMenusTest extends PluginTestBase {
         steve.performCommand("district menu");
         plugin.htmlMenus().cleanUp();
         File[] left = new File(tmp, "industryreborn").listFiles();
-        assertTrue(left == null || left.length == 0);
+        assertTrue(left == null || left.length == 0, java.util.Arrays.toString(left));
     }
 
     @Test

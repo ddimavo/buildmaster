@@ -183,6 +183,7 @@ public final class BalanceService {
                     base * cfg("index-min", 0.7), base * cfg("index-max", 1.5), idx, plugin.bank().propertyTaxIsManual(c), adjusts("property-tax"));
         }
         consider(out, "services", "Цены услуг мастерских (множитель)", "×", 1.0, cfg("index-min", 0.7), cfg("index-max", 1.5), idx, false, adjusts("services"));
+        consider(out, "build-price", "Цена строительства зданий за блок (множитель)", "×", 1.0, cfg("index-min", 0.7), cfg("index-max", 1.5), idx, false, adjusts("build-price"));
         consider(out, "auction", "Цены лотов аукциона казны (множитель)", "×", 1.0, cfg("index-min", 0.7), cfg("index-max", 1.5), idx, false, adjusts("auction"));
         return out;
     }
