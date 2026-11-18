@@ -835,8 +835,9 @@ class ServicesIntegrationTest extends PluginTestBase {
     @Test
     void workshopMenuOffersServicesToVisitorsAndPricesToTheOwner() {
         new ru.industryreborn.gui.PlotMenu(plugin, alex, workshop, null).open();
-        assertEquals(Material.FURNACE, alex.getOpenInventory().getTopInventory().getItem(22).getType());
+        assertEquals(Material.FURNACE, alex.getOpenInventory().getTopInventory().getItem(20).getType());
         new ru.industryreborn.gui.PlotMenu(plugin, steve, workshop, null).open();
-        assertEquals(Material.WRITABLE_BOOK, steve.getOpenInventory().getTopInventory().getItem(14).getType());
+        assertTrue(java.util.Arrays.stream(steve.getOpenInventory().getTopInventory().getContents()).anyMatch(i -> i != null && i.getType() == Material.WRITABLE_BOOK
+                && net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText().serialize(i.getItemMeta().displayName()).contains("Прайс")));
     }
 }

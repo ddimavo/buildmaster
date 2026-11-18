@@ -279,10 +279,10 @@ class AdminBuildingsTest extends PluginTestBase {
     @Test
     void mainMenuShowsBankToEveryoneAndGridToStaff() {
         new MainMenu(plugin, steve).open();
-        assertFalse(blank(steve.getOpenInventory().getTopInventory().getItem(24)));
-        assertTrue(blank(steve.getOpenInventory().getTopInventory().getItem(25)));
+        assertFalse(blank(steve.getOpenInventory().getTopInventory().getItem(31)), "банк виден всем");
+        assertTrue(blank(steve.getOpenInventory().getTopInventory().getItem(40)));
         new MainMenu(plugin, boss).open();
-        assertFalse(blank(boss.getOpenInventory().getTopInventory().getItem(25)));
+        assertFalse(blank(boss.getOpenInventory().getTopInventory().getItem(40)), "электросеть - работникам сети");
     }
 
     @Test

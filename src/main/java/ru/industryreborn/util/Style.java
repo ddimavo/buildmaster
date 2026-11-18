@@ -87,6 +87,15 @@ public final class Style {
     /** Заголовок окна: акцентный ромб, раздел жирным тёмным, уточнение (после « · ») серым. */
     public static String title(String raw) {
         String text = raw.replaceAll("</?(dark_gray|dark_red|gray|black|white)>", "").trim();
+        if (text.contains(" › ")) {
+            // путь: «Район › Мои участки › Булочная» - предки серым, последняя часть жирным
+            String[] parts = text.split(" › ");
+            StringBuilder sb = new StringBuilder("<#c9811a>◆ ");
+            for (int i = 0; i < parts.length - 1; i++) {
+                sb.append("<#6b7280>").append(parts[i]).append(" › ");
+            }
+            return sb.append("<#1f2937><bold>").append(parts[parts.length - 1]).append("</bold>").toString();
+        }
         String head = text;
         String tail = "";
         int dot = text.indexOf(" · ");

@@ -235,7 +235,7 @@ class KeepBuildingTest extends PluginTestBase {
     void adminMenuHasKeepButtons() {
         new ru.industryreborn.gui.PlotMenu(plugin, boss, plot, null).open();
         var inv = boss.getOpenInventory().getTopInventory();
-        assertNotNull(inv.getItem(39), "выселить, здание оставить");
-        assertNotNull(inv.getItem(41), "изъять, здание оставить");
+        assertEquals(Material.OAK_DOOR, inv.getItem(40).getType(), "выселить, здание оставить");
+        assertEquals(Material.TRIPWIRE_HOOK, inv.getItem(42).getType(), "изъять, здание оставить");
     }
 }

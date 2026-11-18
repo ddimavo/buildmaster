@@ -82,6 +82,7 @@ public class IndustryRebornPlugin extends JavaPlugin {
     private ru.industryreborn.building.BuildingService buildings;
     private ru.industryreborn.holoshop.HoloShopService holoShops;
     private ru.industryreborn.lot.LotService lots;
+    private ru.industryreborn.gui.DialogService dialogs;
     private ru.industryreborn.service.LinkService links;
     private ru.industryreborn.service.ServicesHolograms servicesHolograms;
     private ru.industryreborn.service.BankHolograms bankHolograms;
@@ -146,6 +147,7 @@ public class IndustryRebornPlugin extends JavaPlugin {
         buildings.load();
         holoShops = new ru.industryreborn.holoshop.HoloShopService(this);
         lots = new ru.industryreborn.lot.LotService(this);
+        dialogs = new ru.industryreborn.gui.DialogService(this);
         holoFactory = new ru.industryreborn.holo.HoloFactory(this);
         holograms = new HologramService(this);
         stations = new StationService(this);
@@ -389,6 +391,10 @@ public class IndustryRebornPlugin extends JavaPlugin {
 
     public ru.industryreborn.holo.ClickZones clickZones() {
         return clickZones;
+    }
+
+    public ru.industryreborn.gui.DialogService dialogs() {
+        return dialogs;
     }
 
     public ru.industryreborn.lot.LotService lots() {

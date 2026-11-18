@@ -86,11 +86,11 @@ class ArrestedMenuTest extends PluginTestBase {
     void theMainMenuLinksToItForAdminsOnly() {
         arrest(steve.getUniqueId(), "a", Material.DIAMOND, 5);
         new ru.industryreborn.gui.MainMenu(plugin, boss).open();
-        assertEquals(Material.IRON_BARS, boss.getOpenInventory().getTopInventory().getItem(23).getType());
-        boss.simulateInventoryClick(23);
+        assertEquals(Material.IRON_BARS, boss.getOpenInventory().getTopInventory().getItem(39).getType());
+        boss.simulateInventoryClick(39);
         assertEquals(Material.PLAYER_HEAD, boss.getOpenInventory().getTopInventory().getItem(0).getType());
         new ru.industryreborn.gui.MainMenu(plugin, steve).open();
-        assertNotEquals(Material.IRON_BARS, steve.getOpenInventory().getTopInventory().getItem(23).getType());
+        assertNotEquals(Material.IRON_BARS, steve.getOpenInventory().getTopInventory().getItem(39).getType());
     }
 
     @Test

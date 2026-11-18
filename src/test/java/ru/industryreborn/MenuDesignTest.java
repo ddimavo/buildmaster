@@ -53,30 +53,32 @@ class MenuDesignTest extends PluginTestBase {
     @Test
     void theMainMenuHasADarkFrameAndGrayInside() {
         Inventory inv = new MainMenu(plugin, steve).getInventory();
-        assertEquals(Material.BLACK_STAINED_GLASS_PANE, inv.getItem(0).getType(), "угол");
+        assertEquals(Material.BLACK_STAINED_GLASS_PANE, inv.getItem(0).getType(), "шапка тёмная");
         assertEquals(Material.BLACK_STAINED_GLASS_PANE, inv.getItem(8).getType());
-        assertEquals(Material.GRAY_STAINED_GLASS_PANE, inv.getItem(11).getType(), "внутри окна нейтральный фон");
+        assertEquals(Material.GRAY_STAINED_GLASS_PANE, inv.getItem(10).getType(), "внутри окна нейтральный фон");
+        assertEquals(Material.LIME_STAINED_GLASS_PANE, inv.getItem(9).getType(), "группа начинается цветной панелью");
+        assertEquals(Material.BARRIER, inv.getItem(49).getType(), "внизу кнопка «Закрыть»");
     }
 
     @Test
     void everySectionHasItsOwnColor() {
         assertEquals(Material.LIGHT_BLUE_STAINED_GLASS_PANE,
-                new PlotListMenu(plugin, steve, new PlotFilter(PlotFilter.Mode.FREE), 0).getInventory().getItem(53).getType());
+                new PlotListMenu(plugin, steve, new PlotFilter(PlotFilter.Mode.FREE), 0).getInventory().getItem(45).getType());
         assertEquals(Material.CYAN_STAINED_GLASS_PANE, new StorageMenu(plugin, steve, 0).getInventory().getItem(45).getType());
         assertEquals(Material.LIME_STAINED_GLASS_PANE, new JobBoardMenu(plugin, steve, 0).getInventory().getItem(45).getType());
-        assertEquals(Material.YELLOW_STAINED_GLASS_PANE, new BankMenu(plugin, steve).getInventory().getItem(0).getType());
+        assertEquals(Material.YELLOW_STAINED_GLASS_PANE, new BankMenu(plugin, steve).getInventory().getItem(28).getType());
         assertEquals(Material.RED_STAINED_GLASS_PANE, new ModerationMenu(plugin, boss, 0).getInventory().getItem(45).getType());
         assertEquals(Material.RED_STAINED_GLASS_PANE, new ArrestedMenu(plugin, boss, 0).getInventory().getItem(46).getType());
         assertEquals(Material.RED_STAINED_GLASS_PANE,
-                new ConfirmMenu(plugin, steve, "Вопрос?", new String[0], () -> { }, () -> { }).getInventory().getItem(0).getType());
+                new ConfirmMenu(plugin, steve, "Вопрос?", new String[0], () -> { }, () -> { }).getInventory().getItem(18).getType());
     }
 
     @Test
     void fillNeverReplacesRealButtons() {
         Inventory inv = new MainMenu(plugin, boss).getInventory();
-        assertEquals(Material.IRON_BARS, inv.getItem(23).getType());
-        assertEquals(Material.ANVIL, inv.getItem(22).getType());
-        assertEquals(Material.LIME_CONCRETE, inv.getItem(10).getType());
+        assertEquals(Material.IRON_BARS, inv.getItem(39).getType());
+        assertEquals(Material.ANVIL, inv.getItem(38).getType());
+        assertEquals(Material.LIME_CONCRETE, inv.getItem(11).getType());
     }
 
     // ------------------------------------------------------------ панель игрока
@@ -85,15 +87,18 @@ class MenuDesignTest extends PluginTestBase {
     void theProfileShowsBalanceAndPlots() {
         Plot shop = addPlot("s1", Category.SHOP, 0, 1000, 50);
         plugin.service().rent(steve, shop, 5);
-        ItemStack head = new MainMenu(plugin, steve).getInventory().getItem(4);
+        Inventory inv = new MainMenu(plugin, steve).getInventory();
+        ItemStack head = inv.getItem(4);
         assertEquals(Material.PLAYER_HEAD, head.getType());
         assertEquals("Steve", plain(head.getItemMeta().displayName()));
         String text = lore(head);
-        assertTrue(text.contains("Баланс"), text);
         assertTrue(text.contains("Участков: 1"));
-        assertTrue(text.contains("s1"), "ближайшее окончание аренды");
+        assertTrue(text.contains("Магазин s1") || text.contains("s1"), "ближайшая оплата: " + text);
         assertTrue(text.contains("█"), "полоска срока");
-        assertTrue(text.contains("Вещей в хранилище"));
+        ItemStack money = inv.getItem(1);
+        assertEquals(Material.GOLD_INGOT, money.getType());
+        assertEquals("Баланс", plain(money.getItemMeta().displayName()));
+        assertTrue(lore(money).contains("Наличные"), lore(money));
     }
 
     @Test
@@ -101,7 +106,7 @@ class MenuDesignTest extends PluginTestBase {
         addPlot("s1", Category.SHOP, 0, 1000, 50);
         addPlot("s2", Category.SHOP, 20, 1000, 50);
         addPlot("h1", Category.HOUSE, 40, 500, 10);
-        String text = lore(new MainMenu(plugin, steve).getInventory().getItem(10));
+        String text = lore(new MainMenu(plugin, steve).getInventory().getItem(11));
         assertTrue(text.contains("Доступно: 3"), text);
         assertTrue(text.contains("Магазин: 2") && text.contains("Дом: 1"), text);
     }
@@ -109,14 +114,14 @@ class MenuDesignTest extends PluginTestBase {
     @Test
     void unreadWarningsAreHighlighted() {
         plugin.warnings().add(steve.getUniqueId(), "x", "<red>тест");
-        ItemStack bell = new MainMenu(plugin, steve).getInventory().getItem(20);
+        ItemStack bell = new MainMenu(plugin, steve).getInventory().getItem(7);
         assertEquals(Material.BELL, bell.getType());
         assertTrue(lore(bell).contains("Непрочитанных: 1"));
     }
 
     @Test
     void adminButtonsShowCounters() {
-        String text = lore(new MainMenu(plugin, boss).getInventory().getItem(22));
+        String text = lore(new MainMenu(plugin, boss).getInventory().getItem(38));
         assertTrue(text.contains("Ожидают проверки: 0"));
     }
 
@@ -128,19 +133,20 @@ class MenuDesignTest extends PluginTestBase {
             addPlot("p" + i, Category.HOUSE, i * 12, 100, 5);
         }
         Inventory inv = new PlotListMenu(plugin, steve, new PlotFilter(PlotFilter.Mode.FREE), 0).getInventory();
-        ItemStack next = inv.getItem(53);
+        ItemStack next = inv.getItem(50);
         assertEquals(Material.SPECTRAL_ARROW, next.getType());
         assertTrue(lore(next).contains("Страница: 1 из 2"), lore(next));
         assertEquals(2, next.getAmount(), "на стрелке номер следующей страницы");
         assertTrue(plain(next.getItemMeta().displayName()).contains("Следующая"));
-        assertNotEquals(Material.SPECTRAL_ARROW, inv.getItem(45).getType(), "на первой странице стрелки назад нет");
+        assertNotEquals(Material.SPECTRAL_ARROW, inv.getItem(46).getType(), "на первой странице стрелки назад нет");
+        assertEquals(Material.NETHER_STAR, inv.getItem(49).getType(), "главное меню внизу по центру");
     }
 
     @Test
     void plotCardsShowStatusTimeAndWorkshopPower() {
         Plot workshop = addPlot("w", Category.WORKSHOP, 0, -1, 10);
         plugin.service().rent(steve, workshop, 3);
-        String text = lore(new PlotListMenu(plugin, steve, new PlotFilter(PlotFilter.Mode.MINE), 0).getInventory().getItem(0));
+        String text = lore(new PlotListMenu(plugin, steve, new PlotFilter(PlotFilter.Mode.MINE), 0).getInventory().getItem(9));
         assertTrue(text.contains("● Арендован"), text);
         assertTrue(text.contains("█"), "полоска остатка аренды");
         assertTrue(text.contains("Станков"), text);
@@ -168,7 +174,7 @@ class MenuDesignTest extends PluginTestBase {
     @Test
     void clickingAButtonPlaysASoundAndStillWorks() {
         steve.openInventory(new MainMenu(plugin, steve).getInventory());
-        steve.simulateInventoryClick(14);
+        steve.simulateInventoryClick(29);
         assertTrue(steve.getOpenInventory().getTopInventory().getHolder() instanceof StorageMenu);
     }
 }

@@ -2,6 +2,7 @@ package ru.industryreborn.gui;
 
 import io.papermc.paper.event.player.AsyncChatEvent;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Consumer;
@@ -25,7 +26,24 @@ public final class ChatPrompt implements Listener {
         this.plugin = plugin;
     }
 
+    /**
+     * Запрос текста. Если есть диалоги Paper - окно с полем ввода (кнопка «Отмена» отдаёт слово «отмена», как в чате);
+     * иначе следующее сообщение игрока из чата.
+     */
     public void ask(Player player, String hint, Consumer<String> callback) {
+        var dialogs = plugin.dialogs();
+        if (dialogs != null && dialogs.available()) {
+            String title = hint.replaceAll("<[^>]+>", "").replaceAll("[:：]\\s*$", "").trim();
+            String shortTitle = title.length() > 60 ? title.substring(0, 57) + "…" : title;
+            dialogs.text(player, shortTitle.isEmpty() ? "Ввод" : shortTitle, List.of(), "Значение", "", 200,
+                    callback, () -> callback.accept("отмена"));
+            return;
+        }
+        askChat(player, hint, callback);
+    }
+
+    /** Ввод только через чат (запасной вариант окон ввода). */
+    void askChat(Player player, String hint, Consumer<String> callback) {
         player.closeInventory();
         waiting.put(player.getUniqueId(), callback);
         Text.send(player, "<yellow>" + hint + " <gray>(напишите <white>отмена</white>, чтобы вернуться)");

@@ -779,7 +779,7 @@ class HotelIntegrationTest extends PluginTestBase {
     void theRoomsMenuRentsARoomWithClicks() {
         Plot r = room("101", 1, 20);
         new ru.industryreborn.gui.PlotMenu(plugin, alex, hotel, null).open();
-        assertEquals(Material.RED_BED, alex.getOpenInventory().getTopInventory().getItem(22).getType());
+        assertEquals(Material.RED_BED, alex.getOpenInventory().getTopInventory().getItem(20).getType());
 
         new ru.industryreborn.gui.RoomsMenu(plugin, alex, hotel, null, 0).open();
         assertEquals(Material.LIME_BED, alex.getOpenInventory().getTopInventory().getItem(0).getType());

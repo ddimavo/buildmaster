@@ -80,6 +80,34 @@ final class Ui {
                 : Text.icon(Material.ARROW, "<yellow>← Назад", "<gray>Куда: <white>" + where, "<yellow>Нажмите, чтобы вернуться");
     }
 
+    /** Цвет текста для цветной панели-заголовка группы. */
+    private static String paneColor(Material pane) {
+        return switch (pane) {
+            case LIME_STAINED_GLASS_PANE -> "green";
+            case YELLOW_STAINED_GLASS_PANE -> "yellow";
+            case CYAN_STAINED_GLASS_PANE, LIGHT_BLUE_STAINED_GLASS_PANE, BLUE_STAINED_GLASS_PANE -> "aqua";
+            case RED_STAINED_GLASS_PANE -> "red";
+            case ORANGE_STAINED_GLASS_PANE -> "gold";
+            case PURPLE_STAINED_GLASS_PANE, MAGENTA_STAINED_GLASS_PANE -> "light_purple";
+            default -> "white";
+        };
+    }
+
+    /** Панель-заголовок группы кнопок: цветное стекло с названием заглавными буквами. */
+    static ItemStack section(String name, Material pane, String... lines) {
+        String color = paneColor(pane);
+        return Text.icon(pane, "<" + color + "><bold>" + name.toUpperCase(java.util.Locale.ROOT) + "</bold>", lines);
+    }
+
+    static ItemStack close() {
+        return Text.icon(Material.BARRIER, "<red>Закрыть");
+    }
+
+    /** Индикатор состояния: «● » нужного цвета. */
+    static String dot(String color) {
+        return "<" + color + ">● ";
+    }
+
     /** Тихий щелчок при нажатии на кнопку (ошибки звука не должны ломать меню). */
     static void clickSound(Player player) {
         try {

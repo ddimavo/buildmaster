@@ -196,7 +196,7 @@ class HologramProposalTest extends PluginTestBase {
         steve.performCommand("district hologram h");
         assertTrue(drain(steve).contains("внутри"));
         new ru.industryreborn.gui.PlotMenu(plugin, steve, house, null).open();
-        assertEquals(Material.ENDER_EYE, steve.getOpenInventory().getTopInventory().getItem(17).getType());
+        assertEquals(Material.ENDER_EYE, steve.getOpenInventory().getTopInventory().getItem(31).getType());
     }
 
     @Test

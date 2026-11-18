@@ -26,6 +26,7 @@ public abstract class PluginTestBase {
         server.getServicesManager().register(Economy.class, economy, MockBukkit.createMockPlugin(), ServicePriority.Highest);
         server.addSimpleWorld("world");
         plugin = MockBukkit.load(IndustryRebornPlugin.class);
+        plugin.dialogs().setBackend(null);       // окна ввода Paper в MockBukkit недоступны: ввод через чат
         // установка станков в мастерской платная; общие тесты считают деньги без неё (цены проверяет StationInstallTest)
         for (String type : new String[] {"smelter", "anvil", "alchemy", "enchanting"}) {
             plugin.getConfig().set("station-install." + type, 0);

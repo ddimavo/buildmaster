@@ -28,6 +28,34 @@ final class Icons {
         return new ItemStack(shown);
     }
 
+    /** Иконка типа участка. */
+    static Material categoryMaterial(ru.industryreborn.model.Category c) {
+        return switch (c) {
+            case HOUSE -> Material.OAK_DOOR;
+            case SHOP -> Material.EMERALD;
+            case WORKSHOP -> Material.BLAST_FURNACE;
+            case RESTAURANT -> Material.CAKE;
+            case WAREHOUSE -> Material.BARREL;
+            case BANK -> Material.GOLD_BLOCK;
+            case POWER_PLANT -> Material.LIGHTNING_ROD;
+            case HOTEL, ROOM -> Material.RED_BED;
+        };
+    }
+
+    /** Цветная точка статуса участка для названия: зелёная - всё хорошо или свободен, жёлтая - скоро оплата, красная - просрочка или занят. */
+    static String dot(IndustryRebornPlugin plugin, Plot plot, boolean mine) {
+        if (plot.isFree()) {
+            return "<green>● ";
+        }
+        if (plot.isFrozen()) {
+            return "<red>● ";
+        }
+        if (mine && plot.status == Plot.Status.RENTED && plot.rentedUntil - System.currentTimeMillis() < 86_400_000L) {
+            return "<yellow>● ";
+        }
+        return mine ? "<green>● " : "<red>● ";
+    }
+
     static Material statusMaterial(Plot plot, boolean mine) {
         if (mine) {
             return Material.EMERALD_BLOCK;

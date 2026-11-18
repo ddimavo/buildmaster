@@ -56,19 +56,40 @@ public abstract class Menu implements InventoryHolder {
      * Параметр оставлен для совместимости: рамку определяет тема раздела (Ui.theme).
      */
     protected void fill(Material ignored) {
-        Material edge = Ui.theme(getClass());
-        ItemStack border = Text.icon(edge, " ");
+        // верхняя строка - тёмная шапка, нижняя - панель навигации цвета раздела, середина - нейтральный фон
+        ItemStack top = Text.icon(Material.BLACK_STAINED_GLASS_PANE, " ");
+        ItemStack bottom = Text.icon(Ui.theme(getClass()), " ");
         ItemStack inner = Text.icon(Material.GRAY_STAINED_GLASS_PANE, " ");
         int size = inventory.getSize();
         int rows = size / 9;
         for (int i = 0; i < size; i++) {
             if (inventory.getItem(i) == null) {
                 int row = i / 9;
-                int col = i % 9;
-                boolean onEdge = row == 0 || row == rows - 1 || col == 0 || col == 8;
-                inventory.setItem(i, onEdge ? border : inner);
+                inventory.setItem(i, row == 0 ? top : row == rows - 1 && rows > 1 ? bottom : inner);
             }
         }
+    }
+
+    /**
+     * Нижняя панель навигации одинакова во всех меню: назад, страницы, главное меню, закрыть.
+     * back == null - кнопки «назад» нет; pages <= 1 - без листания.
+     */
+    protected void navBar(String backName, Runnable back, int page, int pages, java.util.function.IntConsumer goPage) {
+        int base = (rows() - 1) * 9;
+        if (back != null) {
+            set(base, Ui.back(backName), e -> back.run());
+        }
+        if (pages > 1) {
+            if (page > 0) {
+                set(base + 1, Ui.prev(page, pages), e -> goPage.accept(page - 1));
+            }
+            set(base + 3, Text.icon(Material.PAPER, "<white>Страница " + (page + 1) + " из " + pages));
+            if (page < pages - 1) {
+                set(base + 5, Ui.next(page, pages), e -> goPage.accept(page + 1));
+            }
+        }
+        set(base + 4, Ui.home(), e -> new MainMenu(plugin, player).open());
+        set(base + 8, Ui.close(), e -> player.closeInventory());
     }
 
     protected void clear() {
