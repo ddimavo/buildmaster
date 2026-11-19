@@ -211,7 +211,7 @@ public final class GoodsService {
             if (s != null && !s.getType().isAir()) {
                 var ref = plugin.customItems().identify(s);
                 if (ref != null) {
-                    key = only == null ? ref.key() : null;                      // предметы плагина и Nexo - только когда кладём «всё подходящее»
+                    key = only == null && plugin.customItems().pristine(s) ? ref.key() : null;   // предметы плагина и Nexo - только нетронутые и когда кладём «всё подходящее»
                 } else if (plain(s) && (only == null || s.getType() == only)) {
                     key = s.getType().name();
                 }

@@ -1,0 +1,23 @@
+# Пример plugins/Nexo/items/industryreborn_tools.yml: инструмент и скин для IndustryReborn.
+# Файл (и текстуры) удобно делать в NexoHelper: заготовки «Инструмент IndustryReborn» и «Скин IndustryReborn». Плагин сам находит предметы с меткой
+# PersistentData industryreborn:item (id предмета плагина) в plugins/Nexo/items/**/*.yml после /nexo reload items или /district item reload.
+forge_pickaxe:
+  itemname: "<gold>Кирка кузнеца"
+  material: NETHERITE_PICKAXE
+  Pack:
+    parent_model: item/handheld
+    texture: tools/forge_pickaxe
+  PersistentData:
+    - {type: STRING, key: "industryreborn:item", value: forge_pickaxe}
+    - {type: STRING, key: "industryreborn:kind", value: tool}      # item | tool | skin
+
+ruby_skin:
+  itemname: "<red>Скин «Рубин»"
+  material: PAPER
+  Pack:
+    parent_model: item/handheld
+    texture: skins/ruby_pickaxe
+  PersistentData:
+    - {type: STRING, key: "industryreborn:item", value: ruby}
+    - {type: STRING, key: "industryreborn:kind", value: skin}
+    - {type: STRING, key: "industryreborn:skin_for", value: "pickaxe,axe"}   # pickaxe, axe, shovel, hoe, sword или any

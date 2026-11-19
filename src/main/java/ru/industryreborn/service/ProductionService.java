@@ -514,7 +514,7 @@ public final class ProductionService {
         }
         var ref = plugin.customItems().identify(s);
         if (ref != null) {
-            return acceptedCustom.contains(ref.key()) ? ref.key() : null;
+            return acceptedCustom.contains(ref.key()) && plugin.customItems().pristine(s) ? ref.key() : null;
         }
         return plainStack(s) && accepted.contains(s.getType()) ? s.getType().name() : null;
     }

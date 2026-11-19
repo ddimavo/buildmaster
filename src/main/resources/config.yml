@@ -115,6 +115,10 @@ hotel-electricity:
 # /district item reload - перечитать файлы, /district item export-nexo - заготовка предметов для Nexo и NexoHelper.
 custom-items:
   enabled: true
+  # Предметы Nexo с меткой PersistentData industryreborn:item (id), industryreborn:kind (item|tool|skin), industryreborn:skin_for (pickaxe,axe,shovel,hoe,sword|any)
+  # находятся автоматически в файлах plugins/Nexo/items/**/*.yml (без описания в items/*.yml). Метки ставит NexoHelper (заготовки «Инструмент» и «Скин»).
+  nexo-scan: true
+  nexo-folder: ""                # по умолчанию plugins/Nexo/items
 
 # Чертежи: одноразовые предметы, открывающие мастерской рецепт администратора (recipes/*.yml, без free: true).
 # В файле рецепта: blueprint_price - цена в магазине чертежей администрации (0 - не продаётся), blueprint_item - предмет-основа (ir:id или nexo:id).

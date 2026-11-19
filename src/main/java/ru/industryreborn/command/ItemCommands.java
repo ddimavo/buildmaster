@@ -45,8 +45,11 @@ final class ItemCommands {
                 Text.send(sender, "<yellow>Предметы плагина: <white>" + items.all().size() + "</white>"
                         + (items.external().available() ? "<gray> (Nexo подключён)" : "<gray> (Nexo не найден)"));
                 for (CustomItem d : items.all()) {
-                    Text.send(sender, "<gray> <white>" + Text.esc(d.id()) + "</white> - " + Text.esc(items.displayName(d.ref())) + "<gray> ("
-                            + d.material().name() + (d.nexoId() != null ? ", Nexo: " + Text.esc(d.nexoId()) : "") + ")");
+                    double price = plugin.itemShop().price(d.id());
+                    Text.send(sender, "<gray> <white>" + Text.esc(d.id()) + "</white> [" + d.kind().title() + "] - " + Text.esc(items.displayName(d.ref())) + "<gray> ("
+                            + d.material().name() + (d.nexoId() != null ? ", Nexo: " + Text.esc(d.nexoId()) : "")
+                            + (d.kind() == ru.industryreborn.items.ItemKind.SKIN ? ", на: " + String.join("/", d.skinFor()) : "")
+                            + (price > 0 ? ", цена " + plugin.economy().format(price) : "") + ")");
                 }
             }
             case "info" -> {
@@ -100,6 +103,22 @@ final class ItemCommands {
                 }
                 Text.ok(sender, "Выдано " + target.getName() + ": " + amount + " × " + Text.esc(items.displayName(ref)) + ".");
             }
+            case "price" -> {
+                if (rest.length < 2) {
+                    usage("item price <id> <цена|0>");
+                }
+                double price;
+                try {
+                    price = Double.parseDouble(rest[1].replace(',', '.'));
+                } catch (NumberFormatException e) {
+                    throw new CommandError("Цена - число.");
+                }
+                String error = plugin.itemShop().setPrice(rest[0], price);
+                if (error != null) {
+                    throw new CommandError(error);
+                }
+                Text.ok(sender, price <= 0 ? "Предмет снят с продажи." : "Цена предмета «" + rest[0] + "»: " + plugin.economy().format(price) + ".");
+            }
             case "reload" -> {
                 List<String> errors = plugin.reloadCustomContent();
                 Text.ok(sender, "Перечитано: предметов " + items.all().size() + ", рецептов " + plugin.recipes().customRecipes().size()
@@ -113,7 +132,7 @@ final class ItemCommands {
                     throw new CommandError("Не удалось записать файл: " + e.getMessage());
                 }
             }
-            default -> usage("item [list|info <id>|give <игрок> <id> [кол-во]|reload|export-nexo]");
+            default -> usage("item [list|info <id>|give <игрок> <id> [кол-во]|price <id> <цена>|reload|export-nexo]");
         }
     }
 
@@ -295,6 +314,84 @@ final class ItemCommands {
         }
     }
 
+    // ------------------------------------------------------------ itemshop и skin
+
+    void itemshop(CommandSender sender, String[] args) {
+        String sub = args.length == 0 ? "menu" : args[0].toLowerCase(Locale.ROOT);
+        switch (sub) {
+            case "menu" -> {
+                if (!plugin.itemShop().enabled()) {
+                    throw new CommandError("Магазин предметов сейчас отключён.");
+                }
+                new ru.industryreborn.gui.ItemShopMenu(plugin, player(sender), null, 0).open();
+            }
+            case "list" -> {
+                var list = plugin.itemShop().listed();
+                if (list.isEmpty()) {
+                    Text.send(sender, "<gray>В магазине предметов пока ничего нет.");
+                }
+                for (CustomItem d : list) {
+                    Text.send(sender, "<gray> <white>" + Text.esc(d.id()) + "</white> [" + d.kind().title() + "] " + Text.esc(plugin.customItems().displayName(d.ref()))
+                            + " - " + plugin.economy().format(plugin.itemShop().price(d.id())));
+                }
+            }
+            case "buy" -> {
+                if (args.length < 2) {
+                    usage("itemshop buy <id> [количество]");
+                }
+                int amount = 1;
+                if (args.length > 2) {
+                    try {
+                        amount = Integer.parseInt(args[2]);
+                    } catch (NumberFormatException e) {
+                        throw new CommandError("Количество - целое число.");
+                    }
+                }
+                String error = plugin.itemShop().buy(player(sender), args[1], amount);
+                if (error != null) {
+                    throw new CommandError(error);
+                }
+            }
+            default -> usage("itemshop [menu|list|buy <id> [кол-во]]");
+        }
+    }
+
+    void skin(CommandSender sender, String[] args) {
+        String sub = args.length == 0 ? "apply" : args[0].toLowerCase(Locale.ROOT);
+        Player p = player(sender);
+        switch (sub) {
+            case "apply" -> {
+                if (!plugin.skins().enabled()) {
+                    throw new CommandError("Скины сейчас отключены.");
+                }
+                if (plugin.skins().skinOf(p.getInventory().getItemInMainHand()) == null) {
+                    throw new CommandError("Возьмите скин в основную руку.");
+                }
+                new ru.industryreborn.gui.SkinApplyMenu(plugin, p).open();
+            }
+            case "remove" -> {
+                String error = plugin.skins().remove(p);
+                if (error != null) {
+                    throw new CommandError(error);
+                }
+            }
+            case "info" -> {
+                var hand = p.getInventory().getItemInMainHand();
+                CustomItem skin = plugin.skins().skinOf(hand);
+                String applied = plugin.skins().appliedSkin(hand);
+                if (skin != null) {
+                    Text.send(sender, "<yellow>Скин <white>" + Text.esc(plugin.customItems().displayName(skin.ref())) + "<gray>, ставится на: " + String.join(", ", skin.skinFor())
+                            + ". Применить: /district skin");
+                } else if (applied != null) {
+                    Text.send(sender, "<yellow>На предмете скин <white>" + Text.esc(applied) + "<gray>. Снять: /district skin remove");
+                } else {
+                    throw new CommandError("В руке нет ни скина, ни предмета со скином.");
+                }
+            }
+            default -> usage("skin [apply|remove|info]");
+        }
+    }
+
     // ------------------------------------------------------------ blueprint
 
     void blueprint(CommandSender sender, String[] args) {
@@ -415,12 +512,34 @@ final class ItemCommands {
         }
         if (sub.equals("item")) {
             if (n == 2) {
-                return List.of("list", "info", "give", "reload", "export-nexo");
+                return List.of("list", "info", "give", "price", "reload", "export-nexo");
             }
             if (n == 3 && args[1].equalsIgnoreCase("give")) {
                 org.bukkit.Bukkit.getOnlinePlayers().forEach(p -> out.add(p.getName()));
             }
-            if (n >= 3 && args[1].equalsIgnoreCase("request")) {
+            if ((n == 3 && List.of("info", "price").contains(args[1].toLowerCase(Locale.ROOT))) || (n == 4 && args[1].equalsIgnoreCase("give"))) {
+                plugin.customItems().all().forEach(d -> out.add(d.id()));
+            }
+            return out;
+        }
+        if (sub.equals("itemshop")) {
+            if (n == 2) {
+                return List.of("menu", "list", "buy");
+            }
+            if (n == 3 && args[1].equalsIgnoreCase("buy")) {
+                plugin.itemShop().listed().forEach(d -> out.add(d.id()));
+            }
+            return out;
+        }
+        if (sub.equals("skin")) {
+            return n == 2 ? List.of("apply", "remove", "info") : out;
+        }
+        // recipe
+        if (n == 2) {
+            return List.of("list", "info", "request", "requests", "cancel", "learn", "forget", "price", "remove");
+        }
+        String action = args[1].toLowerCase(Locale.ROOT);
+        if (action.equals("request")) {
             if (n == 3) {
                 return ru.industryreborn.items.RecipeRequests.stations();
             }
@@ -430,18 +549,10 @@ final class ItemCommands {
             }
             return out;
         }
-        if ((n == 3 && List.of("info", "price", "remove").contains(args[1].toLowerCase(Locale.ROOT))) || (n == 4 && args[1].equalsIgnoreCase("give"))) {
-                plugin.customItems().all().forEach(d -> out.add(d.id()));
-            }
-            return out;
-        }
-        if (n == 2) {
-            return List.of("list", "info", "request", "requests", "cancel", "learn", "forget", "price", "remove");
-        }
-        if ((n == 3 && args[1].equalsIgnoreCase("info")) || (n == 4 && List.of("learn", "forget").contains(args[1].toLowerCase(Locale.ROOT)))) {
+        if ((n == 3 && List.of("info", "price", "remove").contains(action)) || (n == 4 && List.of("learn", "forget").contains(action))) {
             plugin.recipes().customRecipes().forEach(r -> out.add(r.id().substring(7)));
         }
-        if (n == 3 && List.of("learn", "forget").contains(args[1].toLowerCase(Locale.ROOT))) {
+        if (n == 3 && List.of("learn", "forget").contains(action)) {
             plugin.plots().all().stream().filter(p -> p.category == ru.industryreborn.model.Category.WORKSHOP).forEach(p -> out.add(p.id));
         }
         return out;

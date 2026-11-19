@@ -6,6 +6,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.logging.Level;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextDecoration;
@@ -75,7 +76,7 @@ public final class CustomItems {
         File dir = folder();
         File[] files = dir.listFiles((d, n) -> n.toLowerCase(Locale.ROOT).endsWith(".yml"));
         if (files == null) {
-            return errors;
+            files = new File[0];
         }
         java.util.Arrays.sort(files);
         for (File f : files) {
@@ -96,11 +97,138 @@ public final class CustomItems {
                 plugin.getLogger().log(Level.WARNING, "Не удалось прочитать " + f, e);
             }
         }
+        errors.addAll(loadNexo());
         for (String e : errors) {
             plugin.getLogger().warning("Предметы: " + e);
         }
         return errors;
     }
+
+    // ------------------------------------------------------------ предметы Nexo с метками
+
+    /** Папка предметов Nexo (custom-items.nexo-folder, по умолчанию plugins/Nexo/items). */
+    public File nexoFolder() {
+        String configured = plugin.getConfig().getString("custom-items.nexo-folder", "");
+        if (configured != null && !configured.isBlank()) {
+            File f = new File(configured);
+            return f.isAbsolute() ? f : new File(plugin.getDataFolder().getParentFile(), configured);
+        }
+        return new File(plugin.getDataFolder().getParentFile(), "Nexo/items");
+    }
+
+    static final String TAG_ITEM = "industryreborn:item";
+    static final String TAG_KIND = "industryreborn:kind";
+    static final String TAG_SKIN_FOR = "industryreborn:skin_for";
+
+    /**
+     * Находит в файлах предметов Nexo записи с меткой PersistentData industryreborn:item (значение - id предмета плагина),
+     * необязательно industryreborn:kind (item|tool|skin) и industryreborn:skin_for (pickaxe,axe,... или any).
+     * Предметы регистрируются без отдельного определения в items/*.yml. Возвращает ошибки (неверные записи пропускаются).
+     */
+    private List<String> loadNexo() {
+        List<String> errors = new ArrayList<>();
+        if (!plugin.getConfig().getBoolean("custom-items.nexo-scan", true)) {
+            return errors;
+        }
+        List<File> files = new ArrayList<>();
+        collectYaml(nexoFolder(), files);
+        java.util.Collections.sort(files);
+        for (File f : files) {
+            try {
+                YamlConfiguration yml = YamlConfiguration.loadConfiguration(f);
+                for (String nexoKey : yml.getKeys(false)) {
+                    ConfigurationSection s = yml.getConfigurationSection(nexoKey);
+                    if (s == null) {
+                        continue;
+                    }
+                    String error = addFromNexo(nexoKey, s);
+                    if (error != null) {
+                        errors.add("Nexo/" + f.getName() + ": " + error);
+                    }
+                }
+            } catch (RuntimeException e) {
+                errors.add("Nexo/" + f.getName() + ": " + e.getMessage());
+            }
+        }
+        return errors;
+    }
+
+    private static void collectYaml(File dir, List<File> out) {
+        File[] list = dir.listFiles();
+        if (list == null) {
+            return;
+        }
+        for (File f : list) {
+            String n = f.getName().toLowerCase(Locale.ROOT);
+            if (f.isDirectory()) {
+                collectYaml(f, out);
+            } else if (n.endsWith(".yml") || n.endsWith(".yaml")) {
+                out.add(f);
+            }
+        }
+    }
+
+    /** Метки industryreborn:* из PersistentData записи Nexo: ключ -> значение. */
+    private static java.util.Map<String, String> tags(ConfigurationSection s) {
+        java.util.Map<String, String> map = new java.util.LinkedHashMap<>();
+        for (java.util.Map<?, ?> m : s.getMapList("PersistentData")) {
+            Object key = m.get("key");
+            Object value = m.get("value");
+            if (key != null && value != null && String.valueOf(key).toLowerCase(Locale.ROOT).startsWith("industryreborn:")) {
+                map.put(String.valueOf(key).toLowerCase(Locale.ROOT), String.valueOf(value).trim());
+            }
+        }
+        return map;
+    }
+
+    private String addFromNexo(String nexoKey, ConfigurationSection s) {
+        var tags = tags(s);
+        String rawId = tags.get(TAG_ITEM);
+        if (rawId == null) {
+            return null;                                   // обычный предмет Nexo, плагина не касается
+        }
+        String id = rawId.toLowerCase(Locale.ROOT);
+        if (!id.matches("[a-z0-9_]{1,40}")) {
+            return "«" + nexoKey + "»: id «" + rawId + "» - латиница, цифры и _ (до 40 знаков)";
+        }
+        if (items.containsKey(id)) {
+            return "«" + nexoKey + "»: id «" + id + "» уже занят" + (items.get(id).nexoSource() ? " другим предметом Nexo «" + items.get(id).nexoId() + "»" : " в items/*.yml");
+        }
+        ItemKind kind = tags.containsKey(TAG_KIND) ? ItemKind.parse(tags.get(TAG_KIND)) : ItemKind.ITEM;
+        if (kind == null) {
+            return "«" + nexoKey + "»: неизвестный тип «" + tags.get(TAG_KIND) + "» (item, tool или skin)";
+        }
+        Set<String> skinFor = new java.util.LinkedHashSet<>();
+        if (kind == ItemKind.SKIN) {
+            String raw = tags.getOrDefault(TAG_SKIN_FOR, "any");
+            for (String part : raw.split("[,; ]+")) {
+                if (part.isBlank()) {
+                    continue;
+                }
+                String p = part.toLowerCase(Locale.ROOT);
+                if (!SKIN_TARGETS.contains(p)) {
+                    return "«" + nexoKey + "»: skin_for «" + part + "» - одно из " + SKIN_TARGETS;
+                }
+                skinFor.add(p);
+            }
+            if (skinFor.isEmpty()) {
+                skinFor.add("any");
+            }
+        }
+        Material material = Material.matchMaterial(s.getString("material", "PAPER"));
+        if (material == null || material.isAir() || !material.isItem()) {
+            material = Material.PAPER;
+        }
+        String model = s.getString("Components.item_model");
+        String itemModel = model != null && NamespacedKey.fromString(model.toLowerCase(Locale.ROOT)) != null ? model.toLowerCase(Locale.ROOT)
+                : "nexo:" + nexoKey.toLowerCase(Locale.ROOT);
+        items.put(id, new CustomItem(id, material, s.getString("itemname", Text.esc(nexoKey)), s.getStringList("lore"), null, itemModel, nexoKey,
+                kind, Set.copyOf(skinFor), true));
+        return null;
+    }
+
+    /** Типы инструментов, на которые может ставиться скин. */
+    public static final List<String> SKIN_TARGETS = List.of("pickaxe", "axe", "shovel", "hoe", "sword", "any");
 
     /** Добавляет определение из секции. Возвращает ошибку или null. */
     public String add(String rawId, ConfigurationSection s) {
@@ -120,8 +248,25 @@ public final class CustomItems {
         if (itemModel != null && NamespacedKey.fromString(itemModel.toLowerCase(Locale.ROOT)) == null) {
             return "«" + id + "»: неверный item_model «" + itemModel + "»";
         }
+        ItemKind kind = s.contains("kind") ? ItemKind.parse(s.getString("kind")) : ItemKind.ITEM;
+        if (kind == null) {
+            return "«" + id + "»: неизвестный тип «" + s.getString("kind") + "» (item, tool или skin)";
+        }
+        Set<String> skinFor = new java.util.LinkedHashSet<>();
+        if (kind == ItemKind.SKIN) {
+            for (String part : s.getStringList("skin_for")) {
+                if (!SKIN_TARGETS.contains(part.toLowerCase(Locale.ROOT))) {
+                    return "«" + id + "»: skin_for «" + part + "» - одно из " + SKIN_TARGETS;
+                }
+                skinFor.add(part.toLowerCase(Locale.ROOT));
+            }
+            if (skinFor.isEmpty()) {
+                skinFor.add("any");
+            }
+        }
         items.put(id, new CustomItem(id, material, s.getString("name", Text.esc(id)), s.getStringList("lore"),
-                s.contains("custom_model_data") ? s.getInt("custom_model_data") : null, itemModel, nexo == null || nexo.isBlank() ? null : nexo));
+                s.contains("custom_model_data") ? s.getInt("custom_model_data") : null, itemModel, nexo == null || nexo.isBlank() ? null : nexo,
+                kind, Set.copyOf(skinFor), false));
         return null;
     }
 
@@ -196,6 +341,9 @@ public final class CustomItems {
                 if (d.nexoId() != null) {
                     stack = external.build(d.nexoId());
                 }
+                if (stack == null && d.nexoSource()) {
+                    return null;            // предмет живёт в Nexo (модель, прочность, свойства): без Nexo подделку из материала не выдаём
+                }
                 if (stack == null) {
                     stack = new ItemStack(d.material());
                     decorate(stack, d);
@@ -262,6 +410,34 @@ public final class CustomItems {
         }
         String nexo = external.idOf(stack);
         return nexo == null ? null : new ItemRef(ItemRef.Kind.NEXO, nexo);
+    }
+
+    // ------------------------------------------------------------ нетронутые экземпляры
+
+    /** Ключ метки скина на инструменте (industryreborn:skin = id скина). */
+    public NamespacedKey skinKey() {
+        return new NamespacedKey("industryreborn", "skin");
+    }
+
+    /**
+     * Экземпляр нетронутый: без износа, зачарований, стоимости починки и применённого скина. Склад товаров и сырьё станков принимают предметы
+     * плагина и Nexo только такими, иначе битый зачарованный инструмент превратился бы в новый (склад хранит товар как «новый предмет»).
+     */
+    public boolean pristine(ItemStack stack) {
+        if (stack == null || !stack.hasItemMeta()) {
+            return true;
+        }
+        ItemMeta meta = stack.getItemMeta();
+        if (meta instanceof org.bukkit.inventory.meta.Damageable d && d.hasDamage() && d.getDamage() > 0) {
+            return false;
+        }
+        if (meta.hasEnchants()) {
+            return false;
+        }
+        if (meta instanceof org.bukkit.inventory.meta.Repairable r && r.hasRepairCost() && r.getRepairCost() > 0) {
+            return false;
+        }
+        return !meta.getPersistentDataContainer().has(skinKey(), PersistentDataType.STRING);
     }
 
     // ------------------------------------------------------------ выгрузка для Nexo

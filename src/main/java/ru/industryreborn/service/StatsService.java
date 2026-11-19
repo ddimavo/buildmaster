@@ -178,6 +178,9 @@ public final class StatsService {
             }
             int pendingRequests = (int) plugin.moderation().pending().stream().filter(r -> r.type == ru.industryreborn.model.Request.Type.RECIPE).count();
             pr.add(num("custom-items", "Предметов плагина", plugin.customItems().all().size()));
+            pr.add(num("items-tools", "Инструментов плагина", plugin.customItems().all().stream().filter(d -> d.kind() == ru.industryreborn.items.ItemKind.TOOL).count()));
+            pr.add(num("items-skins", "Скинов", plugin.customItems().all().stream().filter(d -> d.kind() == ru.industryreborn.items.ItemKind.SKIN).count()));
+            pr.add(num("items-for-sale", "Предметов в магазине предметов", plugin.itemShop() == null ? 0 : plugin.itemShop().listed().size()));
             pr.add(num("recipes-admin", "Рецептов администратора", adminRecipes));
             pr.add(num("recipes-player", "Рецептов игроков", playerRecipes));
             pr.add(num("recipes-learned", "Изучено рецептов (по предприятиям)", learned));

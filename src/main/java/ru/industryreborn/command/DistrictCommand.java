@@ -42,7 +42,7 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
 
     private static final List<String> PLAYER_SUBS = List.of("menu", "list", "info", "buy", "rent", "extend",
             "autorenew", "autoreset", "release", "trust", "untrust", "perm", "account", "power", "warnings", "tp",
-            "storage", "claim", "journal", "name", "desc", "bank", "service", "factory", "room", "region", "job", "hologram", "machine", "chest", "shop", "goods", "storefront", "link", "unlink", "enchant", "ui", "plots", "business", "hotel", "admin", "holoshop", "build", "lot", "recipe", "blueprint", "help");
+            "storage", "claim", "journal", "name", "desc", "bank", "service", "factory", "room", "region", "job", "hologram", "machine", "chest", "shop", "goods", "storefront", "link", "unlink", "enchant", "ui", "plots", "business", "hotel", "admin", "holoshop", "build", "lot", "recipe", "blueprint", "itemshop", "skin", "help");
     private static final List<String> ADMIN_SUBS = List.of("wand", "pos1", "pos2", "create", "delete", "evict",
             "setprice", "setrent", "setspawn", "resnapshot", "reload", "seize", "reset", "holo", "category",
             "moderation", "arrest", "auction", "show", "module", "balance", "webhook", "item");
@@ -218,6 +218,8 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
                 case "item" -> new ItemCommands(plugin).item(sender, rest);
                 case "recipe" -> new ItemCommands(plugin).recipe(sender, rest);
                 case "blueprint" -> new ItemCommands(plugin).blueprint(sender, rest);
+                case "itemshop" -> new ItemCommands(plugin).itemshop(sender, rest);
+                case "skin" -> new ItemCommands(plugin).skin(sender, rest);
                 case "shop" -> new GoodsCommands(plugin).shop(sender, rest);
                 case "goods" -> new GoodsCommands(plugin).goods(sender, rest);
                 case "storefront" -> new GoodsCommands(plugin).storefront(sender, rest);
@@ -391,6 +393,8 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
                     "/district item list|info|give|reload|export-nexo - предметы плагина (items/*.yml) и заготовка для Nexo",
                     "/district recipe list|info|request|requests|cancel|learn|forget|price|remove - рецепты станков, заявки игроков",
                     "/district blueprint use|info|shop|buy|give|vault - чертежи: изучение, магазин администрации, хранилище",
+                    "/district itemshop [list|buy <id>] - магазин предметов администрации; /district skin [apply|remove|info] - скины на инструменты",
+                    "/district item price <id> <цена> - цена предмета в магазине предметов (0 - снять с продажи)",
                     "/district area create|delete|add|remove|list|info - районы (право industryreborn.grid)",
                     "/district power calc [smelter:2 anvil:1] - калькулятор тарифа",
                     "/district power admin info|base|progression|usage|mode|coef|discount|add|stats - тарифы и статистика",
@@ -1973,7 +1977,7 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
         if (sub.equals("enchant")) {
             return filter(new EnchantCommands(plugin).complete(sender, args), args[args.length - 1]);
         }
-        if (sub.equals("item") || sub.equals("recipe") || sub.equals("blueprint")) {
+        if (sub.equals("item") || sub.equals("recipe") || sub.equals("blueprint") || sub.equals("itemshop") || sub.equals("skin")) {
             return filter(new ItemCommands(plugin).complete(sub, sender, args), args[args.length - 1]);
         }
         if (sub.equals("machine")) {

@@ -169,6 +169,8 @@ public class IndustryRebornPlugin extends JavaPlugin {
         registerNexoReload();
         blueprints = new ru.industryreborn.items.BlueprintService(this);
         recipeRequests = new ru.industryreborn.items.RecipeRequests(this);
+        itemShop = new ru.industryreborn.items.ItemShop(this);
+        skins = new ru.industryreborn.items.SkinService(this);
         factory = new ProductionService(this);
         hotels = new HotelService(this);
         regions = new WorldGuardRegions(getLogger());
@@ -379,6 +381,18 @@ public class IndustryRebornPlugin extends JavaPlugin {
     private ru.industryreborn.items.CustomItems customItems;
     private ru.industryreborn.items.BlueprintService blueprints;
     private ru.industryreborn.items.RecipeRequests recipeRequests;
+    private ru.industryreborn.items.ItemShop itemShop;
+    private ru.industryreborn.items.SkinService skins;
+
+    /** Магазин предметов администрации (цены задаёт администратор). */
+    public ru.industryreborn.items.ItemShop itemShop() {
+        return itemShop;
+    }
+
+    /** Скины: одноразовое применение к инструменту. */
+    public ru.industryreborn.items.SkinService skins() {
+        return skins;
+    }
 
     /** Заявки игроков на рецепты станков. */
     public ru.industryreborn.items.RecipeRequests recipeRequests() {
