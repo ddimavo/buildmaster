@@ -6,6 +6,47 @@
 
 _Сюда добавляются изменения до следующего релиза; номер версии назначается при выпуске._
 
+## [2.12.0]
+
+### Как выглядят меню
+_Окна собраны из настоящего содержимого меню плагина; значки схематичные (цвет и подпись материала), текст и раскладка как в игре._
+
+**Номера отеля: класс, срок аренды, фильтр и сводка по классам (ПКМ по номеру - класс)**
+
+![Номера отеля: класс, срок аренды, фильтр и сводка по классам (ПКМ по номеру - класс)](https://github.com/ddimavo/buildmaster/blob/bba1b4d3e663b596734dd7585534cf0ae6321ed4/docs/screenshots/2.12.0/rooms-classes.png?raw=true)
+
+**Выбор класса номера: администратор назначает сразу, управляющий подаёт заявку**
+
+![Выбор класса номера: администратор назначает сразу, управляющий подаёт заявку](https://github.com/ddimavo/buildmaster/blob/bba1b4d3e663b596734dd7585534cf0ae6321ed4/docs/screenshots/2.12.0/room-class-choice.png?raw=true)
+
+**Модерация: заявки на класс номера и на рецепт станка, телепорт к двери номера**
+
+![Модерация: заявки на класс номера и на рецепт станка, телепорт к двери номера](https://github.com/ddimavo/buildmaster/blob/bba1b4d3e663b596734dd7585534cf0ae6321ed4/docs/screenshots/2.12.0/moderation-requests.png?raw=true)
+
+**Производство: кнопки «Чертежи и рецепты» и «Заявка на рецепт»**
+
+![Производство: кнопки «Чертежи и рецепты» и «Заявка на рецепт»](https://github.com/ddimavo/buildmaster/blob/bba1b4d3e663b596734dd7585534cf0ae6321ed4/docs/screenshots/2.12.0/production-menu.png?raw=true)
+
+**Конструктор заявки на рецепт станка**
+
+![Конструктор заявки на рецепт станка](https://github.com/ddimavo/buildmaster/blob/bba1b4d3e663b596734dd7585534cf0ae6321ed4/docs/screenshots/2.12.0/recipe-builder.png?raw=true)
+
+**Магазин чертежей администрации**
+
+![Магазин чертежей администрации](https://github.com/ddimavo/buildmaster/blob/bba1b4d3e663b596734dd7585534cf0ae6321ed4/docs/screenshots/2.12.0/blueprint-shop.png?raw=true)
+
+**Хранилище администрации для чертежей**
+
+![Хранилище администрации для чертежей](https://github.com/ddimavo/buildmaster/blob/bba1b4d3e663b596734dd7585534cf0ae6321ed4/docs/screenshots/2.12.0/blueprint-vault.png?raw=true)
+
+**Витрина магазина с предметами плагина**
+
+![Витрина магазина с предметами плагина](https://github.com/ddimavo/buildmaster/blob/bba1b4d3e663b596734dd7585534cf0ae6321ed4/docs/screenshots/2.12.0/storefront-custom-items.png?raw=true)
+
+**Товары предприятия: предметы плагина рядом с обычными**
+
+![Товары предприятия: предметы плагина рядом с обычными](https://github.com/ddimavo/buildmaster/blob/bba1b4d3e663b596734dd7585534cf0ae6321ed4/docs/screenshots/2.12.0/goods-menu.png?raw=true)
+
 ### Предметы плагина, рецепты администратора и Nexo (база)
 - **Свои предметы** (`items/*.yml`): материал, название, описание, `custom_model_data`/`item_model` или внешний вид из Nexo. Предмет несёт метку в данных предмета (`industryreborn:item`): подделать переименованием нельзя. Выдача: `/district item give`.
 - **Единая ссылка на предмет** как в рецептах Nexo: `IRON_INGOT`, `ir:steel`, `nexo:steel_ingot`. Мост к Nexo работает через его API (`NexoItems`), необязателен и подключается по событию загрузки предметов Nexo; без Nexo всё работает.
