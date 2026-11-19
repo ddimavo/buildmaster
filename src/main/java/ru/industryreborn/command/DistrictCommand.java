@@ -1628,8 +1628,10 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
                 for (var c : changes) {
                     sender.sendMessage(Text.mm("<gray> " + Text.esc(c.title()) + ": <white>" + c.from() + c.unit() + " → " + c.to() + c.unit()));
                 }
-                Text.ok(sender, sub.equals("preview") ? "Это предварительный расчёт, ничего не применено." : "Корректировка выполнена.");
+                Text.ok(sender, sub.equals("preview") ? "Это предварительный расчёт, ничего не применено."
+                        : "Корректировка выполнена. Отчёт №" + svc.lastReportNumber() + ": /district balance report");
             }
+            case "report" -> balanceReport(sender, args);
             case "reset" -> Text.ok(sender, "Сброшено значений: " + svc.reset(sender.getName()) + ". Действуют значения из config.yml.");
             case "history" -> {
                 if (svc.history().isEmpty()) {
@@ -1637,14 +1639,63 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
                 }
                 for (String h : svc.history()) {
                     String[] p = h.split("\\|");
-                    if (p.length == 4) {
+                    if (p.length >= 4) {
                         sender.sendMessage(Text.mm("<gray> " + Text.date(Long.parseLong(p[0])) + " отношение <white>" + p[1] + "<gray>, индекс <white>" + p[2]
-                                + "<gray>, изменений <white>" + p[3]));
+                                + "<gray>, изменений <white>" + p[3] + (p.length > 4 ? "<gray>, отчёт №<white>" + p[4] : "")));
                     }
                 }
             }
-            default -> throw new CommandError("Использование: /district balance [status|preview|run|reset|history]");
+            default -> throw new CommandError("Использование: /district balance [status|preview|run|reset|history|report [latest|list|<№>]]");
         }
+    }
+
+    /** balance report [latest|list|<№>]: отчёты об автокорректировке (файлы лежат в каталоге отчётов). */
+    private void balanceReport(CommandSender sender, String[] args) {
+        var reports = plugin.balance().reports();
+        String what = args.length < 2 ? "latest" : args[1].toLowerCase(Locale.ROOT);
+        var list = reports.list();
+        if (list.isEmpty()) {
+            Text.send(sender, "<gray>Отчётов ещё нет: они появляются после каждой корректировки (/district balance run). Каталог: " + Text.esc(reports.directory().getPath()));
+            return;
+        }
+        if (what.equals("list")) {
+            for (var m : list.stream().limit(15).toList()) {
+                sender.sendMessage(Text.mm("<gray> №<white>" + m.number() + "<gray> " + Text.esc(reports.when(m.time())) + ": <white>" + Text.esc(m.status().title())
+                        + "<gray>, изменений <white>" + m.changes() + "<gray>, индекс <white>" + String.format(Locale.ROOT, "%.2f", m.index())));
+            }
+            Text.send(sender, "<gray>Файлы для сайта: <white>" + Text.esc(reports.directory().getPath()) + "<gray> (latest.md|html|json, index.json)");
+            return;
+        }
+        int number;
+        if (what.equals("latest")) {
+            number = list.get(0).number();
+        } else {
+            try {
+                number = Integer.parseInt(what);
+            } catch (NumberFormatException e) {
+                throw new CommandError("Использование: /district balance report [latest|list|<№>]");
+            }
+        }
+        var report = reports.load(number);
+        if (report == null) {
+            throw new CommandError("Отчёт №" + number + " не найден (нужен формат json в auto-balance.reports.formats).");
+        }
+        Text.send(sender, "<gold>Отчёт №" + report.number() + " <gray>" + Text.esc(reports.when(report.time())) + ", " + Text.esc(report.actor()) + ": <white>"
+                + Text.esc(report.status().title()));
+        if (!report.note().isBlank()) {
+            Text.send(sender, "<gray>" + Text.esc(report.note()));
+        }
+        sender.sendMessage(Text.mm("<gray> сток/приток <white>" + String.format(Locale.ROOT, "%.2f", report.snapshot().ratio()) + "<gray>, цель <white>"
+                + report.settings().target() + "<gray>, индекс <white>"
+                + String.format(Locale.ROOT, "%.2f", report.snapshot().index())));
+        for (var c : report.changes()) {
+            sender.sendMessage(Text.mm("<gray> • <white>" + Text.esc(reports.line(c)) + "<gray> - " + Text.esc(reports.reason(report, c))));
+        }
+        for (var k : report.skips()) {
+            sender.sendMessage(Text.mm("<dark_gray> · " + Text.esc(k.title()) + ": " + Text.esc(k.why())));
+        }
+        Text.send(sender, "<gray>Файлы: <white>" + Text.esc(new java.io.File(reports.directory(), list.stream().filter(m -> m.number() == report.number()).findFirst().get().id()).getPath())
+                + ".md|html|json");
     }
 
     /** module [<функция> on|off|reset]: включение и выключение функций плагина. */
@@ -1959,6 +2010,9 @@ public final class DistrictCommand implements CommandExecutor, TabCompleter {
             if (args.length == 3) {
                 return filter(plugin.webhooks().endpoints().stream().map(ru.industryreborn.webhook.WebhookService.Endpoint::name).toList(), args[2]);
             }
+        }
+        if (sub.equals("balance") && args.length == 3 && args[1].equalsIgnoreCase("report")) {
+            return filter(List.of("latest", "list"), args[2]);
         }
         if (sub.equals("balance") && args.length == 2) {
             return filter(List.of("status", "preview", "run", "reset", "history"), args[1]);

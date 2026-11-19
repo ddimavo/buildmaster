@@ -485,7 +485,8 @@ modules:
 # Значения двигаются к «база × индекс» шагом не больше max-step-percent процентов базы за один запуск. База - значения из этого config.yml.
 # Заданное администратором вручную (/district power admin base, /district bank admin ...) автокорректировка не трогает.
 auto-balance:
-  interval-hours: 24
+  interval-hours: 72           # как часто пересчитывать
+  max-interval-hours: 72       # корректировка идёт минимум раз в это число часов (3 суток), даже если interval-hours задан больше
   min-sample-hours: 6          # сколько часов данных об онлайне нужно для первого запуска
   target-ratio: 0.95
   strength: 0.8
@@ -495,6 +496,13 @@ auto-balance:
   income-per-player-hour: 600  # сколько игрок в среднем зарабатывает за час игры (работы, аукцион)
   faucet-per-day: 0            # либо фиксированный приток в сутки (0 - считать по игрокам)
   notify: admins               # кому писать в чат об изменениях: admins, all, none
+  # Отчёты о каждой корректировке (что изменилось, причина, было, стало, процент) - файлы для публикации на сайте
+  reports:
+    enabled: true
+    directory: ""              # по умолчанию plugins/IndustryReborn/reports/balance; можно указать любой путь (например, каталог сайта)
+    formats: [md, html, json]  # md - Markdown, html - готовая страница, json - для сайта и скриптов (нужен для /district balance report)
+    keep: 0                    # сколько отчётов хранить (0 - все)
+    timezone: ""               # часовой пояс дат в отчётах (пусто - часовой пояс сервера), например Europe/Moscow
   # что корректировать
   adjust:
     electricity: true

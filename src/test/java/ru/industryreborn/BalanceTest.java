@@ -237,6 +237,9 @@ class BalanceTest extends PluginTestBase {
         assertEquals(110, plugin.power().base(), 1e-9, "интервал ещё не прошёл");
         clock.addAndGet(25 * 3_600_000L);
         plugin.balance().minuteTick();
+        assertEquals(110, plugin.power().base(), 1e-9, "по умолчанию корректировка раз в 3 суток: 25 часов мало");
+        clock.addAndGet(48 * 3_600_000L);
+        plugin.balance().minuteTick();
         assertEquals(120, plugin.power().base(), 1e-9, "интервал прошёл: ещё один шаг");
     }
 

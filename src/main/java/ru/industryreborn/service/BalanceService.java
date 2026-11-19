@@ -27,8 +27,34 @@ public final class BalanceService {
     /** Показатели за окно измерения. */
     public record Snapshot(double sink, double faucet, double playerHours, double ratio, double index, boolean enough) { }
 
-    /** Одно изменение параметра. */
-    public record Change(String key, String title, double from, double to, String unit) { }
+    /** Чем ограничено изменение: ничем, шагом за один запуск, нижним или верхним пределом. */
+    public enum Limit { NONE, STEP, MIN, MAX }
+
+    /**
+     * Одно изменение параметра.
+     *
+     * @param base    базовое значение (из config.yml)
+     * @param desired к чему стремится значение при текущем индексе (после пределов)
+     * @param limit   что не дало дойти до желаемого значения за один запуск
+     * @param bound   значение предела, если limit = MIN или MAX
+     */
+    public record Change(String key, String title, double from, double to, String unit, double base, double desired, Limit limit, double bound) {
+
+        public Change(String key, String title, double from, double to, String unit) {
+            this(key, title, from, to, unit, from, to, Limit.NONE, 0);
+        }
+
+        /** Изменение в процентах от прежнего значения (0, если прежнее значение 0). */
+        public double percent() {
+            return from == 0 ? 0 : (to - from) / Math.abs(from) * 100.0;
+        }
+    }
+
+    /** Параметр, который в этот запуск не менялся, и почему. */
+    public record Skip(String key, String title, String why) { }
+
+    /** Результат расчёта: что изменится и что осталось без изменений. */
+    public record Plan(List<Change> changes, List<Skip> skips) { }
 
     private static final long HOUR = 3_600_000L;
 
@@ -38,13 +64,33 @@ public final class BalanceService {
     private final TreeMap<Long, Double> playerMinutes = new TreeMap<>();
     private final List<String> history = new ArrayList<>();
     private long lastRun;
+    private int reportSeq;
+    private final BalanceReports reports;
     private LongSupplier clock = System::currentTimeMillis;
     private long lastSave;
 
     public BalanceService(IndustryRebornPlugin plugin) {
         this.plugin = plugin;
         this.file = new File(plugin.getDataFolder(), "balance.yml");
+        this.reports = new BalanceReports(plugin);
         load();
+    }
+
+    /** Отчёты об автокорректировке (файлы для публикации на сайте). */
+    public BalanceReports reports() {
+        return reports;
+    }
+
+    /** Номер последнего отчёта (0 - отчётов ещё не было). */
+    public int lastReportNumber() {
+        return reportSeq;
+    }
+
+    private BalanceReports.Report makeReport(String actor, BalanceReports.Status status, Snapshot s, List<Change> changes, List<Skip> skips, String note) {
+        reportSeq++;
+        var settings = new BalanceReports.Settings(Math.max(0.01, cfg("target-ratio", 0.95)), cfg("strength", 0.8), cfg("index-min", 0.7), cfg("index-max", 1.5),
+                cfg("max-step-percent", 10), intervalMillis() / (double) HOUR);
+        return new BalanceReports.Report(reportSeq, now(), actor, status, s, settings, List.copyOf(changes), List.copyOf(skips), note);
     }
 
     /** Только для тестов: подмена часов. */
@@ -66,8 +112,10 @@ public final class BalanceService {
         return plugin.getConfig().getDouble("auto-balance." + key, def);
     }
 
+    /** Период между запусками: не больше max-interval-hours (по умолчанию 3 суток) - корректировка идёт минимум раз в 3 дня. */
     public long intervalMillis() {
-        return Math.max(1, (long) (cfg("interval-hours", 24) * HOUR));
+        double hours = Math.min(cfg("interval-hours", 72), Math.max(1, cfg("max-interval-hours", 72)));
+        return Math.max(1, (long) (hours * HOUR));
     }
 
     public long lastRun() {
@@ -150,22 +198,51 @@ public final class BalanceService {
         return round(current + delta);
     }
 
-    private void consider(List<Change> out, String key, String title, String unit, double base, double min, double max, double index,
+    private void consider(Plan plan, String key, String title, String unit, double base, double min, double max, double index,
                           boolean manual, boolean allowed) {
-        if (!allowed || manual || base <= 0) {
+        if (!allowed) {
+            plan.skips().add(new Skip(key, title, "корректировка этого параметра отключена (auto-balance.adjust в config.yml)"));
+            return;
+        }
+        if (manual) {
+            plan.skips().add(new Skip(key, title, "значение задано администратором вручную: автокорректировка его не трогает"));
+            return;
+        }
+        if (base <= 0) {
+            plan.skips().add(new Skip(key, title, "базовое значение равно нулю: корректировать нечего"));
             return;
         }
         double current = applied.getOrDefault(key, base);
-        double desired = Math.max(min, Math.min(max, base * index));
+        double raw = base * index;
+        double desired = Math.max(min, Math.min(max, raw));
+        double stepLimit = Math.max(0.0001, base * cfg("max-step-percent", 10) / 100.0);
         double next = Math.max(min, Math.min(max, step(base, current, desired)));
         if (Math.abs(next - current) >= 0.005) {
-            out.add(new Change(key, title, current, next, unit));
+            Limit limit = Limit.NONE;
+            double bound = 0;
+            if (Math.abs(desired - current) > stepLimit + 1e-9 && Math.abs(next - desired) > 0.005) {
+                limit = Limit.STEP;
+            } else if (raw < min - 1e-9 && Math.abs(next - min) < 0.005) {
+                limit = Limit.MIN;
+                bound = min;
+            } else if (raw > max + 1e-9 && Math.abs(next - max) < 0.005) {
+                limit = Limit.MAX;
+                bound = max;
+            }
+            plan.changes().add(new Change(key, title, current, next, unit, base, desired, limit, bound));
+        } else {
+            plan.skips().add(new Skip(key, title, "изменений не требуется: значение " + fmt(current) + unit + " уже у целевого " + fmt(desired) + unit));
         }
     }
 
     /** Что изменится при текущих показателях (ничего не применяет). */
     public List<Change> plan(Snapshot s) {
-        List<Change> out = new ArrayList<>();
+        return planDetailed(s).changes();
+    }
+
+    /** То же, но с перечнем параметров, оставшихся без изменений, и причинами. */
+    public Plan planDetailed(Snapshot s) {
+        Plan out = new Plan(new ArrayList<>(), new ArrayList<>());
         double idx = s.index();
         var config = plugin.getConfig();
         consider(out, "electricity", "Цена электричества (за 1 V в сутки)", "", config.getDouble("electricity.base-rate-per-day", 100),
@@ -200,11 +277,20 @@ public final class BalanceService {
         if (!s.enough()) {
             if (!previewOnly) {
                 lastRun = now();
+                String note = s.faucet() <= 1e-9
+                        ? "Приток денег не определён: за сутки не набралось игрочасов (или faucet-per-day равен 0), корректировать не по чему."
+                        : "Накоплено " + fmt(sampledHours()) + " ч данных об онлайне, нужно не менее " + fmt(cfg("min-sample-hours", 6)) + " ч.";
+                var report = makeReport(actor, BalanceReports.Status.NO_DATA, s, List.of(), List.of(), note);
+                history.add(0, historyLine(s, 0, report.number()));
+                trimHistory();
                 save();
+                reports.write(report);
+                plugin.journal().add("-", null, actor, Journal.Action.BALANCE, "Автокорректировка: данных недостаточно, отчёт №" + report.number() + ". " + note);
             }
             return List.of();
         }
-        List<Change> changes = plan(s);
+        Plan plan = planDetailed(s);
+        List<Change> changes = plan.changes();
         if (previewOnly) {
             return changes;
         }
@@ -212,31 +298,44 @@ public final class BalanceService {
         for (Change c : changes) {
             applied.put(c.key(), c.to());
         }
-        String line = now() + "|" + String.format(Locale.ROOT, "%.3f|%.3f|%d", s.ratio(), s.index(), changes.size());
-        history.add(0, line);
-        while (history.size() > 60) {
-            history.remove(history.size() - 1);
-        }
+        var report = makeReport(actor, changes.isEmpty() ? BalanceReports.Status.UNCHANGED : BalanceReports.Status.CHANGED, s, changes, plan.skips(), "");
+        history.add(0, historyLine(s, changes.size(), report.number()));
+        trimHistory();
         save();
+        reports.write(report);
         if (!changes.isEmpty()) {
-            announce(s, changes, actor);
+            announce(s, changes, actor, report);
+        } else {
+            plugin.journal().add("-", null, actor, Journal.Action.BALANCE, "Автокорректировка: изменений не потребовалось (сток/приток "
+                    + String.format(Locale.ROOT, "%.2f", s.ratio()) + ", индекс " + String.format(Locale.ROOT, "%.2f", s.index()) + "), отчёт №" + report.number());
         }
         return changes;
     }
 
-    private static String fmt(double v) {
+    private String historyLine(Snapshot s, int changes, int number) {
+        return now() + "|" + String.format(Locale.ROOT, "%.3f|%.3f|%d|%d", s.ratio(), s.index(), changes, number);
+    }
+
+    private void trimHistory() {
+        while (history.size() > 60) {
+            history.remove(history.size() - 1);
+        }
+    }
+
+    static String fmt(double v) {
         return v == Math.rint(v) ? String.valueOf((long) v) : String.format(Locale.ROOT, "%.2f", v);
     }
 
-    private void announce(Snapshot s, List<Change> changes, String actor) {
+    private void announce(Snapshot s, List<Change> changes, String actor, BalanceReports.Report report) {
         boolean tariffs = false;
         StringBuilder chat = new StringBuilder();
+        StringBuilder webhookLines = new StringBuilder();
         for (Change c : changes) {
-            String arrow = fmt(c.from()) + c.unit() + " → " + fmt(c.to()) + c.unit();
+            String arrow = BalanceReports.value(c.from(), c.unit()) + " → " + BalanceReports.value(c.to(), c.unit()) + " (" + BalanceReports.percent(c) + ")";
             plugin.journal().add("-", null, actor, Journal.Action.BALANCE,
-                    c.title() + ": " + arrow + " (сток/приток " + String.format(Locale.ROOT, "%.2f", s.ratio()) + ", индекс "
-                            + String.format(Locale.ROOT, "%.2f", s.index()) + ")");
+                    c.title() + ": " + arrow + ". " + reports.reason(report, c) + " (отчёт №" + report.number() + ")");
             chat.append("\n<gray> • <white>").append(Text.esc(c.title())).append(": <yellow>").append(Text.esc(arrow));
+            webhookLines.append("\n• ").append(reports.line(c)).append(" - ").append(reports.reason(report, c));
             if (c.key().equals("electricity")) {
                 tariffs = true;
             }
@@ -245,15 +344,15 @@ public final class BalanceService {
             plugin.power().reloadTariffs(actor, "автокорректировка цены электричества");
         }
         plugin.webhooks().event("balance", "Экономика скорректирована",
-                "Сток/приток " + String.format(Locale.ROOT, "%.2f", s.ratio()) + ", индекс " + String.format(Locale.ROOT, "%.2f", s.index())
-                        + chat.toString().replaceAll("<[^>]+>", ""), 0xFFCF5A);
+                "Отчёт №" + report.number() + ". Сток/приток " + String.format(Locale.ROOT, "%.2f", s.ratio()) + ", индекс "
+                        + String.format(Locale.ROOT, "%.2f", s.index()) + webhookLines, 0xFFCF5A);
         String head = "<gold>Экономика скорректирована <gray>(сток/приток <white>" + String.format(Locale.ROOT, "%.2f", s.ratio())
                 + "</white>, цель " + fmt(cfg("target-ratio", 0.95)) + ", индекс <white>" + String.format(Locale.ROOT, "%.2f", s.index()) + "</white>):";
         String mode = plugin.getConfig().getString("auto-balance.notify", "admins").toLowerCase(Locale.ROOT);
         if (!mode.equals("none")) {
             for (Player p : Bukkit.getOnlinePlayers()) {
                 if (mode.equals("all") || p.hasPermission("industryreborn.admin")) {
-                    Text.send(p, head + chat);
+                    Text.send(p, head + chat + "\n<gray>Отчёт №" + report.number() + ": /district balance report");
                 }
             }
         }
@@ -284,6 +383,7 @@ public final class BalanceService {
         }
         YamlConfiguration yml = YamlConfiguration.loadConfiguration(file);
         lastRun = yml.getLong("last-run");
+        reportSeq = yml.getInt("report-seq");
         var a = yml.getConfigurationSection("applied");
         if (a != null) {
             for (String k : a.getKeys(false)) {
@@ -307,6 +407,7 @@ public final class BalanceService {
         lastSave = now();
         YamlConfiguration yml = new YamlConfiguration();
         yml.set("last-run", lastRun);
+        yml.set("report-seq", reportSeq);
         applied.forEach((k, v) -> yml.set("applied." + k, v));
         playerMinutes.forEach((k, v) -> yml.set("hourly." + k, v));
         yml.set("history", history);
