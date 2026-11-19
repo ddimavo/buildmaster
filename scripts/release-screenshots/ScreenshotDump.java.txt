@@ -1,0 +1,218 @@
+package ru.industryreborn;
+
+import java.io.File;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import org.bukkit.Material;
+import org.bukkit.block.Block;
+import org.bukkit.event.inventory.ClickType;
+import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.ItemStack;
+import org.junit.jupiter.api.Test;
+import org.mockbukkit.mockbukkit.entity.PlayerMock;
+import ru.industryreborn.items.ItemRef;
+import ru.industryreborn.items.RecipeRequests.Part;
+import ru.industryreborn.items.RecipeRequests.Spec;
+import ru.industryreborn.model.Category;
+import ru.industryreborn.model.Plot;
+import ru.industryreborn.model.RoomClass;
+import ru.industryreborn.model.Station;
+import ru.industryreborn.support.PluginTestBase;
+
+/** Временный сборщик содержимого меню для скриншотов релиза (не входит в коммиты). */
+class ScreenshotDump extends PluginTestBase {
+
+    private static final LegacyComponentSerializer LEGACY = LegacyComponentSerializer.builder().character('§').hexColors().useUnusualXRepeatedCharacterHexFormat().build();
+    private final List<Map<String, Object>> out = new ArrayList<>();
+
+    private void dump(String name, PlayerMock p) {
+        Inventory inv = p.getOpenInventory().getTopInventory();
+        Map<String, Object> sc = new LinkedHashMap<>();
+        sc.put("name", name);
+        sc.put("title", LEGACY.serialize(p.getOpenInventory().title()));
+        sc.put("rows", inv.getSize() / 9);
+        Map<String, Object> slots = new LinkedHashMap<>();
+        for (int i = 0; i < inv.getSize(); i++) {
+            ItemStack s = inv.getItem(i);
+            if (s == null || s.getType().isAir()) {
+                continue;
+            }
+            Map<String, Object> it = new LinkedHashMap<>();
+            it.put("m", s.getType().name());
+            it.put("n", s.getAmount());
+            var meta = s.getItemMeta();
+            it.put("name", meta != null && meta.displayName() != null ? LEGACY.serialize(meta.displayName()) : s.getType().name());
+            List<String> lore = new ArrayList<>();
+            if (meta != null && meta.lore() != null) {
+                for (Component c : meta.lore()) {
+                    lore.add(LEGACY.serialize(c));
+                }
+            }
+            it.put("lore", lore);
+            slots.put(String.valueOf(i), it);
+        }
+        sc.put("slots", slots);
+        out.add(sc);
+    }
+
+    private static String json(Object o) {
+        if (o instanceof Map<?, ?> m) {
+            StringBuilder sb = new StringBuilder("{");
+            boolean first = true;
+            for (var e : m.entrySet()) {
+                sb.append(first ? "" : ",").append(json(String.valueOf(e.getKey()))).append(':').append(json(e.getValue()));
+                first = false;
+            }
+            return sb.append('}').toString();
+        }
+        if (o instanceof List<?> l) {
+            StringBuilder sb = new StringBuilder("[");
+            for (int i = 0; i < l.size(); i++) {
+                sb.append(i == 0 ? "" : ",").append(json(l.get(i)));
+            }
+            return sb.append(']').toString();
+        }
+        if (o instanceof Number || o instanceof Boolean) {
+            return o.toString();
+        }
+        return "\"" + String.valueOf(o).replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n") + "\"";
+    }
+
+    private void write(String dir, String name, String text) throws Exception {
+        File d = new File(plugin.getDataFolder(), dir);
+        d.mkdirs();
+        Files.writeString(new File(d, name).toPath(), text, StandardCharsets.UTF_8);
+    }
+
+    @Test
+    void dumpMenus() throws Exception {
+        plugin.getConfig().set("limits.total", 0);
+        plugin.getConfig().set("limits.categories.workshop", 0);
+        plugin.getConfig().set("limits.categories.shop", 0);
+        plugin.getConfig().set("goods.sales-tax-percent", 5);
+        plugin.getConfig().set("electricity.max-clock-step-seconds", 10_000_000);
+        server.getWorld("world").loadChunk(0, 0);
+        PlayerMock steve = player("Steve", 12_450);
+        PlayerMock worker = player("Alex", 3_200);
+        PlayerMock boss = admin("Admin");
+        write("items", "metal.yml", "steel:\n  material: IRON_INGOT\n  name: \"<gray>Стальной слиток\"\ngear:\n  material: IRON_NUGGET\n  name: \"<gold>Шестерня\"\nrune:\n  material: PAPER\n  name: \"<light_purple>Руна\"\n");
+        write("recipes", "metal.yml", """
+                steel_ingot:
+                  station: blast
+                  seconds: 30
+                  category: "Металлы"
+                  blueprint_price: 500
+                  inputs: [{item: IRON_INGOT, amount: 3}, {item: COAL, amount: 1}]
+                  output: {item: ir:steel, amount: 2}
+                gear_press:
+                  station: furnace
+                  seconds: 10
+                  blueprint_price: 1200
+                  blueprint_item: ir:rune
+                  inputs: [{item: ir:steel, amount: 2}]
+                  output: {item: ir:gear, amount: 3}
+                """);
+        plugin.reloadCustomContent();
+
+        // ---- отель и классы номеров
+        Plot hotel = addPlot("grand", Category.HOTEL, 0, 1000, -1);
+        hotel.name = "Гранд Отель";
+        plugin.service().buy(steve, hotel);
+        String[] names = {"101", "102", "103", "201", "202", "301"};
+        RoomClass[] classes = {RoomClass.ECONOMY, RoomClass.ECONOMY, RoomClass.STANDARD, RoomClass.COMFORT, RoomClass.COMFORT, RoomClass.LUXURY};
+        double[] rates = {60, 70, 120, 220, 260, 480};
+        for (int i = 0; i < names.length; i++) {
+            Plot r = addPlot("grand-" + names[i], Category.ROOM, 20 + i * 12, -1, rates[i]);
+            r.parentId = hotel.id;
+            r.roomClass = classes[i];
+            r.name = "Номер " + names[i];
+            if (i == 1 || i == 4) {
+                r.status = Plot.Status.RENTED;
+                r.owner = worker.getUniqueId();
+                r.ownerName = "Alex";
+                r.rentedUntil = System.currentTimeMillis() + 3 * 86_400_000L;
+            }
+        }
+        plugin.hotels().invalidate();
+        new ru.industryreborn.gui.RoomsMenu(plugin, steve, hotel, null, 0).open();
+        dump("rooms", steve);
+        new ru.industryreborn.gui.RoomClassMenu(plugin, steve, plugin.plots().get("grand-101"), null).open();
+        dump("roomclass", steve);
+
+        // ---- мастерская и заявки
+        Plot workshop = addPlot("forge", Category.WORKSHOP, 300, -1, 40);
+        workshop.name = "Кузница Стива";
+        plugin.service().rent(steve, workshop, 10);
+        Block b = server.getWorld("world").getBlockAt(301, 1, 1);
+        b.setType(Material.BLAST_FURNACE);
+        plugin.stations().addMachine(workshop, 301, 1, 1, Station.FURNACE);
+        plugin.stations().inc(workshop, Station.FURNACE);
+        plugin.power().recalc(workshop);
+        plugin.power().deposit(steve, workshop, 20_000);
+        workshop.stock.put(Material.IRON_INGOT, 120);
+        workshop.stock.put(Material.COAL, 64);
+        workshop.customStock.put("ir:steel", 18);
+        workshop.learnedRecipes.add("custom:steel_ingot");
+        plugin.factory().assign(steve, workshop, "301,1,1", "custom:steel_ingot");
+        steve.teleport(new org.bukkit.Location(server.getWorld("world"), 305, 1, 3));
+        new ru.industryreborn.gui.FactoryMenu(plugin, steve, workshop, null).open();
+        dump("factory", steve);
+
+        // конструктор рецепта: собираем кликами
+        steve.getInventory().addItem(new ItemStack(Material.IRON_INGOT, 3), new ItemStack(Material.COAL, 8), plugin.customItems().build(ItemRef.parse("ir:gear"), 1));
+        steve.performCommand("district recipe request участок=forge");
+        steve.simulateInventoryClick(steve.getOpenInventory(), ClickType.LEFT, 12);
+        steve.simulateInventoryClick(steve.getOpenInventory(), ClickType.SHIFT_LEFT, 12);
+        for (int k = 0; k < 2; k++) {
+            steve.simulateInventoryClick(steve.getOpenInventory(), ClickType.LEFT, 28 + k);
+            steve.simulateInventoryClick(steve.getOpenInventory(), ClickType.LEFT, 54 + 27 + k);
+        }
+        steve.simulateInventoryClick(steve.getOpenInventory(), ClickType.SHIFT_LEFT, 28);
+        steve.simulateInventoryClick(steve.getOpenInventory(), ClickType.LEFT, 34);
+        steve.simulateInventoryClick(steve.getOpenInventory(), ClickType.LEFT, 54 + 27 + 2);
+        steve.simulateInventoryClick(steve.getOpenInventory(), ClickType.LEFT, 34);
+        dump("builder", steve);
+
+        // ---- модерация: класс номера и рецепт
+        var field = ru.industryreborn.service.JobService.class.getDeclaredField("employees");
+        field.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        List<ru.industryreborn.model.Employee> employees = (List<ru.industryreborn.model.Employee>) field.get(plugin.jobs());
+        employees.add(new ru.industryreborn.model.Employee(worker.getUniqueId(), "Alex", "forge", 1, System.currentTimeMillis()));
+        plugin.hotels().changeClass(steve, plugin.plots().get("grand-103"), RoomClass.COMFORT);
+        plugin.recipeRequests().submit(worker, workshop, new Spec("blast", 45, List.of(new Part("IRON_INGOT", 4), new Part("ir:gear", 1)), new Part("ir:steel", 3)));
+        new ru.industryreborn.gui.ModerationMenu(plugin, boss, 0).open();
+        dump("moderation", boss);
+
+        // ---- магазин чертежей и хранилище
+        new ru.industryreborn.gui.BlueprintShopMenu(plugin, steve, null, 0).open();
+        dump("blueprintshop", steve);
+        plugin.blueprints().deposit(plugin.blueprints().create(plugin.recipes().get("custom:gear_press")), "пример");
+        plugin.blueprints().deposit(plugin.blueprints().create(plugin.recipes().get("custom:steel_ingot")), "пример");
+        new ru.industryreborn.gui.BlueprintVaultMenu(plugin, boss, 0).open();
+        dump("vault", boss);
+
+        // ---- витрина и товары с предметами плагина
+        Plot shop = addPlot("market", Category.SHOP, 400, -1, 30);
+        shop.name = "Рынок Стива";
+        plugin.service().rent(steve, shop, 10);
+        shop.goods.put(Material.IRON_INGOT, 64);
+        shop.prices.put(Material.IRON_INGOT, 12.0);
+        shop.customGoods.put("ir:steel", 40);
+        shop.customPrices.put("ir:steel", 38.0);
+        shop.customGoods.put("ir:gear", 15);
+        shop.customPrices.put("ir:gear", 55.0);
+        new ru.industryreborn.gui.StorefrontMenu(plugin, worker, shop, null, 0).open();
+        dump("storefront", worker);
+        new ru.industryreborn.gui.GoodsMenu(plugin, steve, shop, null, 0).open();
+        dump("goods", steve);
+
+        Files.writeString(new File("/tmp/claude-0/proto/release/real.json").toPath(), json(out), StandardCharsets.UTF_8);
+    }
+}
